@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -126,7 +125,7 @@ fun RegisterScreen(
                         .align(Alignment.TopStart)
                         .padding(8.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.55f)),
+                        .background(Color.White.copy(alpha = 0.4f)),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -140,7 +139,7 @@ fun RegisterScreen(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    LogoBadge(size = 64)
+                    AppLogo(size = 64.dp)
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = "FinPilot",
@@ -176,7 +175,7 @@ fun RegisterScreen(
                             .width(40.dp)
                             .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0xFFDDE1F0))
+                            .background(Color(0xFFE5E7EB))
                     )
                     Spacer(Modifier.height(24.dp))
 
