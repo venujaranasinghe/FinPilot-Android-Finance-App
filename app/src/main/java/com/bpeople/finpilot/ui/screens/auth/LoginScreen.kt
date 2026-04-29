@@ -29,8 +29,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,7 +103,7 @@ fun LoginScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    LogoBadge(size = 76)
+                    AppLogo(size = 80.dp)
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = "FinPilot",
@@ -147,7 +145,7 @@ fun LoginScreen(
                             .width(40.dp)
                             .height(4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0xFFDDE1F0))
+                            .background(Color(0xFFE5E7EB))
                     )
                     Spacer(Modifier.height(24.dp))
 
@@ -251,13 +249,13 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE8EAFF))
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
                         Text(
                             text = "  or  ",
                             style = MaterialTheme.typography.labelMedium,
                             color = SubtleText,
                         )
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFE8EAFF))
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
                     }
 
                     Spacer(Modifier.height(20.dp))
@@ -283,52 +281,6 @@ fun LoginScreen(
             }
         }
     }
-}
-
-@Composable
-internal fun AuthTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    isError: Boolean = false,
-    errorText: String? = null,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        leadingIcon = leadingIcon,
-        trailingIcon = trailingIcon,
-        visualTransformation = visualTransformation,
-        isError = isError,
-        supportingText = errorText?.let { msg -> { Text(msg, color = MaterialTheme.colorScheme.error) } },
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        singleLine = true,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BrandColor,
-            unfocusedBorderColor = Color(0xFFDDE1F0),
-            focusedLabelColor = BrandColor,
-            unfocusedLabelColor = SubtleText,
-            cursorColor = BrandColor,
-            focusedTextColor = DeepText,
-            unfocusedTextColor = DeepText,
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color(0xFFF8F9FF),
-            errorBorderColor = MaterialTheme.colorScheme.error,
-            errorLabelColor = MaterialTheme.colorScheme.error,
-            errorCursorColor = MaterialTheme.colorScheme.error,
-            errorContainerColor = Color(0xFFFFF5F5),
-        ),
-    )
 }
 
 @Preview(showSystemUi = true)
