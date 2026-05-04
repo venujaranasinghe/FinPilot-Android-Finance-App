@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -113,52 +112,19 @@ internal fun BlobCanvas(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the application logo using pngegg.png
+ * Renders the application logo using the vector asset.
  */
 @Composable
 internal fun AppLogo(size: Dp, modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier
-            .size(size)
-            .shadow(
-                elevation = 20.dp,
-                shape = CircleShape,
-                spotColor = BrandColor.copy(alpha = 0.2f),
-            )
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.6f))
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    listOf(Color.White.copy(alpha = 0.9f), Color.White.copy(alpha = 0.3f))
-                ),
-                shape = CircleShape,
-            )
-            .padding(16.dp),
+        modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
-        // Use a safe check for preview to avoid crashes with certain bitmap resources that may fail to decode in layoutlib
-        if (LocalInspectionMode.current) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BrandColor.copy(alpha = 0.1f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Logo",
-                    color = BrandColor,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        } else {
-            Image(
-                painter = painterResource(id = R.drawable.pngegg),
-                contentDescription = "App Logo",
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+        Image(
+            painter = painterResource(id = R.drawable.finpilot_logo),
+            contentDescription = "App Logo",
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
