@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
 import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
@@ -19,12 +21,16 @@ import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 fun FinPilotNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
+    // Single ViewModel instance shared across auth screens
+    val authViewModel = remember { AuthViewModel() }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(
+                viewModel = authViewModel,
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
@@ -40,6 +46,7 @@ fun FinPilotNavGraph(
 
         composable(Screen.Login.route) {
             LoginScreen(
+                viewModel = authViewModel,
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
                 },
@@ -53,6 +60,7 @@ fun FinPilotNavGraph(
 
         composable(Screen.Register.route) {
             RegisterScreen(
+                viewModel = authViewModel,
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },

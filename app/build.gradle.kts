@@ -1,8 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -15,7 +16,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -35,6 +35,14 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+kotlin {
+    jvmToolchain(11)
+}
+
+hilt {
+    enableAggregatingTask = false
 }
 
 dependencies {

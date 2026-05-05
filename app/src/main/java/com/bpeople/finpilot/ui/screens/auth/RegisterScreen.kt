@@ -32,6 +32,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +63,7 @@ import com.bpeople.finpilot.ui.theme.SubtleText
 
 @Composable
 fun RegisterScreen(
+    viewModel: AuthViewModel,
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit,
 ) {
@@ -74,10 +77,28 @@ fun RegisterScreen(
     var emailError by rememberSaveable { mutableStateOf<String?>(null) }
     var passwordError by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmPasswordError by rememberSaveable { mutableStateOf<String?>(null) }
-    var isLoading by rememberSaveable { mutableStateOf(false) }
+
+    val isLoading by viewModel.isLoading.collectAsState()
+    val authSuccess by viewModel.authSuccess.collectAsState()
+    val viewModelError by viewModel.errorMessage.collectAsState()
 
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+
+    // Navigate on registration success
+    LaunchedEffect(authSuccess) {
+        if (authSuccess) {
+            viewModel.clearAuthSuccess()
+            onRegisterSuccess()
+        }
+    }
+
+    // Surface ViewModel errors
+    LaunchedEffect(viewModelError) {
+        viewModelError?.let { msg ->
+            emailError = msg
+        }
+    }
 
     fun validateAndRegister() {
         nameError = when {
@@ -102,9 +123,11 @@ fun RegisterScreen(
         }
         if (nameError == null && emailError == null && passwordError == null && confirmPasswordError == null) {
             focusManager.clearFocus()
-            isLoading = true
-            // TODO: wire to AuthViewModel.register(fullName, email, password)
-            onRegisterSuccess()
+            viewModel.onFullNameChange(fullName)
+            viewModel.onEmailChange(email)
+            viewModel.onPasswordChange(password)
+            viewModel.onConfirmPasswordChange(confirmPassword)
+            viewModel.register()
         }
     }
 
@@ -197,7 +220,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = fullName,
-                        onValueChange = { fullName = it; nameError = null },
+                        onValueChange = { fullName = it; nameError = null; viewModel.clearError() },
                         label = "Full name",
                         leadingIcon = {
                             Icon(
@@ -221,7 +244,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = email,
-                        onValueChange = { email = it; emailError = null },
+                        onValueChange = { email = it; emailError = null; viewModel.clearError() },
                         label = "Email address",
                         leadingIcon = {
                             Icon(
@@ -245,7 +268,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = password,
-                        onValueChange = { password = it; passwordError = null },
+                        onValueChange = { password = it; passwordError = null; viewModel.clearError() },
                         label = "Password",
                         leadingIcon = {
                             Icon(
@@ -282,7 +305,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = confirmPassword,
-                        onValueChange = { confirmPassword = it; confirmPasswordError = null },
+                        onValueChange = { confirmPassword = it; confirmPasswordError = null; viewModel.clearError() },
                         label = "Confirm password",
                         leadingIcon = {
                             Icon(
@@ -352,5 +375,12 @@ fun RegisterScreen(
 @Preview(showSystemUi = true)
 @Composable
 private fun RegisterPreview() {
-    FinPilotTheme { RegisterScreen({}, {}) }
+    FinPilotTheme {
+        @Suppress("ViewModelConstructorInComposable")
+        RegisterScreen(
+            viewModel = AuthViewModel(),
+            onNavigateToLogin = {},
+            onRegisterSuccess = {}
+        )
+    }
 }

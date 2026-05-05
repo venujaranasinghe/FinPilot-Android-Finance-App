@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
+    viewModel: AuthViewModel,
     onNavigateToLogin: () -> Unit,
     onNavigateToDashboard: () -> Unit,
 ) {
@@ -54,8 +55,12 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         started = true
         delay(2800L)
-        // TODO: replace with Firebase auth check
-        onNavigateToLogin()
+        // Check Firebase auth state and navigate accordingly
+        if (viewModel.isLoggedIn) {
+            onNavigateToDashboard()
+        } else {
+            onNavigateToLogin()
+        }
     }
 
     AuthBackground {
@@ -105,5 +110,12 @@ fun SplashScreen(
 @Preview(showSystemUi = true)
 @Composable
 private fun SplashPreview() {
-    FinPilotTheme { SplashScreen({}, {}) }
+    FinPilotTheme {
+        @Suppress("ViewModelConstructorInComposable")
+        SplashScreen(
+            viewModel = AuthViewModel(),
+            onNavigateToLogin = {},
+            onNavigateToDashboard = {}
+        )
+    }
 }
