@@ -1,13 +1,17 @@
 package com.bpeople.finpilot.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -73,16 +77,30 @@ fun FinPilotNavGraph(
         }
 
         composable(Screen.Dashboard.route) {
-            // Placeholder — implemented in Week 3
+            // Temporary placeholder with logout button
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "Dashboard coming soon",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Dashboard coming soon",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+
+                    Button(
+                        onClick = {
+                            authViewModel.signOut()
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Dashboard.route) { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier.padding(top = 16.dp),
+                    ) {
+                        Text(text = "Logout")
+                    }
+                }
             }
         }
     }
