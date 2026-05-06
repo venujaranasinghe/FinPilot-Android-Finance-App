@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bpeople.finpilot.data.repository.AuthRepository
+import com.google.firebase.auth.FirebaseAuth
 import com.bpeople.finpilot.ui.theme.BrandColor
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.SubtleText
@@ -113,7 +115,7 @@ private fun SplashPreview() {
     FinPilotTheme {
         @Suppress("ViewModelConstructorInComposable")
         SplashScreen(
-            viewModel = AuthViewModel(),
+            viewModel = AuthViewModel(AuthRepository(FirebaseAuth.getInstance())),
             onNavigateToLogin = {},
             onNavigateToDashboard = {}
         )

@@ -5,37 +5,46 @@ import androidx.lifecycle.viewModelScope
 import com.bpeople.finpilot.data.model.AuthResult
 import com.bpeople.finpilot.data.repository.AuthRepository
 import com.google.firebase.auth.FirebaseUser
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class AuthViewModel(
-    private val authRepository: AuthRepository = AuthRepository()
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _email = MutableStateFlow("")
-    val email: StateFlow<String> = _email.asStateFlow()
+    data class AuthUiState(
+        val email: String = "",
+        val password: String = "",
+        val confirmPassword: String = "",
+        val fullName: String = "",
+        val isLoading: Boolean = false,
+        val errorMessage: String? = null,
+        val authSuccess: Boolean = false,
+    )
 
-    private val _password = MutableStateFlow("")
-    val password: StateFlow<String> = _password.asStateFlow()
+    private val _authState = MutableStateFlow(AuthUiState())
+    val authState: StateFlow<AuthUiState> = _authState.asStateFlow()
 
-    private val _confirmPassword = MutableStateFlow("")
-    val confirmPassword: StateFlow<String> = _confirmPassword.asStateFlow()
+    val isLoading: StateFlow<Boolean> = authState
+        .map { it.isLoading }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    private val _fullName = MutableStateFlow("")
-    val fullName: StateFlow<String> = _fullName.asStateFlow()
+    val errorMessage: StateFlow<String?> = authState
+        .map { it.errorMessage }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    private val _authSuccess = MutableStateFlow(false)
-    val authSuccess: StateFlow<Boolean> = _authSuccess.asStateFlow()
+    val authSuccess: StateFlow<Boolean> = authState
+        .map { it.authSuccess }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val currentUser: StateFlow<FirebaseUser?> = authRepository.currentUser
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -44,57 +53,100 @@ class AuthViewModel(
 
     fun getCurrentUserId(): String? = authRepository.getCurrentUserId()
 
-    fun onEmailChange(value: String) { _email.value = value.trim(); clearError() }
-    fun onPasswordChange(value: String) { _password.value = value; clearError() }
-    fun onConfirmPasswordChange(value: String) { _confirmPassword.value = value; clearError() }
-    fun onFullNameChange(value: String) { _fullName.value = value; clearError() }
+    fun onEmailChange(value: String) {
+        _authState.update { it.copy(email = value.trim(), errorMessage = null) }
+    }
+
+    fun onPasswordChange(value: String) {
+        _authState.update { it.copy(password = value, errorMessage = null) }
+    }
+
+    fun onConfirmPasswordChange(value: String) {
+        _authState.update { it.copy(confirmPassword = value, errorMessage = null) }
+    }
+
+    fun onFullNameChange(value: String) {
+        _authState.update { it.copy(fullName = value, errorMessage = null) }
+    }
 
     fun login() {
         if (!validateLogin()) return
-        _isLoading.value = true
+        _authState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            when (val result = authRepository.login(_email.value, _password.value)) {
-                is AuthResult.Success -> _authSuccess.value = true
-                is AuthResult.Error -> _errorMessage.value = result.message
+            when (val result = authRepository.login(_authState.value.email, _authState.value.password)) {
+                is AuthResult.Success -> _authState.update {
+                    it.copy(authSuccess = true, isLoading = false)
+                }
+                is AuthResult.Error -> _authState.update {
+                    it.copy(errorMessage = result.message, isLoading = false)
+                }
             }
-            _isLoading.value = false
         }
     }
 
     fun register() {
         if (!validateRegister()) return
-        _isLoading.value = true
+        _authState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            when (val result = authRepository.register(_email.value, _password.value)) {
-                is AuthResult.Success -> _authSuccess.value = true
-                is AuthResult.Error -> _errorMessage.value = result.message
+            when (val result = authRepository.register(_authState.value.email, _authState.value.password)) {
+                is AuthResult.Success -> _authState.update {
+                    it.copy(authSuccess = true, isLoading = false)
+                }
+                is AuthResult.Error -> _authState.update {
+                    it.copy(errorMessage = result.message, isLoading = false)
+                }
             }
-            _isLoading.value = false
         }
     }
 
     fun signOut() {
         authRepository.signOut()
-        _authSuccess.value = false
+        _authState.update { it.copy(authSuccess = false) }
     }
 
     private fun validateLogin(): Boolean {
-        if (_email.value.isBlank()) { _errorMessage.value = "Email is required"; return false }
-        if (_password.value.isBlank()) { _errorMessage.value = "Password is required"; return false }
+        val state = _authState.value
+        if (state.email.isBlank()) {
+            _authState.update { it.copy(errorMessage = "Email is required") }
+            return false
+        }
+        if (state.password.isBlank()) {
+            _authState.update { it.copy(errorMessage = "Password is required") }
+            return false
+        }
         return true
     }
 
     private fun validateRegister(): Boolean {
-        if (_fullName.value.isBlank()) { _errorMessage.value = "Name is required"; return false }
-        if (_email.value.isBlank()) { _errorMessage.value = "Email is required"; return false }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(_email.value).matches()) {
-            _errorMessage.value = "Enter a valid email"; return false
+        val state = _authState.value
+        if (state.fullName.isBlank()) {
+            _authState.update { it.copy(errorMessage = "Name is required") }
+            return false
         }
-        if (_password.value.length < 6) { _errorMessage.value = "Password must be at least 6 characters"; return false }
-        if (_password.value != _confirmPassword.value) { _errorMessage.value = "Passwords do not match"; return false }
+        if (state.email.isBlank()) {
+            _authState.update { it.copy(errorMessage = "Email is required") }
+            return false
+        }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
+            _authState.update { it.copy(errorMessage = "Enter a valid email") }
+            return false
+        }
+        if (state.password.length < 6) {
+            _authState.update { it.copy(errorMessage = "Password must be at least 6 characters") }
+            return false
+        }
+        if (state.password != state.confirmPassword) {
+            _authState.update { it.copy(errorMessage = "Passwords do not match") }
+            return false
+        }
         return true
     }
 
-    fun clearError() { _errorMessage.value = null }
-    fun clearAuthSuccess() { _authSuccess.value = false }
+    fun clearError() {
+        _authState.update { it.copy(errorMessage = null) }
+    }
+
+    fun clearAuthSuccess() {
+        _authState.update { it.copy(authSuccess = false) }
+    }
 }

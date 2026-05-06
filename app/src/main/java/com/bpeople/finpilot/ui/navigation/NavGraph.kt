@@ -1,32 +1,32 @@
 package com.bpeople.finpilot.ui.navigation
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
 import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
+import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
+import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
+import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
+import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
 
 @Composable
 fun FinPilotNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
     // Single ViewModel instance shared across auth screens
-    val authViewModel = remember { AuthViewModel() }
+    val authViewModel: AuthViewModel = hiltViewModel()
 
     NavHost(
         navController = navController,
@@ -77,31 +77,35 @@ fun FinPilotNavGraph(
         }
 
         composable(Screen.Dashboard.route) {
-            // Temporary placeholder with logout button
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Dashboard coming soon",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            val dashboardState by dashboardViewModel.dashboardState.collectAsState()
+            LaunchedEffect(dashboardState) { }
 
-                    Button(
-                        onClick = {
-                            authViewModel.signOut()
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(Screen.Dashboard.route) { inclusive = true }
-                            }
-                        },
-                        modifier = Modifier.padding(top = 16.dp),
-                    ) {
-                        Text(text = "Logout")
-                    }
-                }
-            }
+            Box(modifier = Modifier.fillMaxSize()) { }
+        }
+
+        composable(Screen.IncomeList.route) {
+            val incomeViewModel: IncomeViewModel = hiltViewModel()
+            val incomeState by incomeViewModel.incomeState.collectAsState()
+            LaunchedEffect(incomeState) { }
+
+            Box(modifier = Modifier.fillMaxSize()) { }
+        }
+
+        composable(Screen.ExpenseList.route) {
+            val expenseViewModel: ExpenseViewModel = hiltViewModel()
+            val expenseState by expenseViewModel.expenseState.collectAsState()
+            LaunchedEffect(expenseState) { }
+
+            Box(modifier = Modifier.fillMaxSize()) { }
+        }
+
+        composable(Screen.Goal.route) {
+            val goalViewModel: GoalViewModel = hiltViewModel()
+            val goalState by goalViewModel.goalState.collectAsState()
+            LaunchedEffect(goalState) { }
+
+            Box(modifier = Modifier.fillMaxSize()) { }
         }
     }
 }
