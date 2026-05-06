@@ -31,6 +31,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,6 +61,7 @@ import com.bpeople.finpilot.ui.theme.SubtleText
 
 @Composable
 fun LoginScreen(
+    viewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
 ) {
@@ -67,10 +70,28 @@ fun LoginScreen(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var emailError by rememberSaveable { mutableStateOf<String?>(null) }
     var passwordError by rememberSaveable { mutableStateOf<String?>(null) }
-    var isLoading by rememberSaveable { mutableStateOf(false) }
+
+    val isLoading by viewModel.isLoading.collectAsState()
+    val authSuccess by viewModel.authSuccess.collectAsState()
+    val viewModelError by viewModel.errorMessage.collectAsState()
 
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+
+    // Navigate on auth success
+    LaunchedEffect(authSuccess) {
+        if (authSuccess) {
+            viewModel.clearAuthSuccess()
+            onLoginSuccess()
+        }
+    }
+
+    // Surface ViewModel errors
+    LaunchedEffect(viewModelError) {
+        viewModelError?.let { msg ->
+            emailError = msg
+        }
+    }
 
     fun validateAndLogin() {
         emailError = when {
@@ -85,9 +106,9 @@ fun LoginScreen(
         }
         if (emailError == null && passwordError == null) {
             focusManager.clearFocus()
-            isLoading = true
-            // TODO: wire to AuthViewModel.login(email, password)
-            onLoginSuccess()
+            viewModel.onEmailChange(email)
+            viewModel.onPasswordChange(password)
+            viewModel.login()
         }
     }
 
@@ -167,7 +188,7 @@ fun LoginScreen(
 
                     AuthTextField(
                         value = email,
-                        onValueChange = { email = it; emailError = null },
+                        onValueChange = { email = it; emailError = null; viewModel.clearError() },
                         label = "Email address",
                         leadingIcon = {
                             Icon(
@@ -191,7 +212,7 @@ fun LoginScreen(
 
                     AuthTextField(
                         value = password,
-                        onValueChange = { password = it; passwordError = null },
+                        onValueChange = { password = it; passwordError = null; viewModel.clearError() },
                         label = "Password",
                         leadingIcon = {
                             Icon(
@@ -286,5 +307,12 @@ fun LoginScreen(
 @Preview(showSystemUi = true)
 @Composable
 private fun LoginPreview() {
-    FinPilotTheme { LoginScreen({}, {}) }
+    FinPilotTheme {
+        @Suppress("ViewModelConstructorInComposable")
+        LoginScreen(
+            viewModel = AuthViewModel(),
+            onNavigateToRegister = {},
+            onLoginSuccess = {}
+        )
+    }
 }
