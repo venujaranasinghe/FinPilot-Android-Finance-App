@@ -54,6 +54,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.bpeople.finpilot.data.repository.AuthRepository
+import com.google.firebase.auth.FirebaseAuth
 import com.bpeople.finpilot.ui.theme.BrandColor
 import com.bpeople.finpilot.ui.theme.DeepText
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
@@ -310,7 +312,7 @@ private fun LoginPreview() {
     FinPilotTheme {
         @Suppress("ViewModelConstructorInComposable")
         LoginScreen(
-            viewModel = AuthViewModel(),
+            viewModel = AuthViewModel(AuthRepository(FirebaseAuth.getInstance())),
             onNavigateToRegister = {},
             onLoginSuccess = {}
         )

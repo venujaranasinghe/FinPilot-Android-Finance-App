@@ -7,29 +7,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AuthRepository {
+@Singleton
+class AuthRepository @Inject constructor(
+    private val auth: FirebaseAuth
+) {
 
-    private val auth: FirebaseAuth? = try {
-        FirebaseAuth.getInstance()
-    } catch (e: Exception) {
-        null
-    }
-
-    private val _currentUser = MutableStateFlow<FirebaseUser?>(auth?.currentUser)
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
     val currentUser: Flow<FirebaseUser?> = _currentUser.asStateFlow()
 
     init {
-        auth?.addAuthStateListener { firebaseAuth ->
+        auth.addAuthStateListener { firebaseAuth ->
             _currentUser.value = firebaseAuth.currentUser
         }
     }
 
-    fun getCurrentUserId(): String? = auth?.currentUser?.uid
-    fun isLoggedIn(): Boolean = auth?.currentUser != null
+    fun getCurrentUserId(): String? = auth.currentUser?.uid
+    fun isLoggedIn(): Boolean = auth.currentUser != null
 
     suspend fun login(email: String, password: String): AuthResult {
-        if (auth == null) return AuthResult.Error("Auth not initialized")
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
             if (result.user != null) AuthResult.Success
@@ -40,7 +38,6 @@ class AuthRepository {
     }
 
     suspend fun register(email: String, password: String): AuthResult {
-        if (auth == null) return AuthResult.Error("Auth not initialized")
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             if (result.user != null) AuthResult.Success
@@ -51,7 +48,7 @@ class AuthRepository {
     }
 
     fun signOut() {
-        auth?.signOut()
+        auth.signOut()
     }
 
     private fun mapFirebaseError(e: Exception): String {
