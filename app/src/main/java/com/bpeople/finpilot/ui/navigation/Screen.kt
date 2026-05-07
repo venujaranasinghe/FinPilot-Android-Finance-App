@@ -1,17 +1,14 @@
 package com.bpeople.finpilot.ui.navigation
 
-sealed class Screen(val route: String) {
-    object Splash : Screen("splash")
-    object Login : Screen("auth/login")
-    object Register : Screen("auth/register")
-    object Onboarding : Screen("onboarding")
-    object Dashboard : Screen("dashboard")
-    object IncomeList : Screen("income/list")
-    object AddIncome : Screen("income/add")
-    object ExpenseList : Screen("expense/list")
-    object AddExpense : Screen("expense/add")
-    object Goal : Screen("goal")
-    object AddGoal : Screen("goal/add")
-    object Reports : Screen("reports")
-    object Settings : Screen("settings")
+sealed class NavRoutes(val route: String) {
+    object Splash : NavRoutes("splash")
+    object Login : NavRoutes("auth/login")
+    object Register : NavRoutes("auth/register")
+    object Dashboard : NavRoutes("dashboard")
+    object AddIncome : NavRoutes("income/add")
+    object AddExpense : NavRoutes("expense/add")
+    object GoalTracker : NavRoutes("goal/{goalId}") {
+        const val ARG_GOAL_ID = "goalId"
+        fun createRoute(goalId: String): String = "goal/$goalId"
+    }
 }
