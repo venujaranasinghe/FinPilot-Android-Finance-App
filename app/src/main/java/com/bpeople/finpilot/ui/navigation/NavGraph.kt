@@ -8,9 +8,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
@@ -30,53 +32,71 @@ fun FinPilotNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route,
+        startDestination = NavRoutes.Splash.route,
     ) {
-        composable(Screen.Splash.route) {
+        composable(NavRoutes.Splash.route) {
             SplashScreen(
                 viewModel = authViewModel,
                 onNavigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Splash.route) { inclusive = true }
                     }
                 },
                 onNavigateToDashboard = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Splash.route) { inclusive = true }
                     }
                 },
             )
         }
 
-        composable(Screen.Login.route) {
+        composable(NavRoutes.Login.route) {
+            val currentUser by authViewModel.currentUser.collectAsState()
+            LaunchedEffect(currentUser) {
+                if (currentUser != null) {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Login.route) { inclusive = true }
+                    }
+                }
+            }
+
             LoginScreen(
                 viewModel = authViewModel,
                 onNavigateToRegister = {
-                    navController.navigate(Screen.Register.route)
+                    navController.navigate(NavRoutes.Register.route)
                 },
                 onLoginSuccess = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 },
             )
         }
 
-        composable(Screen.Register.route) {
+        composable(NavRoutes.Register.route) {
+            val currentUser by authViewModel.currentUser.collectAsState()
+            LaunchedEffect(currentUser) {
+                if (currentUser != null) {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Register.route) { inclusive = true }
+                    }
+                }
+            }
+
             RegisterScreen(
                 viewModel = authViewModel,
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
                 onRegisterSuccess = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 },
             )
         }
 
-        composable(Screen.Dashboard.route) {
+        composable(NavRoutes.Dashboard.route) {
             val dashboardViewModel: DashboardViewModel = hiltViewModel()
             val dashboardState by dashboardViewModel.dashboardState.collectAsState()
             LaunchedEffect(dashboardState) { }
@@ -84,7 +104,7 @@ fun FinPilotNavGraph(
             Box(modifier = Modifier.fillMaxSize()) { }
         }
 
-        composable(Screen.IncomeList.route) {
+        composable(NavRoutes.AddIncome.route) {
             val incomeViewModel: IncomeViewModel = hiltViewModel()
             val incomeState by incomeViewModel.incomeState.collectAsState()
             LaunchedEffect(incomeState) { }
@@ -92,7 +112,7 @@ fun FinPilotNavGraph(
             Box(modifier = Modifier.fillMaxSize()) { }
         }
 
-        composable(Screen.ExpenseList.route) {
+        composable(NavRoutes.AddExpense.route) {
             val expenseViewModel: ExpenseViewModel = hiltViewModel()
             val expenseState by expenseViewModel.expenseState.collectAsState()
             LaunchedEffect(expenseState) { }
@@ -100,10 +120,16 @@ fun FinPilotNavGraph(
             Box(modifier = Modifier.fillMaxSize()) { }
         }
 
-        composable(Screen.Goal.route) {
+        composable(
+            route = NavRoutes.GoalTracker.route,
+            arguments = listOf(
+                navArgument(NavRoutes.GoalTracker.ARG_GOAL_ID) { type = NavType.StringType }
+            ),
+        ) { backStackEntry ->
+            val goalId = backStackEntry.arguments?.getString(NavRoutes.GoalTracker.ARG_GOAL_ID)
             val goalViewModel: GoalViewModel = hiltViewModel()
             val goalState by goalViewModel.goalState.collectAsState()
-            LaunchedEffect(goalState) { }
+            LaunchedEffect(goalState, goalId) { }
 
             Box(modifier = Modifier.fillMaxSize()) { }
         }
