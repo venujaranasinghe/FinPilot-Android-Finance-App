@@ -56,8 +56,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.bpeople.finpilot.data.repository.AuthRepository
-import com.google.firebase.auth.FirebaseAuth
 import com.bpeople.finpilot.ui.theme.BrandColor
 import com.bpeople.finpilot.ui.theme.DeepText
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
@@ -85,7 +83,6 @@ fun RegisterScreen(
     val viewModelError by viewModel.errorMessage.collectAsState()
 
     val focusManager = LocalFocusManager.current
-    val scrollState = rememberScrollState()
 
     // Navigate on registration success
     LaunchedEffect(authSuccess) {
@@ -132,6 +129,54 @@ fun RegisterScreen(
             viewModel.register()
         }
     }
+
+    RegisterScreenContent(
+        fullName = fullName,
+        email = email,
+        password = password,
+        confirmPassword = confirmPassword,
+        passwordVisible = passwordVisible,
+        confirmPasswordVisible = confirmPasswordVisible,
+        nameError = nameError,
+        emailError = emailError,
+        passwordError = passwordError,
+        confirmPasswordError = confirmPasswordError,
+        isLoading = isLoading,
+        onFullNameChange = { fullName = it; nameError = null; viewModel.clearError() },
+        onEmailChange = { email = it; emailError = null; viewModel.clearError() },
+        onPasswordChange = { password = it; passwordError = null; viewModel.clearError() },
+        onConfirmPasswordChange = { confirmPassword = it; confirmPasswordError = null; viewModel.clearError() },
+        onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+        onToggleConfirmPasswordVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
+        onNavigateToLogin = onNavigateToLogin,
+        onRegisterClick = { validateAndRegister() },
+    )
+}
+
+@Composable
+internal fun RegisterScreenContent(
+    fullName: String,
+    email: String,
+    password: String,
+    confirmPassword: String,
+    passwordVisible: Boolean,
+    confirmPasswordVisible: Boolean,
+    nameError: String?,
+    emailError: String?,
+    passwordError: String?,
+    confirmPasswordError: String?,
+    isLoading: Boolean,
+    onFullNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
+    onTogglePasswordVisibility: () -> Unit,
+    onToggleConfirmPasswordVisibility: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onRegisterClick: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
 
     AuthBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -222,7 +267,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = fullName,
-                        onValueChange = { fullName = it; nameError = null; viewModel.clearError() },
+                        onValueChange = onFullNameChange,
                         label = "Full name",
                         leadingIcon = {
                             Icon(
@@ -246,7 +291,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = email,
-                        onValueChange = { email = it; emailError = null; viewModel.clearError() },
+                        onValueChange = onEmailChange,
                         label = "Email address",
                         leadingIcon = {
                             Icon(
@@ -270,7 +315,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = password,
-                        onValueChange = { password = it; passwordError = null; viewModel.clearError() },
+                        onValueChange = onPasswordChange,
                         label = "Password",
                         leadingIcon = {
                             Icon(
@@ -280,7 +325,7 @@ fun RegisterScreen(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
@@ -307,7 +352,7 @@ fun RegisterScreen(
 
                     AuthTextField(
                         value = confirmPassword,
-                        onValueChange = { confirmPassword = it; confirmPasswordError = null; viewModel.clearError() },
+                        onValueChange = onConfirmPasswordChange,
                         label = "Confirm password",
                         leadingIcon = {
                             Icon(
@@ -319,7 +364,7 @@ fun RegisterScreen(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            IconButton(onClick = onToggleConfirmPasswordVisibility) {
                                 Icon(
                                     imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
@@ -337,14 +382,14 @@ fun RegisterScreen(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Done,
                         ),
-                        keyboardActions = KeyboardActions(onDone = { validateAndRegister() }),
+                        keyboardActions = KeyboardActions(onDone = { onRegisterClick() }),
                     )
 
                     Spacer(Modifier.height(28.dp))
 
                     GradientButton(
                         text = "Create Account",
-                        onClick = { validateAndRegister() },
+                        onClick = { onRegisterClick() },
                         modifier = Modifier.fillMaxWidth(),
                         isLoading = isLoading,
                     )
@@ -378,11 +423,26 @@ fun RegisterScreen(
 @Composable
 private fun RegisterPreview() {
     FinPilotTheme {
-        @Suppress("ViewModelConstructorInComposable")
-        RegisterScreen(
-            viewModel = AuthViewModel(AuthRepository(FirebaseAuth.getInstance())),
+        RegisterScreenContent(
+            fullName = "Jane Doe",
+            email = "jane@finpilot.app",
+            password = "",
+            confirmPassword = "",
+            passwordVisible = false,
+            confirmPasswordVisible = false,
+            nameError = null,
+            emailError = null,
+            passwordError = "Password is required",
+            confirmPasswordError = null,
+            isLoading = false,
+            onFullNameChange = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onTogglePasswordVisibility = {},
+            onToggleConfirmPasswordVisibility = {},
             onNavigateToLogin = {},
-            onRegisterSuccess = {}
+            onRegisterClick = {},
         )
     }
 }

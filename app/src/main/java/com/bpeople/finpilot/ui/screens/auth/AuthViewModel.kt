@@ -31,8 +31,17 @@ class AuthViewModel @Inject constructor(
         val authSuccess: Boolean = false,
     )
 
+    sealed class ResetState {
+        object Idle : ResetState()
+        object Success : ResetState()
+        data class Error(val message: String) : ResetState()
+    }
+
     private val _authState = MutableStateFlow(AuthUiState())
     val authState: StateFlow<AuthUiState> = _authState.asStateFlow()
+
+    private val _resetState = MutableStateFlow<ResetState>(ResetState.Idle)
+    val resetState: StateFlow<ResetState> = _resetState.asStateFlow()
 
     val isLoading: StateFlow<Boolean> = authState
         .map { it.isLoading }
@@ -97,6 +106,28 @@ class AuthViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun forgotPassword(email: String) {
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isBlank()) {
+            _resetState.value = ResetState.Error("Email is required")
+            return
+        }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(trimmedEmail).matches()) {
+            _resetState.value = ResetState.Error("Enter a valid email")
+            return
+        }
+        viewModelScope.launch {
+            when (val result = authRepository.sendPasswordResetEmail(trimmedEmail)) {
+                is AuthResult.Success -> _resetState.value = ResetState.Success
+                is AuthResult.Error -> _resetState.value = ResetState.Error(result.message)
+            }
+        }
+    }
+
+    fun clearResetState() {
+        _resetState.value = ResetState.Idle
     }
 
     fun signOut() {
