@@ -54,8 +54,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.bpeople.finpilot.data.repository.AuthRepository
-import com.google.firebase.auth.FirebaseAuth
 import com.bpeople.finpilot.ui.theme.BrandColor
 import com.bpeople.finpilot.ui.theme.DeepText
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
@@ -66,6 +64,7 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -76,9 +75,6 @@ fun LoginScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val authSuccess by viewModel.authSuccess.collectAsState()
     val viewModelError by viewModel.errorMessage.collectAsState()
-
-    val focusManager = LocalFocusManager.current
-    val scrollState = rememberScrollState()
 
     // Navigate on auth success
     LaunchedEffect(authSuccess) {
@@ -107,12 +103,45 @@ fun LoginScreen(
             else -> null
         }
         if (emailError == null && passwordError == null) {
-            focusManager.clearFocus()
             viewModel.onEmailChange(email)
             viewModel.onPasswordChange(password)
             viewModel.login()
         }
     }
+
+    LoginScreenContent(
+        email = email,
+        password = password,
+        passwordVisible = passwordVisible,
+        emailError = emailError,
+        passwordError = passwordError,
+        isLoading = isLoading,
+        onEmailChange = { email = it; emailError = null; viewModel.clearError() },
+        onPasswordChange = { password = it; passwordError = null; viewModel.clearError() },
+        onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+        onForgotPassword = onNavigateToForgotPassword,
+        onLoginClick = { validateAndLogin() },
+        onNavigateToRegister = onNavigateToRegister,
+    )
+}
+
+@Composable
+internal fun LoginScreenContent(
+    email: String,
+    password: String,
+    passwordVisible: Boolean,
+    emailError: String?,
+    passwordError: String?,
+    isLoading: Boolean,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onTogglePasswordVisibility: () -> Unit,
+    onForgotPassword: () -> Unit,
+    onLoginClick: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
 
     AuthBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -190,7 +219,7 @@ fun LoginScreen(
 
                     AuthTextField(
                         value = email,
-                        onValueChange = { email = it; emailError = null; viewModel.clearError() },
+                        onValueChange = onEmailChange,
                         label = "Email address",
                         leadingIcon = {
                             Icon(
@@ -214,7 +243,7 @@ fun LoginScreen(
 
                     AuthTextField(
                         value = password,
-                        onValueChange = { password = it; passwordError = null; viewModel.clearError() },
+                        onValueChange = onPasswordChange,
                         label = "Password",
                         leadingIcon = {
                             Icon(
@@ -224,7 +253,7 @@ fun LoginScreen(
                             )
                         },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            IconButton(onClick = onTogglePasswordVisibility) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
@@ -242,7 +271,7 @@ fun LoginScreen(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Done,
                         ),
-                        keyboardActions = KeyboardActions(onDone = { validateAndLogin() }),
+                        keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
                     )
 
                     Spacer(Modifier.height(10.dp))
@@ -253,7 +282,7 @@ fun LoginScreen(
                         color = BrandColor,
                         modifier = Modifier
                             .align(Alignment.End)
-                            .clickable { /* TODO: forgot password flow */ }
+                            .clickable { onForgotPassword() }
                             .padding(4.dp),
                     )
 
@@ -261,7 +290,7 @@ fun LoginScreen(
 
                     GradientButton(
                         text = "Sign In",
-                        onClick = { validateAndLogin() },
+                        onClick = { onLoginClick() },
                         modifier = Modifier.fillMaxWidth(),
                         isLoading = isLoading,
                     )
@@ -310,11 +339,19 @@ fun LoginScreen(
 @Composable
 private fun LoginPreview() {
     FinPilotTheme {
-        @Suppress("ViewModelConstructorInComposable")
-        LoginScreen(
-            viewModel = AuthViewModel(AuthRepository(FirebaseAuth.getInstance())),
+        LoginScreenContent(
+            email = "jane@finpilot.app",
+            password = "",
+            passwordVisible = false,
+            emailError = null,
+            passwordError = "Password is required",
+            isLoading = false,
+            onEmailChange = {},
+            onPasswordChange = {},
+            onTogglePasswordVisibility = {},
+            onForgotPassword = {},
+            onLoginClick = {},
             onNavigateToRegister = {},
-            onLoginSuccess = {}
         )
     }
 }

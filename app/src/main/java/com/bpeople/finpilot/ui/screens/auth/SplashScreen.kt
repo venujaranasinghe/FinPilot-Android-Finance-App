@@ -28,8 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bpeople.finpilot.data.repository.AuthRepository
-import com.google.firebase.auth.FirebaseAuth
 import com.bpeople.finpilot.ui.theme.BrandColor
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.SubtleText
@@ -57,7 +55,6 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         started = true
         delay(2800L)
-        // Check Firebase auth state and navigate accordingly
         if (viewModel.isLoggedIn) {
             onNavigateToDashboard()
         } else {
@@ -65,6 +62,17 @@ fun SplashScreen(
         }
     }
 
+    SplashContent(
+        alpha = alpha,
+        scale = scale,
+    )
+}
+
+@Composable
+internal fun SplashContent(
+    alpha: Float,
+    scale: Float,
+) {
     AuthBackground {
         Column(
             modifier = Modifier
@@ -113,11 +121,9 @@ fun SplashScreen(
 @Composable
 private fun SplashPreview() {
     FinPilotTheme {
-        @Suppress("ViewModelConstructorInComposable")
-        SplashScreen(
-            viewModel = AuthViewModel(AuthRepository(FirebaseAuth.getInstance())),
-            onNavigateToLogin = {},
-            onNavigateToDashboard = {}
+        SplashContent(
+            alpha = 1f,
+            scale = 1f,
         )
     }
 }

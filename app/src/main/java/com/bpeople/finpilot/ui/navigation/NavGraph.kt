@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
+import com.bpeople.finpilot.ui.screens.auth.ForgotPasswordScreen
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
 import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
@@ -70,6 +71,16 @@ fun FinPilotNavGraph(
                         popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 },
+                onNavigateToForgotPassword = {
+                    navController.navigate(NavRoutes.ForgotPassword.route)
+                },
+            )
+        }
+
+        composable(NavRoutes.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                viewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
