@@ -1,6 +1,7 @@
 package com.bpeople.finpilot.data.repository
 
 import com.bpeople.finpilot.data.model.AuthResult
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -36,6 +37,17 @@ class AuthRepository @Inject constructor(
             val result = auth.signInWithEmailAndPassword(email, password).await()
             if (result.user != null) AuthResult.Success
             else AuthResult.Error("Login failed")
+        } catch (e: Exception) {
+            AuthResult.Error(mapFirebaseError(e))
+        }
+    }
+
+    suspend fun signInWithGoogle(idToken: String): AuthResult {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            if (result.user != null) AuthResult.Success
+            else AuthResult.Error("Google Sign-In failed")
         } catch (e: Exception) {
             AuthResult.Error(mapFirebaseError(e))
         }

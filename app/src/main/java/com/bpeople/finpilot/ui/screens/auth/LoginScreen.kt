@@ -1,5 +1,10 @@
 package com.bpeople.finpilot.ui.screens.auth
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -109,6 +114,29 @@ fun LoginScreen(
         }
     }
 
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            account.idToken?.let { viewModel.signInWithGoogle(it) }
+        } catch (e: ApiException) {
+            // Handle error
+        }
+    }
+
+    fun startGoogleSignIn(context: android.content.Context) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken("944253023373-ubc4cjn5nd8afmcu9fjjbsskvfuma0d7.apps.googleusercontent.com")
+            .requestEmail()
+            .build()
+        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     LoginScreenContent(
         email = email,
         password = password,
@@ -122,6 +150,7 @@ fun LoginScreen(
         onForgotPassword = onNavigateToForgotPassword,
         onLoginClick = { validateAndLogin() },
         onNavigateToRegister = onNavigateToRegister,
+        onGoogleLoginClick = { startGoogleSignIn(context) },
     )
 }
 
@@ -139,6 +168,7 @@ internal fun LoginScreenContent(
     onForgotPassword: () -> Unit,
     onLoginClick: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onGoogleLoginClick: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
@@ -216,6 +246,29 @@ internal fun LoginScreenContent(
                     )
 
                     Spacer(Modifier.height(28.dp))
+
+                    GoogleSignInButton(
+                        onClick = onGoogleLoginClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        isLoading = isLoading,
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
+                        Text(
+                            text = "  or  ",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SubtleText,
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
+                    }
+
+                    Spacer(Modifier.height(20.dp))
 
                     AuthTextField(
                         value = email,
@@ -295,22 +348,7 @@ internal fun LoginScreenContent(
                         isLoading = isLoading,
                     )
 
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
-                        Text(
-                            text = "  or  ",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = SubtleText,
-                        )
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFFF3F4F6))
-                    }
-
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     Text(
                         text = buildAnnotatedString {
@@ -352,6 +390,7 @@ private fun LoginPreview() {
             onForgotPassword = {},
             onLoginClick = {},
             onNavigateToRegister = {},
+            onGoogleLoginClick = {},
         )
     }
 }
