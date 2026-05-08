@@ -98,6 +98,20 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun signInWithGoogle(idToken: String) {
+        _authState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            when (val result = authRepository.signInWithGoogle(idToken)) {
+                is AuthResult.Success -> _authState.update {
+                    it.copy(authSuccess = true, isLoading = false, infoMessage = null)
+                }
+                is AuthResult.Error -> _authState.update {
+                    it.copy(errorMessage = result.message, isLoading = false)
+                }
+            }
+        }
+    }
+
     fun register() {
         if (!validateRegister()) return
         _authState.update { it.copy(isLoading = true) }

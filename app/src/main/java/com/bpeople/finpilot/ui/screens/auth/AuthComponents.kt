@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -112,20 +113,15 @@ internal fun BlobCanvas(modifier: Modifier = Modifier) {
 }
 
 /**
- * Renders the application logo using the vector asset.
+ * Renders the application logo using the orange vector asset.
  */
 @Composable
 internal fun AppLogo(size: Dp, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.size(size),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.finpilot_logo),
-            contentDescription = "App Logo",
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    Image(
+        painter = painterResource(id = R.drawable.finpilot_logo),
+        contentDescription = "App Logo",
+        modifier = modifier.size(size)
+    )
 }
 
 @Composable
@@ -258,6 +254,57 @@ internal fun GradientButton(
                 ),
                 color = Color.White,
             )
+        }
+    }
+}
+
+@Composable
+internal fun GoogleSignInButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+) {
+    Box(
+        modifier = modifier
+            .height(56.dp)
+            .border(
+                width = 1.5.dp,
+                color = Color(0xFFE5E7EB),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .clickable(
+                enabled = !isLoading,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = BrandColor,
+                strokeWidth = 3.dp,
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_google),
+                    contentDescription = "Google Logo",
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .size(24.dp)
+                )
+                Text(
+                    text = "Sign in with Google",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = DeepText,
+                    ),
+                )
+            }
         }
     }
 }

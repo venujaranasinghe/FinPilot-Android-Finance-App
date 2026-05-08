@@ -76,4 +76,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.google.play.services.auth)
 }
