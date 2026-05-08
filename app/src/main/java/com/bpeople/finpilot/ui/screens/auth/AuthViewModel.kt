@@ -29,6 +29,7 @@ class AuthViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val errorMessage: String? = null,
         val authSuccess: Boolean = false,
+        val infoMessage: String? = null,
     )
 
     sealed class ResetState {
@@ -55,6 +56,10 @@ class AuthViewModel @Inject constructor(
         .map { it.authSuccess }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val infoMessage: StateFlow<String?> = authState
+        .map { it.infoMessage }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     val currentUser: StateFlow<FirebaseUser?> = authRepository.currentUser
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -63,19 +68,19 @@ class AuthViewModel @Inject constructor(
     fun getCurrentUserId(): String? = authRepository.getCurrentUserId()
 
     fun onEmailChange(value: String) {
-        _authState.update { it.copy(email = value.trim(), errorMessage = null) }
+        _authState.update { it.copy(email = value.trim(), errorMessage = null, infoMessage = null) }
     }
 
     fun onPasswordChange(value: String) {
-        _authState.update { it.copy(password = value, errorMessage = null) }
+        _authState.update { it.copy(password = value, errorMessage = null, infoMessage = null) }
     }
 
     fun onConfirmPasswordChange(value: String) {
-        _authState.update { it.copy(confirmPassword = value, errorMessage = null) }
+        _authState.update { it.copy(confirmPassword = value, errorMessage = null, infoMessage = null) }
     }
 
     fun onFullNameChange(value: String) {
-        _authState.update { it.copy(fullName = value, errorMessage = null) }
+        _authState.update { it.copy(fullName = value, errorMessage = null, infoMessage = null) }
     }
 
     fun login() {
@@ -84,7 +89,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = authRepository.login(_authState.value.email, _authState.value.password)) {
                 is AuthResult.Success -> _authState.update {
-                    it.copy(authSuccess = true, isLoading = false)
+                    it.copy(authSuccess = true, isLoading = false, infoMessage = null)
                 }
                 is AuthResult.Error -> _authState.update {
                     it.copy(errorMessage = result.message, isLoading = false)
@@ -99,7 +104,32 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = authRepository.register(_authState.value.email, _authState.value.password)) {
                 is AuthResult.Success -> _authState.update {
-                    it.copy(authSuccess = true, isLoading = false)
+                    it.copy(
+                        authSuccess = true,
+                        isLoading = false,
+                        infoMessage = "Verification email sent. Please check your inbox.",
+                    )
+                }
+                is AuthResult.Error -> _authState.update {
+                    it.copy(errorMessage = result.message, isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun resendVerificationEmail() {
+        if (!validateLogin()) return
+        _authState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            when (val result = authRepository.resendVerificationEmail(
+                _authState.value.email,
+                _authState.value.password,
+            )) {
+                is AuthResult.Success -> _authState.update {
+                    it.copy(
+                        isLoading = false,
+                        infoMessage = "Verification email sent. Please check your inbox.",
+                    )
                 }
                 is AuthResult.Error -> _authState.update {
                     it.copy(errorMessage = result.message, isLoading = false)
@@ -175,6 +205,10 @@ class AuthViewModel @Inject constructor(
 
     fun clearError() {
         _authState.update { it.copy(errorMessage = null) }
+    }
+
+    fun clearInfoMessage() {
+        _authState.update { it.copy(infoMessage = null) }
     }
 
     fun clearAuthSuccess() {

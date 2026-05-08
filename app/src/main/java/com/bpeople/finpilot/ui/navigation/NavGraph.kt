@@ -19,6 +19,7 @@ import com.bpeople.finpilot.ui.screens.auth.ForgotPasswordScreen
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
 import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
+import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
@@ -91,9 +92,23 @@ fun FinPilotNavGraph(
                     navController.popBackStack()
                 },
                 onRegisterSuccess = {
-                    authViewModel.signOut()
-                    navController.navigate(NavRoutes.Login.route) {
+                    navController.navigate(NavRoutes.VerifyEmail.route) {
                         popUpTo(NavRoutes.Register.route) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable(NavRoutes.VerifyEmail.route) {
+            val infoMessage by authViewModel.infoMessage.collectAsState()
+            val errorMessage by authViewModel.errorMessage.collectAsState()
+            VerifyEmailScreen(
+                infoMessage = infoMessage,
+                errorMessage = errorMessage,
+                onResendVerification = { authViewModel.resendVerificationEmail() },
+                onNavigateToLogin = {
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.VerifyEmail.route) { inclusive = true }
                     }
                 },
             )

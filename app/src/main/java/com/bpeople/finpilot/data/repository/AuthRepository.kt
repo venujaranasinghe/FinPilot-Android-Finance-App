@@ -2,6 +2,10 @@ package com.bpeople.finpilot.data.repository
 
 import com.bpeople.finpilot.data.model.AuthResult
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,8 +44,36 @@ class AuthRepository @Inject constructor(
     suspend fun register(email: String, password: String): AuthResult {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
-            if (result.user != null) AuthResult.Success
-            else AuthResult.Error("Registration failed")
+            val user = result.user
+            if (user != null) {
+                user.sendEmailVerification().await()
+                auth.signOut()
+                AuthResult.Success
+            } else {
+                AuthResult.Error("Registration failed")
+            }
+        } catch (e: Exception) {
+            AuthResult.Error(mapFirebaseError(e))
+        }
+    }
+
+    suspend fun resendVerificationEmail(email: String, password: String): AuthResult {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val user = result.user
+            if (user == null) {
+                AuthResult.Error("Login failed")
+            } else {
+                user.reload().await()
+                if (user.isEmailVerified) {
+                    auth.signOut()
+                    AuthResult.Error("Email is already verified")
+                } else {
+                    user.sendEmailVerification().await()
+                    auth.signOut()
+                    AuthResult.Success
+                }
+            }
         } catch (e: Exception) {
             AuthResult.Error(mapFirebaseError(e))
         }
@@ -61,6 +93,24 @@ class AuthRepository @Inject constructor(
     }
 
     private fun mapFirebaseError(e: Exception): String {
+        if (e is FirebaseAuthException) {
+            return when (e) {
+                is FirebaseAuthInvalidCredentialsException -> "Incorrect email or password"
+                is FirebaseAuthInvalidUserException -> when (e.errorCode) {
+                    "ERROR_USER_NOT_FOUND" -> "No account found with this email"
+                    "ERROR_USER_DISABLED" -> "This account has been disabled"
+                    else -> "This account is unavailable"
+                }
+                is FirebaseAuthUserCollisionException -> "An account with this email already exists"
+                else -> when (e.errorCode) {
+                    "ERROR_INVALID_EMAIL" -> "Please enter a valid email address"
+                    "ERROR_WRONG_PASSWORD" -> "Incorrect email or password"
+                    "ERROR_TOO_MANY_REQUESTS" -> "Too many attempts. Try again later"
+                    "ERROR_NETWORK_REQUEST_FAILED" -> "No internet connection"
+                    else -> "Something went wrong"
+                }
+            }
+        }
         return when {
             e.message?.contains("badly formatted", ignoreCase = true) == true ->
                 "Please enter a valid email address"
