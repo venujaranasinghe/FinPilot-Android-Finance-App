@@ -19,7 +19,7 @@ import com.bpeople.finpilot.ui.screens.auth.ForgotPasswordScreen
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
 import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
-import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
+import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
@@ -85,34 +85,29 @@ fun FinPilotNavGraph(
         }
 
         composable(NavRoutes.Register.route) {
-            val currentUser by authViewModel.currentUser.collectAsState()
-            LaunchedEffect(currentUser) {
-                if (currentUser != null) {
-                    navController.navigate(NavRoutes.Dashboard.route) {
-                        popUpTo(NavRoutes.Register.route) { inclusive = true }
-                    }
-                }
-            }
-
             RegisterScreen(
                 viewModel = authViewModel,
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
                 onRegisterSuccess = {
-                    navController.navigate(NavRoutes.Dashboard.route) {
-                        popUpTo(NavRoutes.Login.route) { inclusive = true }
+                    authViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Register.route) { inclusive = true }
                     }
                 },
             )
         }
 
         composable(NavRoutes.Dashboard.route) {
-            val dashboardViewModel: DashboardViewModel = hiltViewModel()
-            val dashboardState by dashboardViewModel.dashboardState.collectAsState()
-            LaunchedEffect(dashboardState) { }
-
-            Box(modifier = Modifier.fillMaxSize()) { }
+            DashboardScreen(
+                onLogout = {
+                    authViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
+                    }
+                },
+            )
         }
 
         composable(NavRoutes.AddIncome.route) {
