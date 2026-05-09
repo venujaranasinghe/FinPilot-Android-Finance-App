@@ -21,6 +21,8 @@ import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
+import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
+import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
@@ -115,7 +117,16 @@ fun FinPilotNavGraph(
         }
 
         composable(NavRoutes.Dashboard.route) {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            val dashboardState by dashboardViewModel.dashboardState.collectAsState()
+            val insight = navController.currentBackStackEntry?.savedStateHandle?.get<String>("expense_insight")
+
             DashboardScreen(
+                state = dashboardState,
+                insightMessage = insight,
+                onAddExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
                 onLogout = {
                     authViewModel.signOut()
                     navController.navigate(NavRoutes.Login.route) {
@@ -135,10 +146,16 @@ fun FinPilotNavGraph(
 
         composable(NavRoutes.AddExpense.route) {
             val expenseViewModel: ExpenseViewModel = hiltViewModel()
-            val expenseState by expenseViewModel.expenseState.collectAsState()
-            LaunchedEffect(expenseState) { }
-
-            Box(modifier = Modifier.fillMaxSize()) { }
+            AddExpenseScreen(
+                viewModel = expenseViewModel,
+                onBack = { navController.popBackStack() },
+                onExpenseAdded = { insight ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("expense_insight", insight)
+                    navController.popBackStack()
+                },
+            )
         }
 
         composable(
