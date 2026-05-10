@@ -1,11 +1,11 @@
 package com.bpeople.finpilot.ui.screens.expense
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,13 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseScreen(
     viewModel: ExpenseViewModel,
@@ -48,9 +49,7 @@ fun AddExpenseScreen(
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     LaunchedEffect(state.errorMessage) {
         val message = state.errorMessage ?: return@LaunchedEffect
@@ -62,6 +61,39 @@ fun AddExpenseScreen(
         viewModel.consumeInsight()
         onExpenseAdded(insight)
     }
+
+    AddExpenseContent(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        onBack = onBack,
+        onAmountChange = viewModel::onAmountChange,
+        onCategoryChange = viewModel::onCategoryChange,
+        onPaymentMethodChange = viewModel::onPaymentMethodChange,
+        onDateChange = viewModel::onDateChange,
+        onSubCategoryChange = viewModel::onSubCategoryChange,
+        onNoteChange = viewModel::onNoteChange,
+        onRecurringChange = viewModel::onRecurringChange,
+        onAddExpense = viewModel::addExpense
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddExpenseContent(
+    state: ExpenseViewModel.ExpenseUiState,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onAmountChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onPaymentMethodChange: (String) -> Unit,
+    onDateChange: (Long) -> Unit,
+    onSubCategoryChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onRecurringChange: (Boolean) -> Unit,
+    onAddExpense: () -> Unit,
+) {
+    val context = LocalContext.current
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     Scaffold(
         topBar = {
@@ -86,7 +118,7 @@ fun AddExpenseScreen(
         ) {
             OutlinedTextField(
                 value = state.amount,
-                onValueChange = viewModel::onAmountChange,
+                onValueChange = onAmountChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Amount") },
@@ -98,14 +130,14 @@ fun AddExpenseScreen(
             ChipRow(
                 items = ExpenseViewModel.CATEGORIES,
                 selected = state.category,
-                onSelected = viewModel::onCategoryChange,
+                onSelected = onCategoryChange,
             )
 
             Text("Payment Method", style = MaterialTheme.typography.titleSmall)
             ChipRow(
                 items = ExpenseViewModel.PAYMENT_METHODS,
                 selected = state.paymentMethod,
-                onSelected = viewModel::onPaymentMethodChange,
+                onSelected = onPaymentMethodChange,
             )
 
             AssistChip(
@@ -118,7 +150,7 @@ fun AddExpenseScreen(
                                 set(year, month, dayOfMonth, 0, 0, 0)
                                 set(Calendar.MILLISECOND, 0)
                             }
-                            viewModel.onDateChange(selected.timeInMillis)
+                            onDateChange(selected.timeInMillis)
                         },
                         calendar.get(Calendar.YEAR),
                         calendar.get(Calendar.MONTH),
@@ -130,7 +162,7 @@ fun AddExpenseScreen(
 
             OutlinedTextField(
                 value = state.subCategory,
-                onValueChange = viewModel::onSubCategoryChange,
+                onValueChange = onSubCategoryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Sub-category (optional)") },
@@ -139,25 +171,25 @@ fun AddExpenseScreen(
 
             OutlinedTextField(
                 value = state.note,
-                onValueChange = viewModel::onNoteChange,
+                onValueChange = onNoteChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Note (optional)") },
             )
 
-            androidx.compose.foundation.layout.Row(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("Recurring expense")
                 Switch(
                     checked = state.isRecurring,
-                    onCheckedChange = viewModel::onRecurringChange,
+                    onCheckedChange = onRecurringChange,
                 )
             }
 
             Button(
-                onClick = viewModel::addExpense,
+                onClick = onAddExpense,
                 enabled = !state.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,16 +211,16 @@ fun AddExpenseScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChipRow(
     items: List<String>,
     selected: String,
     onSelected: (String) -> Unit,
 ) {
-    FlowRow(
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items.forEach { option ->
             FilterChip(
@@ -197,5 +229,29 @@ private fun ChipRow(
                 label = { Text(option) },
             )
         }
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun AddExpensePreview() {
+    FinPilotTheme {
+        AddExpenseContent(
+            state = ExpenseViewModel.ExpenseUiState(
+                amount = "1500",
+                category = "Food",
+                paymentMethod = "Cash"
+            ),
+            snackbarHostState = remember { SnackbarHostState() },
+            onBack = {},
+            onAmountChange = {},
+            onCategoryChange = {},
+            onPaymentMethodChange = {},
+            onDateChange = {},
+            onSubCategoryChange = {},
+            onNoteChange = {},
+            onRecurringChange = {},
+            onAddExpense = {}
+        )
     }
 }
