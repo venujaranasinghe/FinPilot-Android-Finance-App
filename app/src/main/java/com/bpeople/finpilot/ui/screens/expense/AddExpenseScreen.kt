@@ -88,7 +88,7 @@ import java.util.Locale
 @Composable
 fun AddExpenseScreen(
     viewModel: ExpenseViewModel,
-    onBack: () -> Unit,
+    onNavigateToDashboard: () -> Unit,
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
@@ -108,7 +108,7 @@ fun AddExpenseScreen(
     AddExpenseContent(
         state = state,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onNavigateToDashboard = onNavigateToDashboard,
         onAmountChange = viewModel::onAmountChange,
         onCurrencyChange = viewModel::onCurrencyChange,
         onCategoryChange = viewModel::onCategoryChange,
@@ -126,7 +126,7 @@ fun AddExpenseScreen(
 fun AddExpenseContent(
     state: ExpenseViewModel.ExpenseUiState,
     snackbarHostState: SnackbarHostState,
-    onBack: () -> Unit,
+    onNavigateToDashboard: () -> Unit,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
@@ -144,38 +144,13 @@ fun AddExpenseContent(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Button(
-                    onClick = onAddExpense,
-                    enabled = !state.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "Save Expense",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+            com.bpeople.finpilot.ui.components.FinPilotBottomNavBar(
+                currentTab = com.bpeople.finpilot.ui.components.NavTab.EXPENSE,
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToExpense = { /* Currently on Expense */ },
+                onNavigateToGoals = { /* Not implemented yet */ },
+                onNavigateToProfile = { /* Not implemented yet */ }
+            )
         }
     ) { innerPadding ->
         Column(
@@ -197,19 +172,6 @@ fun AddExpenseContent(
                     )
                     .padding(top = 48.dp, bottom = 48.dp)
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -461,6 +423,35 @@ fun AddExpenseContent(
                     }
                     
                     // Spacer for bottom button
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = onAddExpense,
+                        enabled = !state.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text(
+                                text = "Save Expense",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(40.dp))
                 }
             }
@@ -585,7 +576,7 @@ private fun AddExpensePreview() {
                 paymentMethod = "Card"
             ),
             snackbarHostState = remember { SnackbarHostState() },
-            onBack = {},
+            onNavigateToDashboard = {},
             onAmountChange = {},
             onCurrencyChange = {},
             onCategoryChange = {},
