@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.GoalRepository
+import com.bpeople.finpilot.ui.screens.goal.SavingsEntry
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +41,9 @@ class GoalViewModel @Inject constructor(
     private val _goalState = MutableStateFlow(GoalUiState())
     val goalState: StateFlow<GoalUiState> = _goalState.asStateFlow()
 
+    private val _savingsHistory = MutableStateFlow<List<SavingsEntry>>(emptyList())
+    val savingsHistory: StateFlow<List<SavingsEntry>> = _savingsHistory.asStateFlow()
+
     init {
         goalRepository.observeActiveGoal()
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -52,6 +59,8 @@ class GoalViewModel @Inject constructor(
                                 monthlyRequired = monthlyRequired,
                             )
                         }
+                        // Generate mock savings history for display (can be replaced with real Firestore data)
+                        _savingsHistory.value = generateMockSavingsHistory(goal)
                     }
                 }
             }
@@ -108,6 +117,20 @@ class GoalViewModel @Inject constructor(
         }
     }
 
+    fun logSavings(goalId: String, amount: Double) {
+        viewModelScope.launch {
+            val currentGoal = _goalState.value.activeGoal
+            if (currentGoal != null && currentGoal.id == goalId && amount > 0) {
+                val updatedGoal = currentGoal.copy(
+                    currentAmount = currentGoal.currentAmount + amount
+                )
+                goalRepository.upsertGoal(updatedGoal)
+                // Regenerate savings history
+                _savingsHistory.value = generateMockSavingsHistory(updatedGoal)
+            }
+        }
+    }
+
     private fun calculateProgress(goal: Goal?): Float {
         if (goal == null || goal.targetAmount <= 0.0) return 0f
         return (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
@@ -129,6 +152,33 @@ class GoalViewModel @Inject constructor(
         val monthsRemaining = max(1, ((endMillis - nowMillis) / (1000L * 60L * 60L * 24L * 30L)).toInt())
         val remaining = max(0.0, targetAmount - currentAmount)
         return remaining / monthsRemaining
+    }
+
+    private fun generateMockSavingsHistory(goal: Goal?): List<SavingsEntry> {
+        if (goal == null) return emptyList()
+
+        val history = mutableListOf<SavingsEntry>()
+        val calendar = Calendar.getInstance()
+
+        // Generate last 6 months of savings history
+        repeat(6) { index ->
+            calendar.add(Calendar.MONTH, -index)
+            val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+            val monthName = monthFormat.format(calendar.time)
+            
+            // Mock data: distribute current amount across the months
+            val amount = if (goal.currentAmount > 0 && index == 0) {
+                goal.currentAmount / (5 + Math.random() * 2)
+            } else if (goal.currentAmount > 0) {
+                (goal.currentAmount / 6) * (0.7 + Math.random() * 0.6)
+            } else {
+                0.0
+            }
+
+            history.add(0, SavingsEntry(monthName, amount.coerceAtLeast(0.0)))
+        }
+
+        return history
     }
 }
 
