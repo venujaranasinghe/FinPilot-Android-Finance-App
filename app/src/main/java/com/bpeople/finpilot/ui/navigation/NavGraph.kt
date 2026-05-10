@@ -24,6 +24,7 @@ import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
 import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
+import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
 
@@ -166,12 +167,16 @@ fun FinPilotNavGraph(
                 navArgument(NavRoutes.GoalTracker.ARG_GOAL_ID) { type = NavType.StringType }
             ),
         ) { backStackEntry ->
-            val goalId = backStackEntry.arguments?.getString(NavRoutes.GoalTracker.ARG_GOAL_ID)
             val goalViewModel: GoalViewModel = hiltViewModel()
-            val goalState by goalViewModel.goalState.collectAsState()
-            LaunchedEffect(goalState, goalId) { }
-
-            Box(modifier = Modifier.fillMaxSize()) { }
+            
+            GoalTrackerScreen(
+                viewModel = goalViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onEditGoal = { goalId ->
+                    // Navigate to edit goal screen (if implemented)
+                    navController.navigate(NavRoutes.Dashboard.route)
+                }
+            )
         }
     }
 }
