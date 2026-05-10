@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Category
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,7 +61,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,6 +110,7 @@ fun AddExpenseScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
         onAmountChange = viewModel::onAmountChange,
+        onCurrencyChange = viewModel::onCurrencyChange,
         onCategoryChange = viewModel::onCategoryChange,
         onPaymentMethodChange = viewModel::onPaymentMethodChange,
         onDateChange = viewModel::onDateChange,
@@ -122,6 +128,7 @@ fun AddExpenseContent(
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onAmountChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onPaymentMethodChange: (String) -> Unit,
     onDateChange: (Long) -> Unit,
@@ -218,7 +225,7 @@ fun AddExpenseContent(
                     OutlinedTextField(
                         value = state.amount,
                         onValueChange = onAmountChange,
-                        modifier = Modifier.fillMaxWidth(0.8f),
+                        modifier = Modifier.fillMaxWidth(0.9f),
                         singleLine = true,
                         textStyle = TextStyle(
                             fontSize = 48.sp,
@@ -239,12 +246,42 @@ fun AddExpenseContent(
                             )
                         },
                         leadingIcon = {
-                            Text(
-                                text = "LKR",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            var expanded by remember { mutableStateOf(false) }
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { expanded = true }
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = state.currency,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowDropDown,
+                                        contentDescription = "Select Currency",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    ExpenseViewModel.CURRENCIES.forEach { cur ->
+                                        DropdownMenuItem(
+                                            text = { Text(cur) },
+                                            onClick = {
+                                                onCurrencyChange(cur)
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -543,12 +580,14 @@ private fun AddExpensePreview() {
         AddExpenseContent(
             state = ExpenseViewModel.ExpenseUiState(
                 amount = "1500.00",
+                currency = "LKR",
                 category = "Food",
                 paymentMethod = "Card"
             ),
             snackbarHostState = remember { SnackbarHostState() },
             onBack = {},
             onAmountChange = {},
+            onCurrencyChange = {},
             onCategoryChange = {},
             onPaymentMethodChange = {},
             onDateChange = {},

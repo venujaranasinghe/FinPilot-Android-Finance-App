@@ -45,6 +45,12 @@ data class ExpenseEntry(
     val isRecurring: Boolean = false,
 
     @ColumnInfo(name = "tags")
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+
+    @ColumnInfo(name = "originalCurrency")
+    val originalCurrency: String? = null,
+
+    @ColumnInfo(name = "originalAmount")
+    val originalAmount: Double? = null
 ) : Serializable
 
