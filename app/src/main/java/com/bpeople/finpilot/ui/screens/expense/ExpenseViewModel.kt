@@ -38,6 +38,7 @@ class ExpenseViewModel @Inject constructor(
         val errorMessage: String? = null,
         val insightMessage: String? = null,
         val activeGoal: Goal? = null,
+        val currency: String = CURRENCIES.first(),
     )
 
     private val _expenseState = MutableStateFlow(ExpenseUiState())
@@ -98,6 +99,10 @@ class ExpenseViewModel @Inject constructor(
         _expenseState.update { it.copy(insightMessage = null) }
     }
 
+    fun onCurrencyChange(value: String) {
+        _expenseState.update { it.copy(currency = value, errorMessage = null) }
+    }
+
     fun addExpense() {
         val state = _expenseState.value
         val amount = state.amount.toDoubleOrNull()
@@ -107,9 +112,14 @@ class ExpenseViewModel @Inject constructor(
             return
         }
 
+        val originalAmount = amount
+        val baseAmount = if (state.currency == "LKR") amount else convertToBase(amount, state.currency)
+
         val entry = ExpenseEntry(
             id = UUID.randomUUID().toString(),
-            amount = amount,
+            amount = baseAmount,
+            originalCurrency = state.currency,
+            originalAmount = originalAmount,
             category = state.category,
             subCategory = state.subCategory.ifBlank { null },
             paymentMethod = state.paymentMethod,
@@ -157,8 +167,25 @@ class ExpenseViewModel @Inject constructor(
         return "Expense saved. At your current pace, this may delay ${goal.title} by about $delayDays day(s)."
     }
 
+    private fun convertToBase(amount: Double, currency: String): Double {
+        val rate = EXCHANGE_RATES[currency] ?: 1.0
+        return amount * rate
+    }
+
     companion object {
         val CATEGORIES = listOf("Food", "Transport", "Housing", "Subscriptions", "Entertainment", "Health", "Other")
         val PAYMENT_METHODS = listOf("Card", "Cash", "Bank Transfer", "Auto-Debit")
+        val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
+        
+        // Static exchange rates relative to 1 unit of foreign currency = X LKR
+        // e.g., 1 USD = 300 LKR
+        val EXCHANGE_RATES = mapOf(
+            "LKR" to 1.0,
+            "USD" to 300.0,
+            "EUR" to 325.0,
+            "GBP" to 380.0,
+            "AUD" to 195.0,
+            "SGD" to 220.0
+        )
     }
 }

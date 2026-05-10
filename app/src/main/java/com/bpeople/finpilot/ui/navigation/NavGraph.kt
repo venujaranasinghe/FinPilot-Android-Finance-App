@@ -148,12 +148,14 @@ fun FinPilotNavGraph(
             val expenseViewModel: ExpenseViewModel = hiltViewModel()
             AddExpenseScreen(
                 viewModel = expenseViewModel,
-                onBack = { navController.popBackStack() },
+                onNavigateToDashboard = { 
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false) 
+                },
                 onExpenseAdded = { insight ->
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("expense_insight", insight)
-                    navController.popBackStack()
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
                 },
             )
         }
