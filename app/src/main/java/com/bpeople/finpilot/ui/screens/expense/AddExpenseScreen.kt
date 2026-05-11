@@ -89,6 +89,8 @@ import java.util.Locale
 fun AddExpenseScreen(
     viewModel: ExpenseViewModel,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToGoals: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
@@ -109,6 +111,8 @@ fun AddExpenseScreen(
         state = state,
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
+        onNavigateToGoals = onNavigateToGoals,
+        onNavigateToProfile = onNavigateToProfile,
         onAmountChange = viewModel::onAmountChange,
         onCurrencyChange = viewModel::onCurrencyChange,
         onCategoryChange = viewModel::onCategoryChange,
@@ -127,6 +131,8 @@ fun AddExpenseContent(
     state: ExpenseViewModel.ExpenseUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToGoals: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
@@ -148,8 +154,8 @@ fun AddExpenseContent(
                 currentTab = com.bpeople.finpilot.ui.components.NavTab.EXPENSE,
                 onNavigateToDashboard = onNavigateToDashboard,
                 onNavigateToExpense = { /* Currently on Expense */ },
-                onNavigateToGoals = { /* Not implemented yet */ },
-                onNavigateToProfile = { /* Not implemented yet */ }
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     ) { innerPadding ->
@@ -577,6 +583,8 @@ private fun AddExpensePreview() {
             ),
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateToDashboard = {},
+            onNavigateToGoals = {},
+            onNavigateToProfile = {},
             onAmountChange = {},
             onCurrencyChange = {},
             onCategoryChange = {},

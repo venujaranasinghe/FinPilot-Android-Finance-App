@@ -28,6 +28,8 @@ import com.bpeople.finpilot.ui.theme.FinPilotTheme
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
     onAddExpense: () -> Unit,
+    onNavigateToGoals: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
     insightMessage: String? = null,
 ) {
@@ -38,8 +40,8 @@ fun DashboardScreen(
                 currentTab = NavTab.DASHBOARD,
                 onNavigateToDashboard = { /* Currently on Dashboard */ },
                 onNavigateToExpense = onAddExpense,
-                onNavigateToGoals = { /* Not implemented yet */ },
-                onNavigateToProfile = { /* Not implemented yet */ }
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     ) { paddingValues ->
@@ -151,6 +153,8 @@ private fun DashboardScreenPreview() {
                 netPosition = 194000.0,
             ),
             onAddExpense = {},
+            onNavigateToGoals = {},
+            onNavigateToProfile = {},
             onLogout = {},
             insightMessage = "Expense saved. At your current pace, this may delay MacBook Goal by about 2 day(s).",
         )
