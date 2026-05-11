@@ -2,6 +2,7 @@ package com.bpeople.finpilot.ui.screens.goal
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -85,6 +86,7 @@ fun GoalTrackerScreen(
     viewModel: GoalViewModel,
     onNavigateBack: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToExpense: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
 ) {
@@ -118,7 +120,8 @@ fun GoalTrackerScreen(
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToExpense = onNavigateToExpense,
         onNavigateToGoals = { /* currently here */ },
-        onNavigateToProfile = onNavigateToProfile
+        onNavigateToProfile = onNavigateToProfile,
+        onNavigateToIncome = onNavigateToIncome,
     )
 
     if (showSheet) {
@@ -157,6 +160,7 @@ fun GoalTrackerScreenContent(
     onLogSavings: (goalId: String, amount: Double) -> Unit = { _, _ -> },
     onWithdrawSavings: (goalId: String, amount: Double) -> Unit = { _, _ -> },
     onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToExpense: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
@@ -190,6 +194,7 @@ fun GoalTrackerScreenContent(
             FinPilotBottomNavBar(
                 currentTab = NavTab.GOALS,
                 onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = onNavigateToExpense,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile
@@ -270,11 +275,17 @@ fun GoalTrackerScreenContent(
                         ) { page ->
                             val goal = allGoals[page]
                             val progressValue = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
-                            val progress by animateFloatAsState(
-                                targetValue = if (animationTrigger && page == pagerState.currentPage) progressValue else 0f,
-                                animationSpec = tween(durationMillis = 1500),
-                                label = "Progress $page"
-                            )
+                            val progressAnimatable = remember(page) { Animatable(0f) }
+                            LaunchedEffect(page == pagerState.currentPage, animationTrigger) {
+                                if (animationTrigger && page == pagerState.currentPage) {
+                                    progressAnimatable.snapTo(0f)
+                                    progressAnimatable.animateTo(
+                                        targetValue = progressValue,
+                                        animationSpec = tween(durationMillis = 1500)
+                                    )
+                                }
+                            }
+                            val progress = progressAnimatable.value
                             val pageScale by animateFloatAsState(
                                 targetValue = if (page == pagerState.currentPage) 1f else 0.88f,
                                 animationSpec = tween(300),
