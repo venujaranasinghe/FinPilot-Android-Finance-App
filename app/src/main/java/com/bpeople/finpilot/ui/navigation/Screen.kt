@@ -13,4 +13,6 @@ sealed class NavRoutes(val route: String) {
         const val ARG_GOAL_ID = "goalId"
         fun createRoute(goalId: String = "default"): String = "goal/$goalId"
     }
+    object Profile : NavRoutes("profile")
+    object Settings : NavRoutes("profile/settings")
 }

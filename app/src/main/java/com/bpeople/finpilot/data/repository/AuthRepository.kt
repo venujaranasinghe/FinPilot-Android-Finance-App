@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ class AuthRepository @Inject constructor(
 
     fun getCurrentUserId(): String? = auth.currentUser?.uid
     fun isLoggedIn(): Boolean = auth.currentUser != null
+    fun getCurrentUserEmail(): String? = auth.currentUser?.email
 
     suspend fun login(email: String, password: String): AuthResult {
         return try {
@@ -97,6 +99,23 @@ class AuthRepository @Inject constructor(
             AuthResult.Success
         } catch (e: Exception) {
             AuthResult.Error(mapFirebaseError(e))
+        }
+    }
+
+    suspend fun deleteAccount(): AuthResult {
+        val user = auth.currentUser ?: return AuthResult.Error("No active account found")
+        return try {
+            user.delete().await()
+            auth.signOut()
+            AuthResult.Success
+        } catch (e: Exception) {
+            if (e is FirebaseAuthRecentLoginRequiredException) {
+                AuthResult.Error("Please re-authenticate before deleting your account")
+            } else if (e is FirebaseAuthInvalidUserException) {
+                AuthResult.Error("Account is no longer available")
+            } else {
+                AuthResult.Error(mapFirebaseError(e))
+            }
         }
     }
 

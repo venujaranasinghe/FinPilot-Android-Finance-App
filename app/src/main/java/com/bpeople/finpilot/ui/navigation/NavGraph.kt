@@ -27,6 +27,10 @@ import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
+import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
+import com.bpeople.finpilot.ui.screens.profile.ProfileViewModel
+import com.bpeople.finpilot.ui.screens.profile.SettingsScreen
+import com.bpeople.finpilot.ui.screens.profile.SettingsViewModel
 
 @Composable
 fun FinPilotNavGraph(
@@ -132,7 +136,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
                 },
                 onNavigateToProfile = {
-                    // Profile not implemented
+                    navController.navigate(NavRoutes.Profile.route)
                 },
                 onLogout = {
                     authViewModel.signOut()
@@ -162,7 +166,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
                 },
                 onNavigateToProfile = {
-                    // Profile not implemented
+                    navController.navigate(NavRoutes.Profile.route)
                 },
                 onExpenseAdded = { insight ->
                     navController.previousBackStackEntry
@@ -192,7 +196,57 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
                 onNavigateToProfile = {
-                    // Profile not implemented yet
+                    navController.navigate(NavRoutes.Profile.route)
+                }
+            )
+        }
+
+        composable(NavRoutes.Profile.route) {
+            val profileViewModel: ProfileViewModel = hiltViewModel()
+            val currentUser by profileViewModel.currentUser.collectAsState()
+            ProfileScreen(
+                displayName = currentUser?.displayName,
+                email = currentUser?.email,
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route)
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = { /* Currently on Profile */ },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
+                onLogout = {
+                    profileViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Profile.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(NavRoutes.Settings.route) {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsState()
+            SettingsScreen(
+                state = settingsState,
+                events = settingsViewModel.events,
+                onNavigateBack = { navController.popBackStack() },
+                onNotificationsChange = settingsViewModel::onNotificationsChange,
+                onDarkModeChange = settingsViewModel::onDarkModeChange,
+                onCloudSyncChange = settingsViewModel::onCloudSyncChange,
+                onBiometricsChange = settingsViewModel::onBiometricsChange,
+                onChangePassword = settingsViewModel::onChangePassword,
+                onExportData = settingsViewModel::onExportData,
+                onDeleteAccount = settingsViewModel::onDeleteAccount,
+                onAccountDeleted = {
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Settings.route) { inclusive = true }
+                    }
                 }
             )
         }
