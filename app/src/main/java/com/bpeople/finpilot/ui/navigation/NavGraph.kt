@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -35,7 +34,6 @@ import com.bpeople.finpilot.ui.screens.profile.SettingsViewModel
 fun FinPilotNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
-    // Single ViewModel instance shared across auth screens
     val authViewModel: AuthViewModel = hiltViewModel()
 
     NavHost(
@@ -145,7 +143,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Login.route) {
                         popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
                     }
-                },
+                }
             )
         }
 

@@ -47,11 +47,6 @@ class GoalRepository @Inject constructor(
         collection.document(id).set(payload).await()
     }
 
-    /**
-     * Appends a single savings-log entry to
-     * `users/{uid}/goals/{goalId}/savingsLogs/{autoId}`.
-     * Each document contains: amount (Double) and timestamp (Timestamp).
-     */
     suspend fun logSavingsEntry(goalId: String, amount: Double) {
         val uid = auth.currentUser?.uid ?: return
         val entry = hashMapOf(
@@ -68,10 +63,6 @@ class GoalRepository @Inject constructor(
             .await()
     }
 
-    /**
-     * Returns a real-time [Flow] of savings-log entries (timestampMillis to amount)
-     * created within the last 6 months for the given goal.
-     */
     fun observeSavingsLogs(goalId: String): Flow<List<Pair<Long, Double>>> {
         val uid = auth.currentUser?.uid ?: return emptyFlow()
         val sixMonthsAgo = Timestamp(

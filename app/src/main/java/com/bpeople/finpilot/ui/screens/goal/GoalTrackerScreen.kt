@@ -64,7 +64,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
@@ -72,7 +71,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
-import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -84,7 +82,6 @@ import kotlin.math.roundToInt
 @Composable
 fun GoalTrackerScreen(
     viewModel: GoalViewModel,
-    onNavigateBack: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
     onNavigateToIncome: () -> Unit = {},
     onNavigateToExpense: () -> Unit = {},
@@ -1144,28 +1141,4 @@ private fun calculateProjectedCompletionDate(
 private fun formatDate(date: Date?): String {
     if (date == null) return "No deadline"
     return SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date)
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun GoalTrackerScreenPreview() {
-    FinPilotTheme {
-        GoalTrackerScreenContent(
-            goalState = GoalViewModel.GoalUiState(
-                allGoals = listOf(
-                    Goal(id = "1", title = "New Car", targetAmount = 5000000.0, currentAmount = 2500000.0, isActive = true),
-                    Goal(id = "2", title = "Vacation", targetAmount = 300000.0, currentAmount = 80000.0, isActive = true),
-                    Goal(id = "3", title = "Emergency Fund", targetAmount = 1000000.0, currentAmount = 450000.0, isActive = true),
-                ),
-                selectedGoalIndex = 0,
-                monthlyRequired = 50000.0
-            ),
-            savingsHistory = listOf(
-                SavingsEntry("Jan", 40000.0),
-                SavingsEntry("Feb", 50000.0),
-                SavingsEntry("Mar", 45000.0),
-                SavingsEntry("Apr", 60000.0)
-            )
-        )
-    }
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,7 +55,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,10 +74,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
+import com.bpeople.finpilot.ui.components.NavTab
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -153,8 +151,8 @@ fun AddExpenseContent(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            com.bpeople.finpilot.ui.components.FinPilotBottomNavBar(
-                currentTab = com.bpeople.finpilot.ui.components.NavTab.EXPENSE,
+            FinPilotBottomNavBar(
+                currentTab = NavTab.EXPENSE,
                 onNavigateToDashboard = onNavigateToDashboard,
                 onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = { /* Currently on Expense */ },
@@ -432,7 +430,6 @@ fun AddExpenseContent(
                         )
                     }
                     
-                    // Spacer for bottom button
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
@@ -570,34 +567,6 @@ private fun SelectionPill(
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Medium,
             color = contentColor
-        )
-    }
-}
-
-@Preview(showSystemUi = true)
-@Composable
-private fun AddExpensePreview() {
-    FinPilotTheme {
-        AddExpenseContent(
-            state = ExpenseViewModel.ExpenseUiState(
-                amount = "1500.00",
-                currency = "LKR",
-                category = "Food",
-                paymentMethod = "Card"
-            ),
-            snackbarHostState = remember { SnackbarHostState() },
-            onNavigateToDashboard = {},
-            onNavigateToGoals = {},
-            onNavigateToProfile = {},
-            onAmountChange = {},
-            onCurrencyChange = {},
-            onCategoryChange = {},
-            onPaymentMethodChange = {},
-            onDateChange = {},
-            onSubCategoryChange = {},
-            onNoteChange = {},
-            onRecurringChange = {},
-            onAddExpense = {}
         )
     }
 }
