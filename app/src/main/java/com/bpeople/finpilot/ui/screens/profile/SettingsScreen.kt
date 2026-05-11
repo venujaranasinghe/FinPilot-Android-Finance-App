@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CloudDownload
-import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Lock
@@ -34,6 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -66,6 +68,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.tooling.preview.Preview
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import com.bpeople.finpilot.data.model.ThemeMode
 import kotlinx.coroutines.flow.emptyFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,7 +78,7 @@ fun SettingsScreen(
     events: Flow<SettingsViewModel.SettingsEvent>,
     onNavigateBack: () -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
-    onDarkModeChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onCloudSyncChange: (Boolean) -> Unit,
     onBiometricsChange: (Boolean) -> Unit,
     onChangePassword: () -> Unit,
@@ -93,13 +96,6 @@ fun SettingsScreen(
             subtitle = "Budget alerts and reminders",
             checked = state.notificationsEnabled,
             onCheckedChange = onNotificationsChange
-        ),
-        SettingToggle(
-            icon = Icons.Rounded.DarkMode,
-            title = "Dark mode",
-            subtitle = "Use a darker color palette",
-            checked = state.darkModeEnabled,
-            onCheckedChange = onDarkModeChange
         ),
         SettingToggle(
             icon = Icons.Rounded.CloudDownload,
@@ -215,6 +211,11 @@ fun SettingsScreen(
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsSectionCard(title = "Preferences") {
+                    ThemeModeRow(
+                        selectedMode = state.themeMode,
+                        onModeSelected = onThemeModeChange
+                    )
+                    SettingsRowDivider()
                     preferences.forEachIndexed { index, toggle ->
                         SettingsToggleRow(toggle)
                         if (index < preferences.lastIndex) {
@@ -445,6 +446,55 @@ private fun SettingsIcon(icon: ImageVector, isDestructive: Boolean = false) {
     }
 }
 
+@Composable
+private fun ThemeModeRow(
+    selectedMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "Appearance",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ThemeMode.values().forEachIndexed { index, mode ->
+                val isSelected = selectedMode == mode
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = ThemeMode.values().size
+                    ),
+                    onClick = { onModeSelected(mode) },
+                    selected = isSelected,
+                    icon = {}
+                ) {
+                    Text(text = mode.label())
+                }
+            }
+        }
+        Text(
+            text = "System follows your device theme",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private fun ThemeMode.label(): String {
+    return when (this) {
+        ThemeMode.SYSTEM -> "System"
+        ThemeMode.LIGHT -> "Light"
+        ThemeMode.DARK -> "Dark"
+    }
+}
+
 private data class SettingToggle(
     val icon: ImageVector,
     val title: String,
@@ -486,14 +536,14 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             state = SettingsViewModel.SettingsUiState(
                 notificationsEnabled = true,
-                darkModeEnabled = false,
                 cloudSyncEnabled = true,
-                biometricsEnabled = true
+                biometricsEnabled = true,
+                themeMode = ThemeMode.SYSTEM
             ),
             events = emptyFlow(),
             onNavigateBack = {},
             onNotificationsChange = {},
-            onDarkModeChange = {},
+            onThemeModeChange = {},
             onCloudSyncChange = {},
             onBiometricsChange = {},
             onChangePassword = {},

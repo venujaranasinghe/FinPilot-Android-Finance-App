@@ -237,7 +237,7 @@ fun FinPilotNavGraph(
                 events = settingsViewModel.events,
                 onNavigateBack = { navController.popBackStack() },
                 onNotificationsChange = settingsViewModel::onNotificationsChange,
-                onDarkModeChange = settingsViewModel::onDarkModeChange,
+                onThemeModeChange = settingsViewModel::onThemeModeChange,
                 onCloudSyncChange = settingsViewModel::onCloudSyncChange,
                 onBiometricsChange = settingsViewModel::onBiometricsChange,
                 onChangePassword = settingsViewModel::onChangePassword,
