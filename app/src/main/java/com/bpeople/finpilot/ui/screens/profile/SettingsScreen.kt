@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -26,7 +26,10 @@ import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,17 +55,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.bpeople.finpilot.ui.theme.FinPilotTheme
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
-import androidx.core.content.FileProvider
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.os.Environment
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.ui.tooling.preview.Preview
+import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import kotlinx.coroutines.flow.emptyFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,6 +137,7 @@ fun SettingsScreen(
             icon = Icons.Rounded.Delete,
             title = "Delete account",
             subtitle = "Remove profile and data",
+            isDestructive = true,
             onClick = { showDeleteDialog = true }
         )
     )
@@ -178,7 +183,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text = "Settings",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 },
                 navigationIcon = {
@@ -204,31 +209,43 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                SettingsSectionTitle("Preferences")
-            }
-            items(preferences) { toggle ->
-                SettingsToggleRow(toggle)
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                SettingsSectionTitle("Security")
-            }
-            items(security) { toggle ->
-                SettingsToggleRow(toggle)
+                SettingsSectionCard(title = "Preferences") {
+                    preferences.forEachIndexed { index, toggle ->
+                        SettingsToggleRow(toggle)
+                        if (index < preferences.lastIndex) {
+                            SettingsRowDivider()
+                        }
+                    }
+                }
             }
 
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                SettingsSectionTitle("Account")
+                SettingsSectionCard(title = "Security") {
+                    security.forEachIndexed { index, toggle ->
+                        SettingsToggleRow(toggle)
+                        if (index < security.lastIndex) {
+                            SettingsRowDivider()
+                        }
+                    }
+                }
             }
-            items(accountActions) { action ->
-                SettingsNavigationRow(action)
+
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSectionCard(title = "Account") {
+                    accountActions.forEachIndexed { index, action ->
+                        SettingsNavigationRow(action)
+                        if (index < accountActions.lastIndex) {
+                            SettingsRowDivider()
+                        }
+                    }
+                }
             }
 
             item {
@@ -285,12 +302,39 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground
+private fun SettingsSectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsRowDivider() {
+    HorizontalDivider(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     )
 }
 
@@ -325,7 +369,9 @@ private fun SettingsToggleRow(item: SettingToggle) {
             onCheckedChange = item.onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
     }
@@ -333,6 +379,11 @@ private fun SettingsToggleRow(item: SettingToggle) {
 
 @Composable
 private fun SettingsNavigationRow(item: SettingNavigation) {
+    val titleColor = if (item.isDestructive) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -342,7 +393,7 @@ private fun SettingsNavigationRow(item: SettingNavigation) {
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SettingsIcon(item.icon)
+        SettingsIcon(item.icon, isDestructive = item.isDestructive)
         Spacer(modifier = Modifier.width(12.dp))
         Column(
             modifier = Modifier.weight(1f)
@@ -350,7 +401,8 @@ private fun SettingsNavigationRow(item: SettingNavigation) {
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = titleColor
             )
             Text(
                 text = item.subtitle,
@@ -367,18 +419,28 @@ private fun SettingsNavigationRow(item: SettingNavigation) {
 }
 
 @Composable
-private fun SettingsIcon(icon: ImageVector) {
+private fun SettingsIcon(icon: ImageVector, isDestructive: Boolean = false) {
+    val containerColor = if (isDestructive) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    }
+    val iconTint = if (isDestructive) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
     Box(
         modifier = Modifier
             .size(40.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            .background(containerColor),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary
+            tint = iconTint
         )
     }
 }
@@ -395,6 +457,7 @@ private data class SettingNavigation(
     val icon: ImageVector,
     val title: String,
     val subtitle: String,
+    val isDestructive: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -413,5 +476,30 @@ private fun createCsvExport(context: android.content.Context, csvContent: String
         uri to fileName
     } catch (_: Exception) {
         null
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun SettingsScreenPreview() {
+    FinPilotTheme {
+        SettingsScreen(
+            state = SettingsViewModel.SettingsUiState(
+                notificationsEnabled = true,
+                darkModeEnabled = false,
+                cloudSyncEnabled = true,
+                biometricsEnabled = true
+            ),
+            events = emptyFlow(),
+            onNavigateBack = {},
+            onNotificationsChange = {},
+            onDarkModeChange = {},
+            onCloudSyncChange = {},
+            onBiometricsChange = {},
+            onChangePassword = {},
+            onExportData = {},
+            onDeleteAccount = {},
+            onAccountDeleted = {}
+        )
     }
 }
