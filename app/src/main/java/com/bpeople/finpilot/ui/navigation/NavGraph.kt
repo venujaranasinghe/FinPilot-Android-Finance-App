@@ -1,11 +1,15 @@
 package com.bpeople.finpilot.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,6 +18,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
+import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
 import com.bpeople.finpilot.ui.screens.auth.ForgotPasswordScreen
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
@@ -21,6 +27,7 @@ import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
+import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
@@ -115,14 +122,54 @@ fun FinPilotNavGraph(
         }
 
         composable(NavRoutes.Dashboard.route) {
-            DashboardScreen(
-                onLogout = {
-                    authViewModel.signOut()
-                    navController.navigate(NavRoutes.Login.route) {
-                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            val dashboardState by dashboardViewModel.dashboardState.collectAsState()
+            val expenseViewModel: ExpenseViewModel = hiltViewModel()
+            val goalViewModel: GoalViewModel = hiltViewModel()
+            val insight = navController.currentBackStackEntry?.savedStateHandle?.get<String>("expense_insight")
+            
+            var currentTab by remember { mutableStateOf(NavTab.DASHBOARD) }
+            
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
+                    when (currentTab) {
+                        NavTab.DASHBOARD -> {
+                            DashboardScreen(
+                                state = dashboardState,
+                                insightMessage = insight,
+                                onAddExpense = { currentTab = NavTab.EXPENSE },
+                                onLogout = {
+                                    authViewModel.signOut()
+                                    navController.navigate(NavRoutes.Login.route) {
+                                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
+                                    }
+                                },
+                            )
+                        }
+                        NavTab.EXPENSE -> {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
+                        NavTab.GOALS -> {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
+                        NavTab.PROFILE -> {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
                     }
-                },
-            )
+                }
+                
+                FinPilotBottomNavBar(
+                    currentTab = currentTab,
+                    onNavigateToDashboard = { currentTab = NavTab.DASHBOARD },
+                    onNavigateToExpense = { currentTab = NavTab.EXPENSE },
+                    onNavigateToGoals = { currentTab = NavTab.GOALS },
+                    onNavigateToProfile = { currentTab = NavTab.PROFILE },
+                )
+            }
         }
 
         composable(NavRoutes.AddIncome.route) {
@@ -130,27 +177,6 @@ fun FinPilotNavGraph(
             val incomeState by incomeViewModel.incomeState.collectAsState()
             LaunchedEffect(incomeState) { }
 
-            Box(modifier = Modifier.fillMaxSize()) { }
-        }
-
-        composable(NavRoutes.AddExpense.route) {
-            val expenseViewModel: ExpenseViewModel = hiltViewModel()
-            val expenseState by expenseViewModel.expenseState.collectAsState()
-            LaunchedEffect(expenseState) { }
-
-            Box(modifier = Modifier.fillMaxSize()) { }
-        }
-
-        composable(
-            route = NavRoutes.GoalTracker.route,
-            arguments = listOf(
-                navArgument(NavRoutes.GoalTracker.ARG_GOAL_ID) { type = NavType.StringType }
-            ),
-        ) { backStackEntry ->
-            val goalId = backStackEntry.arguments?.getString(NavRoutes.GoalTracker.ARG_GOAL_ID)
-            val goalViewModel: GoalViewModel = hiltViewModel()
-            val goalState by goalViewModel.goalState.collectAsState()
-            LaunchedEffect(goalState, goalId) { }
 
             Box(modifier = Modifier.fillMaxSize()) { }
         }
