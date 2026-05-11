@@ -39,7 +39,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,17 +52,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
+import com.bpeople.finpilot.ui.components.NavTab
 import kotlin.math.roundToInt
 
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
     insightMessage: String? = null,
     onAddExpense: () -> Unit = {},
-    onLogout: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onLogout: () -> Unit = {},
 ) {
     var localInsight by remember(insightMessage) { mutableStateOf(insightMessage) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -71,7 +73,6 @@ fun DashboardScreen(
 
     LaunchedEffect(isRefreshing) {
         if (!isRefreshing) return@LaunchedEffect
-        // Dashboard is backed by realtime flows; this is a UX-only refresh animation.
         kotlinx.coroutines.delay(600)
         isRefreshing = false
     }
@@ -91,14 +92,24 @@ fun DashboardScreen(
                     modifier = Modifier.size(28.dp)
                 )
             }
+        },
+        bottomBar = {
+            FinPilotBottomNavBar(
+                currentTab = NavTab.DASHBOARD,
+                onNavigateToDashboard = { /* Already here */ },
+                onNavigateToIncome = onNavigateToIncome,
+                onNavigateToExpense = onAddExpense,
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile
+            )
         }
     ) { paddingValues ->
-        PullToRefreshContent(
+        PullToRefreshBox(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues),
-            pullState = pullToRefreshState,
+            state = pullToRefreshState,
             isRefreshing = isRefreshing,
             onRefresh = { isRefreshing = true },
         ) {
@@ -185,25 +196,6 @@ fun DashboardScreen(
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PullToRefreshContent(
-    modifier: Modifier = Modifier,
-    pullState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
-    isRefreshing: Boolean,
-    onRefresh: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    PullToRefreshBox(
-        modifier = modifier,
-        state = pullState,
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-    ) {
-        content()
     }
 }
 
@@ -579,7 +571,6 @@ private fun SpendingCategoryCard() {
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Donut Chart Representation (simplified pie-like visualization)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -591,7 +582,6 @@ private fun SpendingCategoryCard() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Category Legend
             SpendingCategoryLegend()
         }
     }
@@ -604,7 +594,6 @@ private fun DonutChartRepresentation() {
             .size(120.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Food (40%)
         CircularProgressIndicator(
             progress = 0.4f,
             modifier = Modifier.size(120.dp),
@@ -614,7 +603,6 @@ private fun DonutChartRepresentation() {
             strokeCap = StrokeCap.Round
         )
 
-        // Center circle for donut effect
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -928,4 +916,3 @@ private fun EmptyStateCard() {
         }
     }
 }
-

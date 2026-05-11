@@ -1,16 +1,9 @@
 package com.bpeople.finpilot.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -18,8 +11,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
-import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.screens.auth.AuthViewModel
 import com.bpeople.finpilot.ui.screens.auth.ForgotPasswordScreen
 import com.bpeople.finpilot.ui.screens.auth.LoginScreen
@@ -32,13 +23,17 @@ import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
+import com.bpeople.finpilot.ui.screens.income.AddIncomeScreen
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
+import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
+import com.bpeople.finpilot.ui.screens.profile.ProfileViewModel
+import com.bpeople.finpilot.ui.screens.profile.SettingsScreen
+import com.bpeople.finpilot.ui.screens.profile.SettingsViewModel
 
 @Composable
 fun FinPilotNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
-    // Single ViewModel instance shared across auth screens
     val authViewModel: AuthViewModel = hiltViewModel()
 
     NavHost(
@@ -126,74 +121,155 @@ fun FinPilotNavGraph(
         composable(NavRoutes.Dashboard.route) {
             val dashboardViewModel: DashboardViewModel = hiltViewModel()
             val dashboardState by dashboardViewModel.dashboardState.collectAsState()
-            val expenseViewModel: ExpenseViewModel = hiltViewModel()
-            val goalViewModel: GoalViewModel = hiltViewModel()
             val insight = navController.currentBackStackEntry?.savedStateHandle?.get<String>("expense_insight")
-            
-            var currentTab by remember { mutableStateOf(NavTab.DASHBOARD) }
-            
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                ) {
-                    when (currentTab) {
-                        NavTab.DASHBOARD -> {
-                            DashboardScreen(
-                                state = dashboardState,
-                                insightMessage = insight,
-                                onAddExpense = { currentTab = NavTab.EXPENSE },
-                                onLogout = {
-                                    authViewModel.signOut()
-                                    navController.navigate(NavRoutes.Login.route) {
-                                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
-                                    }
-                                },
-                            )
-                        }
-                        NavTab.EXPENSE -> {
-                            AddExpenseScreen(
-                                viewModel = expenseViewModel,
-                                onNavigateToDashboard = { currentTab = NavTab.DASHBOARD },
-                                onExpenseAdded = { insightMessage ->
-                                    navController.previousBackStackEntry
-                                        ?.savedStateHandle
-                                        ?.set("expense_insight", insightMessage)
-                                    currentTab = NavTab.DASHBOARD
-                                },
-                            )
-                        }
-                        NavTab.GOALS -> {
-                            GoalTrackerScreen(
-                                viewModel = goalViewModel,
-                                onNavigateBack = { currentTab = NavTab.DASHBOARD },
-                                onEditGoal = { goalId -> },
-                            )
-                        }
-                        NavTab.PROFILE -> {
-                            Box(modifier = Modifier.fillMaxSize())
-                        }
+
+            DashboardScreen(
+                state = dashboardState,
+                insightMessage = insight,
+                onAddExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.AddIncome.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
+                onLogout = {
+                    authViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
                     }
                 }
-                
-                FinPilotBottomNavBar(
-                    currentTab = currentTab,
-                    onNavigateToDashboard = { currentTab = NavTab.DASHBOARD },
-                    onNavigateToExpense = { currentTab = NavTab.EXPENSE },
-                    onNavigateToGoals = { currentTab = NavTab.GOALS },
-                    onNavigateToProfile = { currentTab = NavTab.PROFILE },
-                )
-            }
+            )
         }
 
         composable(NavRoutes.AddIncome.route) {
             val incomeViewModel: IncomeViewModel = hiltViewModel()
-            val incomeState by incomeViewModel.incomeState.collectAsState()
-            LaunchedEffect(incomeState) { }
+            AddIncomeScreen(
+                viewModel = incomeViewModel,
+                onNavigateToDashboard = {
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                },
+                onNavigateToIncome = { /* Currently on Income */ },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
+                onIncomeAdded = {
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                },
+            )
+        }
 
+        composable(NavRoutes.AddExpense.route) {
+            val expenseViewModel: ExpenseViewModel = hiltViewModel()
+            AddExpenseScreen(
+                viewModel = expenseViewModel,
+                onNavigateToDashboard = { 
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false) 
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.AddIncome.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
+                onExpenseAdded = { insight ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("expense_insight", insight)
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                },
+            )
+        }
 
-            Box(modifier = Modifier.fillMaxSize()) { }
+        composable(
+            route = NavRoutes.GoalTracker.route,
+            arguments = listOf(
+                navArgument(NavRoutes.GoalTracker.ARG_GOAL_ID) { type = NavType.StringType }
+            ),
+        ) { backStackEntry ->
+            val goalViewModel: GoalViewModel = hiltViewModel()
+            
+            GoalTrackerScreen(
+                viewModel = goalViewModel,
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
+                    }
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.AddIncome.route)
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                }
+            )
+        }
+
+        composable(NavRoutes.Profile.route) {
+            val profileViewModel: ProfileViewModel = hiltViewModel()
+            val currentUser by profileViewModel.currentUser.collectAsState()
+            ProfileScreen(
+                displayName = currentUser?.displayName,
+                email = currentUser?.email,
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route)
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.AddIncome.route)
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = { /* Currently on Profile */ },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
+                onLogout = {
+                    profileViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Profile.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(NavRoutes.Settings.route) {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsState by settingsViewModel.uiState.collectAsState()
+            SettingsScreen(
+                state = settingsState,
+                events = settingsViewModel.events,
+                onNavigateBack = { navController.popBackStack() },
+                onNotificationsChange = settingsViewModel::onNotificationsChange,
+                onThemeModeChange = settingsViewModel::onThemeModeChange,
+                onCloudSyncChange = settingsViewModel::onCloudSyncChange,
+                onBiometricsChange = settingsViewModel::onBiometricsChange,
+                onChangePassword = settingsViewModel::onChangePassword,
+                onExportData = settingsViewModel::onExportData,
+                onDeleteAccount = settingsViewModel::onDeleteAccount,
+                onAccountDeleted = {
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Settings.route) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

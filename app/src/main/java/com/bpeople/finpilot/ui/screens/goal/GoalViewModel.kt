@@ -6,13 +6,20 @@ import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.GoalRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -24,7 +31,9 @@ class GoalViewModel @Inject constructor(
 ) : ViewModel() {
 
     data class GoalUiState(
-        val activeGoal: Goal? = null,
+        val allGoals: List<Goal> = emptyList(),
+        val selectedGoalIndex: Int = 0,
+        // Form fields for the create/edit bottom sheet
         val title: String = "",
         val targetAmount: String = "",
         val currentAmount: String = "",
@@ -32,29 +41,65 @@ class GoalViewModel @Inject constructor(
         val monthlyRequired: Double = 0.0,
         val progressPercent: Float = 0f,
         val errorMessage: String? = null,
-    )
+    ) {
+        /** The goal currently displayed in the pager. */
+        val activeGoal: Goal? get() = allGoals.getOrNull(selectedGoalIndex)
+    }
 
     private val _goalState = MutableStateFlow(GoalUiState())
     val goalState: StateFlow<GoalUiState> = _goalState.asStateFlow()
 
+    private val _savingsHistory = MutableStateFlow<List<SavingsEntry>>(emptyList())
+    val savingsHistory: StateFlow<List<SavingsEntry>> = _savingsHistory.asStateFlow()
+
     init {
-        goalRepository.observeActiveGoal()
-            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        // ── 1. Observe all goals from Firestore ──────────────────────────
+        goalRepository.observeGoals()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
             .let { flow ->
                 viewModelScope.launch {
-                    flow.collect { goal ->
-                        val progress = calculateProgress(goal)
-                        val monthlyRequired = calculateMonthlyRequired(goal)
+                    flow.collect { goals ->
+                        val index = _goalState.value.selectedGoalIndex
+                            .coerceAtMost((goals.size - 1).coerceAtLeast(0))
+                        val selected = goals.getOrNull(index)
                         _goalState.update {
                             it.copy(
-                                activeGoal = goal,
-                                progressPercent = progress,
-                                monthlyRequired = monthlyRequired,
+                                allGoals = goals,
+                                selectedGoalIndex = index,
+                                progressPercent = calculateProgress(selected),
+                                monthlyRequired = calculateMonthlyRequired(selected),
                             )
                         }
                     }
                 }
             }
+
+        // ── 2. Reactively stream savingsLogs for the active goal ──────────
+        viewModelScope.launch {
+            _goalState
+                .map { it.activeGoal?.id }
+                .distinctUntilChanged()
+                .flatMapLatest { goalId ->
+                    if (goalId != null) goalRepository.observeSavingsLogs(goalId)
+                    else flowOf(emptyList())
+                }
+                .collect { rawEntries ->
+                    _savingsHistory.value = aggregateByMonth(rawEntries)
+                }
+        }
+    }
+
+    /** Switch the displayed goal when the user swipes the pager. */
+    fun selectGoal(index: Int) {
+        val goals = _goalState.value.allGoals
+        val goal = goals.getOrNull(index) ?: return
+        _goalState.update {
+            it.copy(
+                selectedGoalIndex = index,
+                progressPercent = calculateProgress(goal),
+                monthlyRequired = calculateMonthlyRequired(goal),
+            )
+        }
     }
 
     fun onTitleChange(value: String) {
@@ -73,11 +118,41 @@ class GoalViewModel @Inject constructor(
         _goalState.update { it.copy(deadlineMillis = millis, errorMessage = null) }
     }
 
+    /** Resets the form fields to a blank state for creating a brand-new goal. */
+    fun prepareCreateGoal() {
+        _goalState.update {
+            it.copy(
+                title = "",
+                targetAmount = "",
+                currentAmount = "",
+                deadlineMillis = null,
+                errorMessage = null,
+            )
+        }
+    }
+
+    /** Pre-fills the form fields with an existing goal's data for editing. */
+    fun prepareEditGoal(goal: Goal) {
+        _goalState.update {
+            it.copy(
+                title = goal.title,
+                targetAmount = goal.targetAmount.toInt().toString(),
+                currentAmount = goal.currentAmount.toInt().toString(),
+                deadlineMillis = goal.deadline?.toDate()?.time,
+                errorMessage = null,
+            )
+        }
+    }
+
     fun submitGoal() {
         val state = _goalState.value
         val targetAmount = state.targetAmount.toDoubleOrNull()
         val currentAmount = state.currentAmount.toDoubleOrNull() ?: 0.0
 
+        if (state.title.isBlank()) {
+            _goalState.update { it.copy(errorMessage = "Enter a goal name") }
+            return
+        }
         if (targetAmount == null || targetAmount <= 0) {
             _goalState.update { it.copy(errorMessage = "Enter a valid target amount") }
             return
@@ -108,6 +183,41 @@ class GoalViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Adds [amount] to the goal's currentAmount in Firestore AND writes an
+     * individual entry to the goal's `savingsLogs` subcollection so the
+     * monthly-history chart shows real data.
+     */
+    fun logSavings(goalId: String, amount: Double) {
+        viewModelScope.launch {
+            val goal = _goalState.value.allGoals.firstOrNull { it.id == goalId }
+            if (goal != null && amount > 0) {
+                val updated = goal.copy(currentAmount = goal.currentAmount + amount)
+                goalRepository.upsertGoal(updated)
+                // Persist individual log entry — the flow above will pick up the change
+                goalRepository.logSavingsEntry(goalId, amount)
+            }
+        }
+    }
+
+    /**
+     * Reduces the goal's currentAmount in Firestore.
+     * Withdrawals are NOT written as savings-log entries so the chart only
+     * reflects money actually put toward the goal each month.
+     */
+    fun withdrawSavings(goalId: String, amount: Double) {
+        viewModelScope.launch {
+            val goal = _goalState.value.allGoals.firstOrNull { it.id == goalId }
+            if (goal != null && amount > 0) {
+                val newAmount = (goal.currentAmount - amount).coerceAtLeast(0.0)
+                val updated = goal.copy(currentAmount = newAmount)
+                goalRepository.upsertGoal(updated)
+            }
+        }
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
     private fun calculateProgress(goal: Goal?): Float {
         if (goal == null || goal.targetAmount <= 0.0) return 0f
         return (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
@@ -130,5 +240,27 @@ class GoalViewModel @Inject constructor(
         val remaining = max(0.0, targetAmount - currentAmount)
         return remaining / monthsRemaining
     }
-}
 
+    /**
+     * Groups raw (timestampMillis, amount) pairs from the Firestore savingsLogs
+     * subcollection into calendar-month buckets covering the last 6 months.
+     * Months with no entries appear as LKR 0 so the bar chart is always full-width.
+     */
+    private fun aggregateByMonth(entries: List<Pair<Long, Double>>): List<SavingsEntry> {
+        val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+
+        // Key: "YYYY-MM"
+        val grouped = entries.groupBy { (millis, _) ->
+            val cal = Calendar.getInstance().apply { timeInMillis = millis }
+            "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}"
+        }
+
+        return (5 downTo 0).map { i ->
+            val cal = Calendar.getInstance().apply { add(Calendar.MONTH, -i) }
+            val key = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}"
+            val monthName = monthFormat.format(cal.time)
+            val total = grouped[key]?.sumOf { it.second } ?: 0.0
+            SavingsEntry(monthName, total.coerceAtLeast(0.0))
+        }
+    }
+}

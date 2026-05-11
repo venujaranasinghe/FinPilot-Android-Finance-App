@@ -11,6 +11,8 @@ sealed class NavRoutes(val route: String) {
     object AddExpense : NavRoutes("expense/add")
     object GoalTracker : NavRoutes("goal/{goalId}") {
         const val ARG_GOAL_ID = "goalId"
-        fun createRoute(goalId: String): String = "goal/$goalId"
+        fun createRoute(goalId: String = "default"): String = "goal/$goalId"
     }
+    object Profile : NavRoutes("profile")
+    object Settings : NavRoutes("profile/settings")
 }
