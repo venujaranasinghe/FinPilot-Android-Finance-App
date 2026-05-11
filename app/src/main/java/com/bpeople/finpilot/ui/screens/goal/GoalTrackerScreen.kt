@@ -85,6 +85,7 @@ fun GoalTrackerScreen(
     viewModel: GoalViewModel,
     onNavigateBack: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToExpense: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
 ) {
@@ -118,7 +119,8 @@ fun GoalTrackerScreen(
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToExpense = onNavigateToExpense,
         onNavigateToGoals = { /* currently here */ },
-        onNavigateToProfile = onNavigateToProfile
+        onNavigateToProfile = onNavigateToProfile,
+        onNavigateToIncome = onNavigateToIncome,
     )
 
     if (showSheet) {
@@ -157,6 +159,7 @@ fun GoalTrackerScreenContent(
     onLogSavings: (goalId: String, amount: Double) -> Unit = { _, _ -> },
     onWithdrawSavings: (goalId: String, amount: Double) -> Unit = { _, _ -> },
     onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToExpense: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
@@ -190,6 +193,7 @@ fun GoalTrackerScreenContent(
             FinPilotBottomNavBar(
                 currentTab = NavTab.GOALS,
                 onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = onNavigateToExpense,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile

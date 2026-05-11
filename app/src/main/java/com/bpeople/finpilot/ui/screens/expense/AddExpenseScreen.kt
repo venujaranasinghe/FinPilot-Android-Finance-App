@@ -89,6 +89,7 @@ import java.util.Locale
 fun AddExpenseScreen(
     viewModel: ExpenseViewModel,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onExpenseAdded: (String) -> Unit,
@@ -111,6 +112,7 @@ fun AddExpenseScreen(
         state = state,
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
+        onNavigateToIncome = onNavigateToIncome,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
         onAmountChange = viewModel::onAmountChange,
@@ -131,6 +133,7 @@ fun AddExpenseContent(
     state: ExpenseViewModel.ExpenseUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onAmountChange: (String) -> Unit,
@@ -153,6 +156,7 @@ fun AddExpenseContent(
             com.bpeople.finpilot.ui.components.FinPilotBottomNavBar(
                 currentTab = com.bpeople.finpilot.ui.components.NavTab.EXPENSE,
                 onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = { /* Currently on Expense */ },
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile

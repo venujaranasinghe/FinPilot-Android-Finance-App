@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,13 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 enum class NavTab {
-    DASHBOARD, EXPENSE, GOALS, PROFILE
+    DASHBOARD, INCOME, EXPENSE, GOALS, PROFILE
 }
 
 @Composable
 fun FinPilotBottomNavBar(
     currentTab: NavTab,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToIncome: () -> Unit,
     onNavigateToExpense: () -> Unit,
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
@@ -73,6 +75,12 @@ fun FinPilotBottomNavBar(
                 label = "Home",
                 isSelected = currentTab == NavTab.DASHBOARD,
                 onClick = onNavigateToDashboard
+            )
+            NavBarItem(
+                icon = Icons.Rounded.TrendingUp,
+                label = "Income",
+                isSelected = currentTab == NavTab.INCOME,
+                onClick = onNavigateToIncome
             )
             NavBarItem(
                 icon = Icons.Rounded.ShoppingCart,

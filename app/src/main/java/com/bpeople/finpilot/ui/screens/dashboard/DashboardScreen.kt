@@ -28,6 +28,7 @@ import com.bpeople.finpilot.ui.theme.FinPilotTheme
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
     onAddExpense: () -> Unit,
+    onNavigateToIncome: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
@@ -39,6 +40,7 @@ fun DashboardScreen(
             FinPilotBottomNavBar(
                 currentTab = NavTab.DASHBOARD,
                 onNavigateToDashboard = { /* Currently on Dashboard */ },
+                onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = onAddExpense,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile

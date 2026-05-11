@@ -56,6 +56,7 @@ fun ProfileScreen(
     displayName: String?,
     email: String?,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToIncome: () -> Unit,
     onNavigateToExpense: () -> Unit,
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
@@ -68,6 +69,7 @@ fun ProfileScreen(
             FinPilotBottomNavBar(
                 currentTab = NavTab.PROFILE,
                 onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = onNavigateToExpense,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile
@@ -454,6 +456,7 @@ private fun ProfileScreenPreview() {
             displayName = "Alex Perera",
             email = "alex.perera@email.com",
             onNavigateToDashboard = {},
+            onNavigateToIncome = {},
             onNavigateToExpense = {},
             onNavigateToGoals = {},
             onNavigateToProfile = {},
