@@ -18,20 +18,32 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +56,26 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
     insightMessage: String? = null,
     onAddExpense: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onNavigateToGoals: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
 ) {
+    var localInsight by remember(insightMessage) { mutableStateOf(insightMessage) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) return@LaunchedEffect
+        // Dashboard is backed by realtime flows; this is a UX-only refresh animation.
+        kotlinx.coroutines.delay(600)
+        isRefreshing = false
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -67,80 +93,125 @@ fun DashboardScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        PullToRefreshContent(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues),
-            contentPadding = PaddingValues(
-                horizontal = 16.dp,
-                vertical = 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            pullState = pullToRefreshState,
+            isRefreshing = isRefreshing,
+            onRefresh = { isRefreshing = true },
         ) {
-            // Header
-            item {
-                DashboardHeader(onLogout = onLogout)
-            }
-
-            // Insight Message (if present)
-            if (insightMessage != null) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    horizontal = 16.dp,
+                    vertical = 16.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                // Header
                 item {
-                    InsightCard(message = insightMessage)
-                }
-            }
-
-            // Financial Overview
-            item {
-                FinancialOverviewCard(
-                    totalIncome = state.totalIncome,
-                    totalExpenses = state.totalExpenses,
-                    netPosition = state.netPosition
-                )
-            }
-
-            // Income Breakdown
-            item {
-                IncomeBreakdownCard()
-            }
-
-            // Spending Category Chart
-            item {
-                SpendingCategoryCard()
-            }
-
-            // Committed vs Discretionary Ratio
-            item {
-                CommittedDiscretionaryCard()
-            }
-
-            // Goal Progress Card
-            if (state.activeGoal != null) {
-                item {
-                    GoalProgressCard(
-                        goal = state.activeGoal,
-                        progressPercent = state.goalProgressPercent,
-                        monthlyRequired = state.monthlyRequired
+                    DashboardHeader(
+                        onLogout = onLogout,
+                        onRefresh = { isRefreshing = true },
                     )
                 }
-            }
 
-            // Empty State Message if no data
-            if (state.totalIncome == 0.0 && state.totalExpenses == 0.0) {
+                // Quick actions
                 item {
-                    EmptyStateCard()
+                    QuickActionsRow(
+                        onAddExpense = onAddExpense,
+                        onNavigateToGoals = onNavigateToGoals,
+                        onNavigateToProfile = onNavigateToProfile,
+                    )
                 }
-            }
 
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
+                // Insight Message (dismissible)
+                val insight = localInsight
+                if (!insight.isNullOrBlank()) {
+                    item {
+                        InsightCard(
+                            message = insight,
+                            onDismiss = { localInsight = null },
+                        )
+                    }
+                }
+
+                // Financial Overview
+                item {
+                    FinancialOverviewCard(
+                        totalIncome = state.totalIncome,
+                        totalExpenses = state.totalExpenses,
+                        netPosition = state.netPosition,
+                    )
+                }
+
+                // Income Breakdown
+                item {
+                    IncomeBreakdownCard()
+                }
+
+                // Spending Category Chart
+                item {
+                    SpendingCategoryCard()
+                }
+
+                // Committed vs Discretionary Ratio
+                item {
+                    CommittedDiscretionaryCard()
+                }
+
+                // Goal Progress Card
+                if (state.activeGoal != null) {
+                    item {
+                        GoalProgressCard(
+                            goal = state.activeGoal,
+                            progressPercent = state.goalProgressPercent,
+                            monthlyRequired = state.monthlyRequired,
+                        )
+                    }
+                }
+
+                // Empty State Message if no data
+                if (state.totalIncome == 0.0 && state.totalExpenses == 0.0) {
+                    item {
+                        EmptyStateCard()
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardHeader(onLogout: () -> Unit) {
+private fun PullToRefreshContent(
+    modifier: Modifier = Modifier,
+    pullState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    PullToRefreshBox(
+        modifier = modifier,
+        state = pullState,
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun DashboardHeader(
+    onLogout: () -> Unit,
+    onRefresh: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -159,21 +230,93 @@ private fun DashboardHeader(onLogout: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            ),
-            modifier = Modifier.size(40.dp),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("L", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = onRefresh,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh",
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+
+            Button(
+                onClick = onLogout,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("↩", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
 @Composable
-private fun InsightCard(message: String) {
+private fun QuickActionsRow(
+    onAddExpense: () -> Unit,
+    onNavigateToGoals: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AssistChip(
+            onClick = onAddExpense,
+            label = { Text("Add expense") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
+        )
+        AssistChip(
+            onClick = onNavigateToGoals,
+            label = { Text("Goals") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+        )
+        AssistChip(
+            onClick = onNavigateToProfile,
+            label = { Text("Profile") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun InsightCard(
+    message: String,
+    onDismiss: () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -199,6 +342,17 @@ private fun InsightCard(message: String) {
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
                 modifier = Modifier.weight(1f)
             )
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text("OK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

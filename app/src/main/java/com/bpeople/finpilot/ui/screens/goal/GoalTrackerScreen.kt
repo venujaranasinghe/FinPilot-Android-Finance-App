@@ -163,7 +163,7 @@ fun GoalTrackerScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
-                                progress = goalState.goalProgressPercent,
+                                progress = goalState.progressPercent,
                                 modifier = Modifier.size(100.dp),
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -171,14 +171,14 @@ fun GoalTrackerScreen(
                                 strokeCap = StrokeCap.Round
                             )
                             Text(
-                                "${(goalState.goalProgressPercent * 100).roundToInt()}%",
+                                "${(goalState.progressPercent * 100).roundToInt()}%",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
                         LinearProgressIndicator(
-                            progress = goalState.goalProgressPercent,
+                            progress = goalState.progressPercent,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
