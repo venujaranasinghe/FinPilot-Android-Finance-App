@@ -28,7 +28,9 @@ import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
+import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
+import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
 
@@ -151,10 +153,23 @@ fun FinPilotNavGraph(
                             )
                         }
                         NavTab.EXPENSE -> {
-                            Box(modifier = Modifier.fillMaxSize())
+                            AddExpenseScreen(
+                                viewModel = expenseViewModel,
+                                onNavigateToDashboard = { currentTab = NavTab.DASHBOARD },
+                                onExpenseAdded = { insightMessage ->
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("expense_insight", insightMessage)
+                                    currentTab = NavTab.DASHBOARD
+                                },
+                            )
                         }
                         NavTab.GOALS -> {
-                            Box(modifier = Modifier.fillMaxSize())
+                            GoalTrackerScreen(
+                                viewModel = goalViewModel,
+                                onNavigateBack = { currentTab = NavTab.DASHBOARD },
+                                onEditGoal = { goalId -> },
+                            )
                         }
                         NavTab.PROFILE -> {
                             Box(modifier = Modifier.fillMaxSize())
