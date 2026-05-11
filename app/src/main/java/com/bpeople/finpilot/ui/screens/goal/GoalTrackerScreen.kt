@@ -2,6 +2,7 @@ package com.bpeople.finpilot.ui.screens.goal
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -274,11 +275,17 @@ fun GoalTrackerScreenContent(
                         ) { page ->
                             val goal = allGoals[page]
                             val progressValue = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
-                            val progress by animateFloatAsState(
-                                targetValue = if (animationTrigger && page == pagerState.currentPage) progressValue else 0f,
-                                animationSpec = tween(durationMillis = 1500),
-                                label = "Progress $page"
-                            )
+                            val progressAnimatable = remember(page) { Animatable(0f) }
+                            LaunchedEffect(page == pagerState.currentPage, animationTrigger) {
+                                if (animationTrigger && page == pagerState.currentPage) {
+                                    progressAnimatable.snapTo(0f)
+                                    progressAnimatable.animateTo(
+                                        targetValue = progressValue,
+                                        animationSpec = tween(durationMillis = 1500)
+                                    )
+                                }
+                            }
+                            val progress = progressAnimatable.value
                             val pageScale by animateFloatAsState(
                                 targetValue = if (page == pagerState.currentPage) 1f else 0.88f,
                                 animationSpec = tween(300),
