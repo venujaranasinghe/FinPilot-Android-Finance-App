@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bpeople.finpilot.data.model.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import javax.inject.Inject
@@ -27,9 +29,9 @@ class SettingsRepository @Inject constructor(
 ) {
     data class SettingsPreferences(
         val notificationsEnabled: Boolean,
-        val darkModeEnabled: Boolean,
         val cloudSyncEnabled: Boolean,
         val biometricsEnabled: Boolean,
+        val themeMode: ThemeMode,
     )
 
     private object Keys {
@@ -37,6 +39,7 @@ class SettingsRepository @Inject constructor(
         val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
         val CLOUD_SYNC_ENABLED = booleanPreferencesKey("cloud_sync_enabled")
         val BIOMETRICS_ENABLED = booleanPreferencesKey("biometrics_enabled")
+        val THEME_MODE = intPreferencesKey("theme_mode")
     }
 
     val settings: Flow<SettingsPreferences> = context.settingsDataStore.data
@@ -48,23 +51,26 @@ class SettingsRepository @Inject constructor(
             }
         }
         .map { prefs ->
+            val themeMode = when {
+                prefs.contains(Keys.THEME_MODE) -> {
+                    ThemeMode.values().getOrNull(prefs[Keys.THEME_MODE] ?: 0) ?: ThemeMode.SYSTEM
+                }
+                prefs.contains(Keys.DARK_MODE_ENABLED) -> {
+                    if (prefs[Keys.DARK_MODE_ENABLED] == true) ThemeMode.DARK else ThemeMode.LIGHT
+                }
+                else -> ThemeMode.SYSTEM
+            }
             SettingsPreferences(
                 notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
-                darkModeEnabled = prefs[Keys.DARK_MODE_ENABLED] ?: false,
                 cloudSyncEnabled = prefs[Keys.CLOUD_SYNC_ENABLED] ?: true,
                 biometricsEnabled = prefs[Keys.BIOMETRICS_ENABLED] ?: true,
+                themeMode = themeMode,
             )
         }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[Keys.NOTIFICATIONS_ENABLED] = enabled
-        }
-    }
-
-    suspend fun setDarkModeEnabled(enabled: Boolean) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[Keys.DARK_MODE_ENABLED] = enabled
         }
     }
 
@@ -77,6 +83,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setBiometricsEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[Keys.BIOMETRICS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[Keys.THEME_MODE] = mode.ordinal
         }
     }
 }

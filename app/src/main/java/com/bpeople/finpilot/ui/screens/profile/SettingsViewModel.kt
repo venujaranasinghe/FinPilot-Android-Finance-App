@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.data.model.AuthResult
+import com.bpeople.finpilot.data.model.ThemeMode
 import com.bpeople.finpilot.data.repository.AuthRepository
 import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
@@ -41,18 +42,18 @@ class SettingsViewModel @Inject constructor(
 
     data class SettingsUiState(
         val notificationsEnabled: Boolean = true,
-        val darkModeEnabled: Boolean = false,
         val cloudSyncEnabled: Boolean = true,
         val biometricsEnabled: Boolean = true,
+        val themeMode: ThemeMode = ThemeMode.SYSTEM,
     )
 
     val uiState: StateFlow<SettingsUiState> = settingsRepository.settings
         .map { prefs ->
             SettingsUiState(
                 notificationsEnabled = prefs.notificationsEnabled,
-                darkModeEnabled = prefs.darkModeEnabled,
                 cloudSyncEnabled = prefs.cloudSyncEnabled,
                 biometricsEnabled = prefs.biometricsEnabled,
+                themeMode = prefs.themeMode,
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -60,12 +61,6 @@ class SettingsViewModel @Inject constructor(
     fun onNotificationsChange(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNotificationsEnabled(enabled)
-        }
-    }
-
-    fun onDarkModeChange(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setDarkModeEnabled(enabled)
         }
     }
 
@@ -78,6 +73,12 @@ class SettingsViewModel @Inject constructor(
     fun onBiometricsChange(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setBiometricsEnabled(enabled)
+        }
+    }
+
+    fun onThemeModeChange(mode: ThemeMode) {
+        viewModelScope.launch {
+            settingsRepository.setThemeMode(mode)
         }
     }
 
