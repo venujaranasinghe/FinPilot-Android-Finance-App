@@ -128,6 +128,12 @@ fun FinPilotNavGraph(
                 onAddExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    // Profile not implemented
+                },
                 onLogout = {
                     authViewModel.signOut()
                     navController.navigate(NavRoutes.Login.route) {
@@ -152,6 +158,12 @@ fun FinPilotNavGraph(
                 onNavigateToDashboard = { 
                     navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false) 
                 },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    // Profile not implemented
+                },
                 onExpenseAdded = { insight ->
                     navController.previousBackStackEntry
                         ?.savedStateHandle
@@ -171,10 +183,16 @@ fun FinPilotNavGraph(
             
             GoalTrackerScreen(
                 viewModel = goalViewModel,
-                onNavigateBack = { navController.popBackStack() },
-                onEditGoal = { goalId ->
-                    // Navigate to edit goal screen (if implemented)
-                    navController.navigate(NavRoutes.Dashboard.route)
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
+                    }
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToProfile = {
+                    // Profile not implemented yet
                 }
             )
         }
