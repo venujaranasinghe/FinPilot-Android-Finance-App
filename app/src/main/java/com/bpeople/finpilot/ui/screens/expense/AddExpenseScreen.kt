@@ -1,9 +1,14 @@
 package com.bpeople.finpilot.ui.screens.expense
 
 import android.app.DatePickerDialog
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -37,6 +42,7 @@ import androidx.compose.material.icons.rounded.Money
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Subscriptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -121,7 +128,10 @@ fun AddExpenseScreen(
         onSubCategoryChange = viewModel::onSubCategoryChange,
         onNoteChange = viewModel::onNoteChange,
         onRecurringChange = viewModel::onRecurringChange,
-        onAddExpense = viewModel::addExpense
+        onRequestSubmit = viewModel::requestSubmit,
+        onConfirmExchangeRate = viewModel::confirmExchangeRate,
+        onDismissRateConfirmation = viewModel::dismissRateConfirmation,
+        onRefreshRates = viewModel::refreshExchangeRates,
     )
 }
 
@@ -142,10 +152,38 @@ fun AddExpenseContent(
     onSubCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onRecurringChange: (Boolean) -> Unit,
-    onAddExpense: () -> Unit,
+    onRequestSubmit: () -> Unit,
+    onConfirmExchangeRate: () -> Unit,
+    onDismissRateConfirmation: () -> Unit,
+    onRefreshRates: () -> Unit,
 ) {
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val rateUpdatedFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchangeRate = state.currency != "LKR"
+
+    if (state.showRateConfirmation) {
+        AlertDialog(
+            onDismissRequest = onDismissRateConfirmation,
+            title = { Text("Confirm exchange rate") },
+            text = {
+                val updatedText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateUpdatedFormat.format(Date(it)) }
+                    ?: "unknown"
+                Text("Use 1 ${state.currency} = LKR ${state.exchangeRate} (updated $updatedText)?")
+            },
+            confirmButton = {
+                Button(onClick = onConfirmExchangeRate) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRateConfirmation) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -261,6 +299,49 @@ fun AddExpenseContent(
                             unfocusedContainerColor = Color.Transparent,
                         )
                     )
+
+                    AnimatedVisibility(
+                        visible = showExchangeRate,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            val updatedText = state.exchangeRateLastUpdatedMillis
+                                ?.let { rateUpdatedFormat.format(Date(it)) }
+                                ?: "unknown"
+                            val rateSuffix = if (state.exchangeRateIsStale) " (stale)" else ""
+                            Text(
+                                text = if (state.exchangeRateAvailable) {
+                                    "Rate: 1 ${state.currency} = LKR ${state.exchangeRate} • $updatedText$rateSuffix"
+                                } else {
+                                    "Rate unavailable — try again later"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center,
+                            )
+                            TextButton(
+                                onClick = onRefreshRates,
+                                enabled = !state.isLoading && !state.isRefreshingRates,
+                            ) {
+                                if (state.isRefreshingRates) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        strokeWidth = 1.5.dp,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text("Refresh rates")
+                            }
+                        }
+                    }
                 }
             }
 
@@ -433,7 +514,7 @@ fun AddExpenseContent(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = onAddExpense,
+                        onClick = onRequestSubmit,
                         enabled = !state.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()

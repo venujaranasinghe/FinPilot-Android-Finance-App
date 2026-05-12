@@ -6,6 +6,7 @@ import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.GoalRepository
+import com.bpeople.finpilot.data.repository.ExchangeRatesRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 class ExpenseViewModel @Inject constructor(
     private val expenseRepository: ExpenseRepository,
     goalRepository: GoalRepository,
+    private val exchangeRatesRepository: ExchangeRatesRepository,
 ) : ViewModel() {
 
     data class ExpenseUiState(
@@ -39,7 +41,17 @@ class ExpenseViewModel @Inject constructor(
         val insightMessage: String? = null,
         val activeGoal: Goal? = null,
         val currency: String = CURRENCIES.first(),
+        val exchangeRate: String = "1.0",
+        val amountLkrPreview: Double = 0.0,
+        val exchangeRateLastUpdatedMillis: Long? = null,
+        val exchangeRateIsStale: Boolean = false,
+        val exchangeRateAvailable: Boolean = true,
+        val exchangeRateConfirmed: Boolean = true,
+        val showRateConfirmation: Boolean = false,
+        val isRefreshingRates: Boolean = false,
     )
+
+    private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
 
     private val _expenseState = MutableStateFlow(ExpenseUiState())
     val expenseState: StateFlow<ExpenseUiState> = _expenseState.asStateFlow()
@@ -64,11 +76,40 @@ class ExpenseViewModel @Inject constructor(
                     }
                 }
             }
+
+        viewModelScope.launch {
+            exchangeRatesRepository.refreshRatesIfNeeded()
+        }
+
+        viewModelScope.launch {
+            exchangeRatesRepository.rates.collect { snapshot ->
+                latestRatesSnapshot = snapshot
+                _expenseState.update { current ->
+                    val rate = exchangeRatesRepository.rateToLkr(snapshot, current.currency)
+                    val rateAvailable = current.currency == "LKR" || rate != null
+                    val resolvedRate = rate ?: 1.0
+                    val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
+                    val confirmed = if (current.currency == "LKR") true
+                    else if (rateChanged) false else current.exchangeRateConfirmed
+                    val updated = current.copy(
+                        exchangeRate = formatRate(resolvedRate),
+                        exchangeRateLastUpdatedMillis = snapshot.lastUpdatedMillis.takeIf { it > 0 },
+                        exchangeRateIsStale = snapshot.isStale,
+                        exchangeRateAvailable = rateAvailable,
+                        exchangeRateConfirmed = confirmed,
+                    )
+                    updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+                }
+            }
+        }
     }
 
     fun onAmountChange(value: String) {
         val filtered = value.filter { it.isDigit() || it == '.' }
-        _expenseState.update { it.copy(amount = filtered, errorMessage = null) }
+        _expenseState.update { current ->
+            val updated = current.copy(amount = filtered, errorMessage = null)
+            updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+        }
     }
 
     fun onCategoryChange(value: String) {
@@ -100,7 +141,53 @@ class ExpenseViewModel @Inject constructor(
     }
 
     fun onCurrencyChange(value: String) {
-        _expenseState.update { it.copy(currency = value, errorMessage = null) }
+        _expenseState.update { current ->
+            val rate = exchangeRatesRepository.rateToLkr(latestRatesSnapshot, value)
+            val rateAvailable = value == "LKR" || rate != null
+            val updated = current.copy(
+                currency = value,
+                exchangeRate = formatRate(rate ?: 1.0),
+                exchangeRateAvailable = rateAvailable,
+                exchangeRateConfirmed = value == "LKR",
+                errorMessage = null,
+            )
+            updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+        }
+    }
+
+    fun requestSubmit() {
+        val state = _expenseState.value
+        if (state.currency != "LKR" && !state.exchangeRateAvailable) {
+            _expenseState.update { it.copy(errorMessage = "Exchange rate unavailable. Try again later.") }
+            return
+        }
+        if (state.currency != "LKR" && !state.exchangeRateConfirmed) {
+            _expenseState.update { it.copy(showRateConfirmation = true, errorMessage = null) }
+            return
+        }
+        addExpense()
+    }
+
+    fun confirmExchangeRate() {
+        _expenseState.update { it.copy(exchangeRateConfirmed = true, showRateConfirmation = false) }
+        requestSubmit()
+    }
+
+    fun dismissRateConfirmation() {
+        _expenseState.update { it.copy(showRateConfirmation = false) }
+    }
+
+    fun refreshExchangeRates() {
+        _expenseState.update { it.copy(isRefreshingRates = true) }
+        viewModelScope.launch {
+            exchangeRatesRepository.refreshRatesIfNeeded(force = true)
+                .onFailure { error ->
+                    _expenseState.update {
+                        it.copy(errorMessage = error.message ?: "Failed to refresh exchange rates")
+                    }
+                }
+            _expenseState.update { it.copy(isRefreshingRates = false) }
+        }
     }
 
     fun addExpense() {
@@ -112,14 +199,13 @@ class ExpenseViewModel @Inject constructor(
             return
         }
 
-        val originalAmount = amount
-        val baseAmount = if (state.currency == "LKR") amount else convertToBase(amount, state.currency)
+        val baseAmount = calculateAmountLkr(state)
 
         val entry = ExpenseEntry(
             id = UUID.randomUUID().toString(),
             amount = baseAmount,
             originalCurrency = state.currency,
-            originalAmount = originalAmount,
+            originalAmount = amount,
             category = state.category,
             subCategory = state.subCategory.ifBlank { null },
             paymentMethod = state.paymentMethod,
@@ -143,6 +229,8 @@ class ExpenseViewModel @Inject constructor(
                         isLoading = false,
                         errorMessage = null,
                         insightMessage = buildGoalInsight(amount, it.activeGoal),
+                        exchangeRateConfirmed = true,
+                        showRateConfirmation = false,
                     )
                 }
             }.onFailure { throwable ->
@@ -167,25 +255,17 @@ class ExpenseViewModel @Inject constructor(
         return "Expense saved. At your current pace, this may delay ${goal.title} by about $delayDays day(s)."
     }
 
-    private fun convertToBase(amount: Double, currency: String): Double {
-        val rate = EXCHANGE_RATES[currency] ?: 1.0
+    private fun calculateAmountLkr(state: ExpenseUiState): Double {
+        val amount = state.amount.toDoubleOrNull() ?: return 0.0
+        val rate = state.exchangeRate.toDoubleOrNull() ?: 1.0
         return amount * rate
     }
+
+    private fun formatRate(rate: Double): String = String.format("%.4f", rate)
 
     companion object {
         val CATEGORIES = listOf("Food", "Transport", "Housing", "Subscriptions", "Entertainment", "Health", "Other")
         val PAYMENT_METHODS = listOf("Card", "Cash", "Bank Transfer", "Auto-Debit")
         val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
-        
-        // Static exchange rates relative to 1 unit of foreign currency = X LKR
-        // e.g., 1 USD = 300 LKR
-        val EXCHANGE_RATES = mapOf(
-            "LKR" to 1.0,
-            "USD" to 300.0,
-            "EUR" to 325.0,
-            "GBP" to 380.0,
-            "AUD" to 195.0,
-            "SGD" to 220.0
-        )
     }
 }

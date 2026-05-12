@@ -50,10 +50,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -914,5 +917,31 @@ private fun EmptyStateCard() {
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard Light")
+@Composable
+private fun DashboardScreenLightPreview() {
+    FinPilotTheme(darkTheme = false) {
+        DashboardScreen(
+            state = DashboardViewModel.DashboardUiState(
+                totalIncome = 600000.0,
+                totalExpenses = 45000.0,
+                netPosition = 555000.0,
+                activeGoal = Goal(
+                    id = "preview",
+                    userId = "preview-user",
+                    title = "Emergency Fund",
+                    targetAmount = 250000.0,
+                    currentAmount = 95000.0,
+                    monthlyRequired = 20000.0,
+                    isActive = true,
+                ),
+                goalProgressPercent = 0.38f,
+                monthlyRequired = 20000.0,
+            ),
+            insightMessage = "Tip: Keep fixed costs below 50% of income.",
+        )
     }
 }

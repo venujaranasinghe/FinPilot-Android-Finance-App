@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.IncomeEntry
+import com.bpeople.finpilot.data.repository.ExchangeRatesRepository
 import com.bpeople.finpilot.data.repository.FreelanceProjectRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
 import com.google.firebase.Timestamp
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 class IncomeViewModel @Inject constructor(
     private val incomeRepository: IncomeRepository,
     private val freelanceProjectRepository: FreelanceProjectRepository,
+    private val exchangeRatesRepository: ExchangeRatesRepository,
 ) : ViewModel() {
 
     data class IncomeUiState(
@@ -33,6 +35,12 @@ class IncomeViewModel @Inject constructor(
         val currencyOriginal: String = "LKR",
         val exchangeRate: String = "1.0",
         val amountLkrPreview: Double = 0.0,
+        val exchangeRateLastUpdatedMillis: Long? = null,
+        val exchangeRateIsStale: Boolean = false,
+        val exchangeRateAvailable: Boolean = true,
+        val exchangeRateConfirmed: Boolean = true,
+        val showRateConfirmation: Boolean = false,
+        val isRefreshingRates: Boolean = false,
         val dateMillis: Long = System.currentTimeMillis(),
         val label: String = "",
         val incomeType: String = INCOME_TYPES.first(),
@@ -41,6 +49,8 @@ class IncomeViewModel @Inject constructor(
         val errorMessage: String? = null,
         val isSubmitted: Boolean = false,
     )
+
+    private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
 
     private val _incomeState = MutableStateFlow(IncomeUiState())
     val incomeState: StateFlow<IncomeUiState> = _incomeState.asStateFlow()
@@ -65,16 +75,38 @@ class IncomeViewModel @Inject constructor(
                     }
                 }
             }
+
+        viewModelScope.launch {
+            exchangeRatesRepository.refreshRatesIfNeeded()
+        }
+
+        viewModelScope.launch {
+            exchangeRatesRepository.rates.collect { snapshot ->
+                latestRatesSnapshot = snapshot
+                _incomeState.update { current ->
+                    val rate = exchangeRatesRepository.rateToLkr(snapshot, current.currencyOriginal)
+                    val rateAvailable = current.currencyOriginal == "LKR" || rate != null
+                    val resolvedRate = rate ?: 1.0
+                    val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
+                    val confirmed = if (current.currencyOriginal == "LKR") true
+                    else if (rateChanged) false else current.exchangeRateConfirmed
+                    val updated = current.copy(
+                        exchangeRate = formatRate(resolvedRate),
+                        exchangeRateLastUpdatedMillis = snapshot.lastUpdatedMillis.takeIf { it > 0 },
+                        exchangeRateIsStale = snapshot.isStale,
+                        exchangeRateAvailable = rateAvailable,
+                        exchangeRateConfirmed = confirmed,
+                    )
+                    updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+                }
+            }
+        }
     }
 
     fun onSourceChange(value: String) {
         _incomeState.update { current ->
-            val newCurrency = if (value == "Salary") "LKR" else current.currencyOriginal
-            val newRate = if (newCurrency == "LKR") "1.0" else current.exchangeRate
             val updated = current.copy(
                 source = value,
-                currencyOriginal = newCurrency,
-                exchangeRate = newRate,
                 projectRef = if (value != "Freelance") "" else current.projectRef,
                 errorMessage = null,
             )
@@ -92,16 +124,15 @@ class IncomeViewModel @Inject constructor(
 
     fun onCurrencyChange(value: String) {
         _incomeState.update { current ->
-            val newRate = if (value == "LKR") "1.0" else current.exchangeRate
-            val updated = current.copy(currencyOriginal = value, exchangeRate = newRate, errorMessage = null)
-            updated.copy(amountLkrPreview = calculateAmountLkr(updated))
-        }
-    }
-
-    fun onExchangeRateChange(value: String) {
-        val filtered = value.filter { it.isDigit() || it == '.' }
-        _incomeState.update { current ->
-            val updated = current.copy(exchangeRate = filtered, errorMessage = null)
+            val rate = exchangeRatesRepository.rateToLkr(latestRatesSnapshot, value)
+            val rateAvailable = value == "LKR" || rate != null
+            val updated = current.copy(
+                currencyOriginal = value,
+                exchangeRate = formatRate(rate ?: 1.0),
+                exchangeRateAvailable = rateAvailable,
+                exchangeRateConfirmed = value == "LKR",
+                errorMessage = null,
+            )
             updated.copy(amountLkrPreview = calculateAmountLkr(updated))
         }
     }
@@ -126,21 +157,51 @@ class IncomeViewModel @Inject constructor(
         _incomeState.update { it.copy(isSubmitted = false) }
     }
 
+    fun requestSubmit() {
+        val state = _incomeState.value
+        if (state.currencyOriginal != "LKR" && !state.exchangeRateAvailable) {
+            _incomeState.update { it.copy(errorMessage = "Exchange rate unavailable. Try again later.") }
+            return
+        }
+        if (state.currencyOriginal != "LKR" && !state.exchangeRateConfirmed) {
+            _incomeState.update { it.copy(showRateConfirmation = true, errorMessage = null) }
+            return
+        }
+        addIncome()
+    }
+
+    fun confirmExchangeRate() {
+        _incomeState.update { it.copy(exchangeRateConfirmed = true, showRateConfirmation = false) }
+        requestSubmit()
+    }
+
+    fun dismissRateConfirmation() {
+        _incomeState.update { it.copy(showRateConfirmation = false) }
+    }
+
+    fun refreshExchangeRates() {
+        _incomeState.update { it.copy(isRefreshingRates = true) }
+        viewModelScope.launch {
+            exchangeRatesRepository.refreshRatesIfNeeded(force = true)
+                .onFailure { error ->
+                    _incomeState.update {
+                        it.copy(errorMessage = error.message ?: "Failed to refresh exchange rates")
+                    }
+                }
+            _incomeState.update { it.copy(isRefreshingRates = false) }
+        }
+    }
+
     fun addIncome() {
         val state = _incomeState.value
         val amountOriginal = state.amountOriginal.toDoubleOrNull()
-        val exchangeRate = state.exchangeRate.toDoubleOrNull()
 
         if (amountOriginal == null || amountOriginal <= 0) {
             _incomeState.update { it.copy(errorMessage = "Enter a valid amount") }
             return
         }
-        if (state.currencyOriginal != "LKR" && (exchangeRate == null || exchangeRate <= 0)) {
-            _incomeState.update { it.copy(errorMessage = "Enter a valid exchange rate") }
-            return
-        }
 
-        val resolvedRate = if (state.currencyOriginal == "LKR") 1.0 else (exchangeRate ?: 1.0)
+        val resolvedRate = state.exchangeRate.toDoubleOrNull() ?: 1.0
         val amountLkr = calculateAmountLkr(state)
         val typeKey = INCOME_TYPE_KEYS[state.incomeType] ?: "ONE_OFF"
 
@@ -166,9 +227,14 @@ class IncomeViewModel @Inject constructor(
                 _incomeState.update {
                     it.copy(
                         amountOriginal = "",
-                        currencyOriginal = if (it.source == "Salary") "LKR" else "LKR",
+                        currencyOriginal = "LKR",
                         exchangeRate = "1.0",
                         amountLkrPreview = 0.0,
+                        exchangeRateLastUpdatedMillis = it.exchangeRateLastUpdatedMillis,
+                        exchangeRateIsStale = it.exchangeRateIsStale,
+                        exchangeRateAvailable = true,
+                        exchangeRateConfirmed = true,
+                        showRateConfirmation = false,
                         label = "",
                         projectRef = "",
                         isLoading = false,
@@ -189,17 +255,15 @@ class IncomeViewModel @Inject constructor(
 
     private fun calculateAmountLkr(state: IncomeUiState): Double {
         val amountOriginal = state.amountOriginal.toDoubleOrNull() ?: return 0.0
-        val exchangeRate = state.exchangeRate.toDoubleOrNull() ?: return 0.0
-        return if (state.currencyOriginal.uppercase() == "LKR") {
-            amountOriginal
-        } else {
-            amountOriginal * exchangeRate
-        }
+        val rate = state.exchangeRate.toDoubleOrNull() ?: 1.0
+        return amountOriginal * rate
     }
+
+    private fun formatRate(rate: Double): String = String.format("%.4f", rate)
 
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
-        val CURRENCIES = listOf("LKR", "USD", "USDT", "ETH")
+        val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
         val INCOME_TYPES = listOf("One-off", "Recurring", "Variable")
         val INCOME_TYPE_KEYS = mapOf(
             "One-off" to "ONE_OFF",
@@ -208,4 +272,3 @@ class IncomeViewModel @Inject constructor(
         )
     }
 }
-

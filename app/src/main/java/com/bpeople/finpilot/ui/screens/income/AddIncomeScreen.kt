@@ -25,13 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.AttachMoney
 import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.CurrencyExchange
 import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Work
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,7 +37,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -48,6 +45,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,6 +77,7 @@ fun AddIncomeScreen(
     viewModel: IncomeViewModel,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit = {},
+    onNavigateToExpense: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onIncomeAdded: () -> Unit,
@@ -103,17 +102,20 @@ fun AddIncomeScreen(
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToIncome = onNavigateToIncome,
+        onNavigateToExpense = onNavigateToExpense,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
         onSourceChange = viewModel::onSourceChange,
         onAmountChange = viewModel::onAmountOriginalChange,
         onCurrencyChange = viewModel::onCurrencyChange,
-        onExchangeRateChange = viewModel::onExchangeRateChange,
         onDateChange = viewModel::onDateChange,
         onLabelChange = viewModel::onLabelChange,
         onIncomeTypeChange = viewModel::onIncomeTypeChange,
         onProjectRefChange = viewModel::onProjectRefChange,
-        onSubmit = viewModel::addIncome,
+        onRequestSubmit = viewModel::requestSubmit,
+        onConfirmExchangeRate = viewModel::confirmExchangeRate,
+        onDismissRateConfirmation = viewModel::dismissRateConfirmation,
+        onRefreshRates = viewModel::refreshExchangeRates,
     )
 }
 
@@ -124,22 +126,48 @@ fun AddIncomeContent(
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit = {},
+    onNavigateToExpense: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onSourceChange: (String) -> Unit,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
-    onExchangeRateChange: (String) -> Unit,
     onDateChange: (Long) -> Unit,
     onLabelChange: (String) -> Unit,
     onIncomeTypeChange: (String) -> Unit,
     onProjectRefChange: (String) -> Unit,
-    onSubmit: () -> Unit,
+    onRequestSubmit: () -> Unit,
+    onConfirmExchangeRate: () -> Unit,
+    onDismissRateConfirmation: () -> Unit,
+    onRefreshRates: () -> Unit,
 ) {
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-    val showCurrencySelector = state.source != "Salary"
-    val showExchangeRate = showCurrencySelector && state.currencyOriginal != "LKR"
+    val rateUpdatedFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchangeRate = state.currencyOriginal != "LKR"
+
+    if (state.showRateConfirmation) {
+        AlertDialog(
+            onDismissRequest = onDismissRateConfirmation,
+            title = { Text("Confirm exchange rate") },
+            text = {
+                val updatedText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateUpdatedFormat.format(java.util.Date(it)) }
+                    ?: "unknown"
+                Text("Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?")
+            },
+            confirmButton = {
+                Button(onClick = onConfirmExchangeRate) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRateConfirmation) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -149,7 +177,7 @@ fun AddIncomeContent(
                 currentTab = com.bpeople.finpilot.ui.components.NavTab.INCOME,
                 onNavigateToDashboard = onNavigateToDashboard,
                 onNavigateToIncome = { /* Currently on Income */ },
-                onNavigateToExpense = { /* not navigating */ },
+                onNavigateToExpense = onNavigateToExpense,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
             )
@@ -174,19 +202,6 @@ fun AddIncomeContent(
                     )
                     .padding(top = 16.dp, bottom = 40.dp),
             ) {
-                IconButton(
-                    onClick = onNavigateToDashboard,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -228,57 +243,44 @@ fun AddIncomeContent(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         },
-                        leadingIcon = if (showCurrencySelector) {
-                            {
-                                var expanded by remember { mutableStateOf(false) }
-                                Box {
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { expanded = true }
-                                            .padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = state.currencyOriginal,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.secondary,
+                        leadingIcon = {
+                            var expanded by remember { mutableStateOf(false) }
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { expanded = true }
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = state.currencyOriginal,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowDropDown,
+                                        contentDescription = "Select Currency",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                ) {
+                                    IncomeViewModel.CURRENCIES.forEach { cur ->
+                                        DropdownMenuItem(
+                                            text = { Text(cur) },
+                                            onClick = {
+                                                onCurrencyChange(cur)
+                                                expanded = false
+                                            },
                                         )
-                                        Icon(
-                                            imageVector = Icons.Rounded.ArrowDropDown,
-                                            contentDescription = "Select Currency",
-                                            tint = MaterialTheme.colorScheme.secondary,
-                                        )
-                                    }
-                                    DropdownMenu(
-                                        expanded = expanded,
-                                        onDismissRequest = { expanded = false },
-                                    ) {
-                                        IncomeViewModel.CURRENCIES.forEach { cur ->
-                                            DropdownMenuItem(
-                                                text = { Text(cur) },
-                                                onClick = {
-                                                    onCurrencyChange(cur)
-                                                    expanded = false
-                                                },
-                                            )
-                                        }
                                     }
                                 }
                             }
-                        } else null,
-                        trailingIcon = if (!showCurrencySelector) {
-                            {
-                                Text(
-                                    text = "LKR",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                )
-                            }
-                        } else null,
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Transparent,
@@ -294,12 +296,42 @@ fun AddIncomeContent(
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(),
                     ) {
-                        Text(
-                            text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Medium,
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            val updatedText = state.exchangeRateLastUpdatedMillis
+                                ?.let { rateUpdatedFormat.format(java.util.Date(it)) }
+                                ?: "unknown"
+                            val rateSuffix = if (state.exchangeRateIsStale) " (stale)" else ""
+                            Text(
+                                text = if (state.exchangeRateAvailable) {
+                                    "Rate: 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} • $updatedText$rateSuffix"
+                                } else {
+                                    "Rate unavailable — try again later"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center,
+                            )
+                            TextButton(
+                                onClick = onRefreshRates,
+                                enabled = !state.isLoading && !state.isRefreshingRates,
+                            ) {
+                                if (state.isRefreshingRates) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        strokeWidth = 1.5.dp,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text("Refresh rates")
+                            }
+                        }
                     }
                 }
             }
@@ -336,21 +368,6 @@ fun AddIncomeContent(
                                 onClick = { onSourceChange(src) },
                             )
                         }
-                    }
-
-                    // ── Exchange rate — only for foreign currency ─────────
-                    AnimatedVisibility(
-                        visible = showExchangeRate,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        IncomeFormField(
-                            label = "Exchange Rate  (1 ${state.currencyOriginal} = ? LKR)",
-                            value = state.exchangeRate,
-                            onValueChange = onExchangeRateChange,
-                            icon = Icons.Rounded.CurrencyExchange,
-                            keyboardType = KeyboardType.Decimal,
-                        )
                     }
 
                     // ── Date picker ───────────────────────────────────────
@@ -440,7 +457,7 @@ fun AddIncomeContent(
 
                     // ── Submit ────────────────────────────────────────────
                     Button(
-                        onClick = onSubmit,
+                        onClick = onRequestSubmit,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -639,23 +656,27 @@ private fun AddIncomeScreenPreview() {
                 currencyOriginal = "USD",
                 exchangeRate = "310",
                 amountLkrPreview = 77500.0,
+                exchangeRateLastUpdatedMillis = System.currentTimeMillis(),
                 label = "Website redesign",
                 incomeType = "One-off",
             ),
             snackbarHostState = androidx.compose.material3.SnackbarHostState(),
             onNavigateToDashboard = {},
             onNavigateToIncome = {},
+            onNavigateToExpense = {},
             onNavigateToGoals = {},
             onNavigateToProfile = {},
             onSourceChange = {},
             onAmountChange = {},
             onCurrencyChange = {},
-            onExchangeRateChange = {},
             onDateChange = {},
             onLabelChange = {},
             onIncomeTypeChange = {},
             onProjectRefChange = {},
-            onSubmit = {},
+            onRequestSubmit = {},
+            onConfirmExchangeRate = {},
+            onDismissRateConfirmation = {},
+            onRefreshRates = {},
         )
     }
 }
