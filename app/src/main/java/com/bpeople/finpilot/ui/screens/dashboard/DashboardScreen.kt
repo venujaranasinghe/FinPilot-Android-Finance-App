@@ -2,9 +2,12 @@ package com.bpeople.finpilot.ui.screens.dashboard
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -129,9 +133,7 @@ fun DashboardScreen(
                 // Header
                 item {
                     DashboardHeader(
-                        displayName = displayName,
-                        onLogout = onLogout,
-                        onRefresh = { isRefreshing = true },
+                        displayName = displayName
                     )
                 }
 
@@ -207,6 +209,21 @@ fun DashboardScreen(
                 }
 
                 item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Pull down to refresh",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+
+                item {
                     Spacer(modifier = Modifier.height(20.dp))
                 }
             }
@@ -217,8 +234,6 @@ fun DashboardScreen(
 @Composable
 private fun DashboardHeader(
     displayName: String?,
-    onLogout: () -> Unit,
-    onRefresh: () -> Unit,
 ) {
     val firstName = displayName
         ?.trim()
@@ -227,53 +242,23 @@ private fun DashboardHeader(
         ?.takeIf { it.isNotBlank() }
         ?: "there"
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
     ) {
-        Column {
-            Text(
-                "Welcome back, $firstName",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                "Your financial snapshot",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = onRefresh,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                ),
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-
-            Button(
-                onClick = onLogout,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                Text("↩", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        Text(
+            "Welcome back, $firstName",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            lineHeight = 28.sp
+        )
+        Text(
+            "Your financial snapshot",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -284,9 +269,11 @@ private fun QuickActionsRow(
     onNavigateToProfile: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         AssistChip(
             onClick = onAddExpense,
@@ -463,7 +450,7 @@ private fun OverviewItem(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             textAlign = TextAlign.Center,
-            maxLines = 1
+            softWrap = true
         )
     }
 }
@@ -1023,42 +1010,3 @@ private fun EmptyStateCard() {
     }
 }
 
-@Preview(showBackground = true, name = "Dashboard Light")
-@Composable
-private fun DashboardScreenLightPreview() {
-    FinPilotTheme(darkTheme = false) {
-        DashboardScreen(
-            state = DashboardViewModel.DashboardUiState(
-                totalIncome = 600000.0,
-                totalExpenses = 45000.0,
-                netPosition = 555000.0,
-                incomeBreakdown = mapOf(
-                    "Salary" to 450000.0,
-                    "Freelance" to 120000.0,
-                    "Other" to 30000.0,
-                ),
-                expensesByCategory = mapOf(
-                    "Food" to 18000.0,
-                    "Transport" to 12000.0,
-                    "Entertainment" to 8000.0,
-                    "Other" to 7000.0,
-                ),
-                fixedCostsPercentage = 30.0,
-                discretionaryPercentage = 7.5,
-                activeGoal = Goal(
-                    id = "preview",
-                    userId = "preview-user",
-                    title = "Emergency Fund",
-                    targetAmount = 250000.0,
-                    currentAmount = 95000.0,
-                    monthlyRequired = 20000.0,
-                    isActive = true,
-                ),
-                goalProgressPercent = 0.38f,
-                monthlyRequired = 20000.0,
-            ),
-            displayName = "Kavindu",
-            insightMessage = "Tip: Keep fixed costs below 50% of income.",
-        )
-    }
-}
