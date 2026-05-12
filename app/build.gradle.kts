@@ -6,6 +6,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val exchangeRatesAppId = providers.gradleProperty("EXCHANGE_RATES_APP_ID").orNull ?: ""
+
 android {
     namespace = "com.bpeople.finpilot"
     compileSdk = 36
@@ -17,6 +19,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "EXCHANGE_RATES_APP_ID", "\"$exchangeRatesAppId\"")
     }
 
     buildTypes {
@@ -34,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -78,4 +82,5 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.google.play.services.auth)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.okhttp)
 }
