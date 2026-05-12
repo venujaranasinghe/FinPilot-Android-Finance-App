@@ -6,7 +6,6 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.IgnoreExtraProperties
-import java.io.Serializable
 
 /**
  * Matches Firestore users/{uid} document fields exactly.
@@ -31,5 +30,4 @@ data class UserProfile(
 
     @ColumnInfo(name = "createdAt")
     val createdAt: Timestamp? = null
-) : Serializable
-
+)

@@ -122,9 +122,12 @@ fun FinPilotNavGraph(
             val dashboardViewModel: DashboardViewModel = hiltViewModel()
             val dashboardState by dashboardViewModel.dashboardState.collectAsState()
             val insight = navController.currentBackStackEntry?.savedStateHandle?.get<String>("expense_insight")
+            val currentUser by authViewModel.currentUser.collectAsState()
+            val userProfile by dashboardViewModel.userProfile.collectAsState()
 
             DashboardScreen(
                 state = dashboardState,
+                displayName = userProfile?.displayName ?: currentUser?.displayName,
                 insightMessage = insight,
                 onAddExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
@@ -225,9 +228,10 @@ fun FinPilotNavGraph(
         composable(NavRoutes.Profile.route) {
             val profileViewModel: ProfileViewModel = hiltViewModel()
             val currentUser by profileViewModel.currentUser.collectAsState()
+            val userProfile by profileViewModel.userProfile.collectAsState()
             ProfileScreen(
-                displayName = currentUser?.displayName,
-                email = currentUser?.email,
+                displayName = userProfile?.displayName ?: currentUser?.displayName,
+                email = userProfile?.email ?: currentUser?.email,
                 onNavigateToDashboard = {
                     navController.navigate(NavRoutes.Dashboard.route)
                 },
@@ -249,7 +253,8 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Login.route) {
                         popUpTo(NavRoutes.Profile.route) { inclusive = true }
                     }
-                }
+                },
+                onUpdateDisplayName = profileViewModel::updateDisplayName
             )
         }
 

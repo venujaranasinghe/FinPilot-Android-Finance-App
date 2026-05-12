@@ -57,12 +57,14 @@ import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
+    displayName: String? = null,
     insightMessage: String? = null,
     onAddExpense: () -> Unit = {},
     onNavigateToIncome: () -> Unit = {},
@@ -127,6 +129,7 @@ fun DashboardScreen(
                 // Header
                 item {
                     DashboardHeader(
+                        displayName = displayName,
                         onLogout = onLogout,
                         onRefresh = { isRefreshing = true },
                     )
@@ -163,17 +166,26 @@ fun DashboardScreen(
 
                 // Income Breakdown
                 item {
-                    IncomeBreakdownCard()
+                    IncomeBreakdownCard(
+                        totalIncome = state.totalIncome,
+                        breakdown = state.incomeBreakdown,
+                    )
                 }
 
                 // Spending Category Chart
                 item {
-                    SpendingCategoryCard()
+                    SpendingCategoryCard(
+                        totalExpenses = state.totalExpenses,
+                        expensesByCategory = state.expensesByCategory,
+                    )
                 }
 
                 // Committed vs Discretionary Ratio
                 item {
-                    CommittedDiscretionaryCard()
+                    CommittedDiscretionaryCard(
+                        fixedCostsPercentage = state.fixedCostsPercentage,
+                        discretionaryPercentage = state.discretionaryPercentage,
+                    )
                 }
 
                 // Goal Progress Card
@@ -204,9 +216,17 @@ fun DashboardScreen(
 
 @Composable
 private fun DashboardHeader(
+    displayName: String?,
     onLogout: () -> Unit,
     onRefresh: () -> Unit,
 ) {
+    val firstName = displayName
+        ?.trim()
+        ?.split(" ")
+        ?.firstOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: "there"
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,7 +234,7 @@ private fun DashboardHeader(
     ) {
         Column {
             Text(
-                "Welcome back, Kavindu",
+                "Welcome back, $firstName",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -449,7 +469,10 @@ private fun OverviewItem(
 }
 
 @Composable
-private fun IncomeBreakdownCard() {
+private fun IncomeBreakdownCard(
+    totalIncome: Double,
+    breakdown: Map<String, Double>,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -471,30 +494,28 @@ private fun IncomeBreakdownCard() {
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            IncomeSourceItem(
-                source = "Salary",
-                amount = 450000.0,
-                percentage = 75.0,
-                color = Color(0xFF1976D2)
-            )
-            IncomeSourceItem(
-                source = "Freelance",
-                amount = 100000.0,
-                percentage = 16.67,
-                color = Color(0xFF388E3C)
-            )
-            IncomeSourceItem(
-                source = "AdSense",
-                amount = 30000.0,
-                percentage = 5.0,
-                color = Color(0xFFFBC02D)
-            )
-            IncomeSourceItem(
-                source = "Crypto",
-                amount = 20000.0,
-                percentage = 3.33,
-                color = Color(0xFFD32F2F)
-            )
+            val sorted = breakdown
+                .filterValues { it > 0.0 }
+                .entries
+                .sortedByDescending { it.value }
+
+            if (sorted.isEmpty()) {
+                Text(
+                    "No income recorded yet.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                sorted.forEachIndexed { index, (source, amount) ->
+                    val percentage = if (totalIncome > 0.0) (amount / totalIncome * 100.0) else 0.0
+                    IncomeSourceItem(
+                        source = source,
+                        amount = amount,
+                        percentage = percentage,
+                        color = chartColorForIndex(index),
+                    )
+                }
+            }
         }
     }
 }
@@ -540,7 +561,7 @@ private fun IncomeSourceItem(
             )
         }
         LinearProgressIndicator(
-            progress = (percentage / 100).toFloat(),
+            progress = { (percentage / 100).coerceIn(0.0, 1.0).toFloat() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
@@ -552,7 +573,10 @@ private fun IncomeSourceItem(
 }
 
 @Composable
-private fun SpendingCategoryCard() {
+private fun SpendingCategoryCard(
+    totalExpenses: Double,
+    expensesByCategory: Map<String, Double>,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -580,28 +604,51 @@ private fun SpendingCategoryCard() {
                     .height(160.dp),
                 contentAlignment = Alignment.Center
             ) {
-                DonutChartRepresentation()
+                val sorted = expensesByCategory
+                    .filterValues { it > 0.0 }
+                    .entries
+                    .sortedByDescending { it.value }
+
+                val top = sorted.firstOrNull()
+                val topAmount = top?.value ?: 0.0
+                val ringProgress = if (totalExpenses > 0.0) {
+                    (topAmount / totalExpenses).coerceIn(0.0, 1.0).toFloat()
+                } else {
+                    0f
+                }
+
+                DonutChartRepresentation(
+                    totalExpenses = totalExpenses,
+                    progress = ringProgress,
+                    color = if (top != null) categoryColor(top.key) else MaterialTheme.colorScheme.primary,
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            SpendingCategoryLegend()
+            SpendingCategoryLegend(
+                expensesByCategory = expensesByCategory,
+            )
         }
     }
 }
 
 @Composable
-private fun DonutChartRepresentation() {
+private fun DonutChartRepresentation(
+    totalExpenses: Double,
+    progress: Float,
+    color: Color,
+) {
     Box(
         modifier = Modifier
             .size(120.dp),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
-            progress = 0.4f,
+            progress = { progress },
             modifier = Modifier.size(120.dp),
-            color = Color(0xFFFF6F00),
-            trackColor = Color(0xFFFFC107),
+            color = color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
             strokeWidth = 16.dp,
             strokeCap = StrokeCap.Round
         )
@@ -617,7 +664,7 @@ private fun DonutChartRepresentation() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                "LKR 45K",
+                "LKR ${totalExpenses.roundToInt()}",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -632,22 +679,40 @@ private fun DonutChartRepresentation() {
 }
 
 @Composable
-private fun SpendingCategoryLegend() {
+private fun SpendingCategoryLegend(
+    expensesByCategory: Map<String, Double>,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SpendingCategoryRow("Food", "LKR 18K", Color(0xFFFF6F00))
-        SpendingCategoryRow("Transport", "LKR 12K", Color(0xFF1976D2))
-        SpendingCategoryRow("Entertainment", "LKR 8K", Color(0xFF7B1FA2))
-        SpendingCategoryRow("Other", "LKR 7K", Color(0xFF616161))
+        val sorted = expensesByCategory
+            .filterValues { it > 0.0 }
+            .entries
+            .sortedByDescending { it.value }
+
+        if (sorted.isEmpty()) {
+            Text(
+                "No expenses recorded yet.",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            sorted.forEach { (category, amount) ->
+                SpendingCategoryRow(
+                    category = category,
+                    amount = amount,
+                    color = categoryColor(category),
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun SpendingCategoryRow(
     category: String,
-    amount: String,
+    amount: Double,
     color: Color
 ) {
     Row(
@@ -673,7 +738,7 @@ private fun SpendingCategoryRow(
             )
         }
         Text(
-            amount,
+            "LKR ${amount.roundToInt()}",
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
@@ -682,7 +747,10 @@ private fun SpendingCategoryRow(
 }
 
 @Composable
-private fun CommittedDiscretionaryCard() {
+private fun CommittedDiscretionaryCard(
+    fixedCostsPercentage: Double,
+    discretionaryPercentage: Double,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -710,13 +778,13 @@ private fun CommittedDiscretionaryCard() {
             ) {
                 CommittedRatioItem(
                     label = "Fixed Costs",
-                    percentage = 65.0,
+                    percentage = fixedCostsPercentage,
                     color = Color(0xFFC62828),
                     modifier = Modifier.weight(1f)
                 )
                 CommittedRatioItem(
                     label = "Discretionary",
-                    percentage = 35.0,
+                    percentage = discretionaryPercentage,
                     color = Color(0xFF1976D2),
                     modifier = Modifier.weight(1f)
                 )
@@ -725,13 +793,48 @@ private fun CommittedDiscretionaryCard() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                "Your fixed costs are 65% of income. Aim for <50% for better financial flexibility.",
+                committedDiscretionaryHint(fixedCostsPercentage),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
     }
+}
+
+private fun committedDiscretionaryHint(fixedCostsPercentage: Double): String {
+    val fixedRounded = fixedCostsPercentage.coerceAtLeast(0.0).roundToInt()
+    return if (fixedCostsPercentage >= 50.0) {
+        "Your fixed costs are ${fixedRounded}% of income. Aim for <50% for better flexibility."
+    } else {
+        "Nice! Your fixed costs are ${fixedRounded}% of income — below the recommended 50% threshold."
+    }
+}
+
+private fun chartColorForIndex(index: Int): Color {
+    val palette = listOf(
+        Color(0xFF1976D2),
+        Color(0xFF388E3C),
+        Color(0xFFFBC02D),
+        Color(0xFFD32F2F),
+        Color(0xFF7B1FA2),
+        Color(0xFF00838F),
+    )
+    return palette[index % palette.size]
+}
+
+private fun categoryColor(category: String): Color {
+    // A small deterministic palette based on category text.
+    val colors = listOf(
+        Color(0xFFFF6F00),
+        Color(0xFF1976D2),
+        Color(0xFF7B1FA2),
+        Color(0xFF388E3C),
+        Color(0xFFD32F2F),
+        Color(0xFF455A64),
+    )
+    val idx = (category.trim().lowercase().hashCode().absoluteValue) % colors.size
+    return colors[idx]
 }
 
 @Composable
@@ -751,7 +854,7 @@ private fun CommittedRatioItem(
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
-                progress = (percentage / 100).toFloat(),
+                progress = { (percentage / 100).coerceIn(0.0, 1.0).toFloat() },
                 modifier = Modifier.size(80.dp),
                 color = color,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -776,7 +879,7 @@ private fun CommittedRatioItem(
 
 @Composable
 private fun GoalProgressCard(
-    goal: com.bpeople.finpilot.data.model.Goal,
+    goal: Goal,
     progressPercent: Float,
     monthlyRequired: Double
 ) {
@@ -852,7 +955,7 @@ private fun GoalProgressCard(
             )
 
             LinearProgressIndicator(
-                progress = animatedProgress,
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -929,6 +1032,19 @@ private fun DashboardScreenLightPreview() {
                 totalIncome = 600000.0,
                 totalExpenses = 45000.0,
                 netPosition = 555000.0,
+                incomeBreakdown = mapOf(
+                    "Salary" to 450000.0,
+                    "Freelance" to 120000.0,
+                    "Other" to 30000.0,
+                ),
+                expensesByCategory = mapOf(
+                    "Food" to 18000.0,
+                    "Transport" to 12000.0,
+                    "Entertainment" to 8000.0,
+                    "Other" to 7000.0,
+                ),
+                fixedCostsPercentage = 30.0,
+                discretionaryPercentage = 7.5,
                 activeGoal = Goal(
                     id = "preview",
                     userId = "preview-user",
@@ -941,6 +1057,7 @@ private fun DashboardScreenLightPreview() {
                 goalProgressPercent = 0.38f,
                 monthlyRequired = 20000.0,
             ),
+            displayName = "Kavindu",
             insightMessage = "Tip: Keep fixed costs below 50% of income.",
         )
     }

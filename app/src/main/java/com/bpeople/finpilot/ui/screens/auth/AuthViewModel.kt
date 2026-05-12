@@ -16,9 +16,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.bpeople.finpilot.data.model.UserProfile
+import com.bpeople.finpilot.data.repository.UserRepository
+import com.google.firebase.Timestamp
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     data class AuthUiState(
@@ -102,8 +107,24 @@ class AuthViewModel @Inject constructor(
         _authState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             when (val result = authRepository.signInWithGoogle(idToken)) {
-                is AuthResult.Success -> _authState.update {
-                    it.copy(authSuccess = true, isLoading = false, infoMessage = null)
+                is AuthResult.Success -> {
+                    // Current user is now updated in AuthRepository
+                    val uid = authRepository.getCurrentUserId()
+                    val email = authRepository.getCurrentUserEmail()
+                    if (uid != null) {
+                        // Check if profile exists before saving (to avoid overwriting existing data)
+                        // Or just use set() with merge. UserRepository.saveUserProfile uses set().
+                        val profile = UserProfile(
+                            uid = uid,
+                            displayName = authRepository.currentUser.stateIn(viewModelScope).value?.displayName ?: "Google User",
+                            email = email,
+                            createdAt = Timestamp.now()
+                        )
+                        userRepository.saveUserProfile(profile)
+                    }
+                    _authState.update {
+                        it.copy(authSuccess = true, isLoading = false, infoMessage = null)
+                    }
                 }
                 is AuthResult.Error -> _authState.update {
                     it.copy(errorMessage = result.message, isLoading = false)
@@ -116,13 +137,19 @@ class AuthViewModel @Inject constructor(
         if (!validateRegister()) return
         _authState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            when (val result = authRepository.register(_authState.value.email, _authState.value.password)) {
-                is AuthResult.Success -> _authState.update {
-                    it.copy(
-                        authSuccess = true,
-                        isLoading = false,
-                        infoMessage = "Verification email sent. Please check your inbox.",
-                    )
+            when (val result = authRepository.register(
+                _authState.value.email,
+                _authState.value.password,
+                _authState.value.fullName
+            )) {
+                is AuthResult.Success -> {
+                    _authState.update {
+                        it.copy(
+                            authSuccess = true,
+                            isLoading = false,
+                            infoMessage = "Verification email sent. Please check your inbox.",
+                        )
+                    }
                 }
                 is AuthResult.Error -> _authState.update {
                     it.copy(errorMessage = result.message, isLoading = false)

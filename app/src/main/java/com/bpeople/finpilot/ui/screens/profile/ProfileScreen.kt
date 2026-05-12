@@ -36,6 +36,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.rounded.Edit
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
@@ -62,7 +65,21 @@ fun ProfileScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
+    onUpdateDisplayName: (String) -> Unit,
 ) {
+    var showEditNameDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    if (showEditNameDialog) {
+        EditNameDialog(
+            currentName = displayName ?: "",
+            onDismiss = { showEditNameDialog = false },
+            onConfirm = { newName ->
+                onUpdateDisplayName(newName)
+                showEditNameDialog = false
+            }
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -85,7 +102,8 @@ fun ProfileScreen(
             ProfileHeader(
                 name = displayName,
                 email = email,
-                onNavigateToSettings = onNavigateToSettings
+                onNavigateToSettings = onNavigateToSettings,
+                onEditName = { showEditNameDialog = true }
             )
 
             Column(
@@ -110,6 +128,7 @@ private fun ProfileHeader(
     name: String?,
     email: String?,
     onNavigateToSettings: () -> Unit,
+    onEditName: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -188,14 +207,29 @@ private fun ProfileHeader(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = name ?: "Your Profile",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .clickable { onEditName() }
+                    .padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = name ?: "Your Profile",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = "Edit Name",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -448,6 +482,41 @@ private fun initialsFrom(name: String?, email: String?): String {
     return if (second == '\u0000') "$first" else "$first$second"
 }
 
+@Composable
+fun EditNameDialog(
+    currentName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by androidx.compose.runtime.remember(currentName) { androidx.compose.runtime.mutableStateOf(currentName) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Display Name") },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Full Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { onConfirm(name) }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ProfileScreenPreview() {
@@ -461,7 +530,8 @@ private fun ProfileScreenPreview() {
             onNavigateToGoals = {},
             onNavigateToProfile = {},
             onNavigateToSettings = {},
-            onLogout = {}
+            onLogout = {},
+            onUpdateDisplayName = {}
         )
     }
 }

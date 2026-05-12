@@ -6,6 +6,8 @@ import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.GoalRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
+import com.bpeople.finpilot.data.model.UserProfile
+import com.bpeople.finpilot.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +21,50 @@ class DashboardViewModel @Inject constructor(
     incomeRepository: IncomeRepository,
     expenseRepository: ExpenseRepository,
     goalRepository: GoalRepository,
+    userRepository: UserRepository
 ) : ViewModel() {
+
+    val userProfile: StateFlow<UserProfile?> = userRepository.getUserProfile()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun buildIncomeBreakdown(incomes: List<com.bpeople.finpilot.data.model.IncomeEntry>): Map<String, Double> {
+        if (incomes.isEmpty()) return emptyMap()
+
+        val grouped = incomes
+            .groupBy { entry -> entry.source.trim().ifBlank { "Other" } }
+            .mapValues { (_, items) -> items.sumOf { it.amountLKR } }
+            .filterValues { it > 0.0 }
+
+        if (grouped.isEmpty()) return emptyMap()
+
+        // Keep UI readable: show top 4 sources, merge the rest into "Other".
+        val sorted = grouped.entries.sortedByDescending { it.value }
+        val top = sorted.take(4).associate { it.key to it.value }.toMutableMap()
+        val restTotal = sorted.drop(4).sumOf { it.value }
+        if (restTotal > 0.0) {
+            top["Other"] = (top["Other"] ?: 0.0) + restTotal
+        }
+        return top
+    }
+
+    private fun buildExpensesByCategory(expenses: List<com.bpeople.finpilot.data.model.ExpenseEntry>): Map<String, Double> {
+        if (expenses.isEmpty()) return emptyMap()
+
+        val grouped = expenses
+            .groupBy { entry -> entry.category.trim().ifBlank { "Other" } }
+            .mapValues { (_, items) -> items.sumOf { it.amount } }
+            .filterValues { it > 0.0 }
+
+        if (grouped.isEmpty()) return emptyMap()
+
+        val sorted = grouped.entries.sortedByDescending { it.value }
+        val top = sorted.take(5).associate { it.key to it.value }.toMutableMap()
+        val restTotal = sorted.drop(5).sumOf { it.value }
+        if (restTotal > 0.0) {
+            top["Other"] = (top["Other"] ?: 0.0) + restTotal
+        }
+        return top
+    }
 
     data class DashboardUiState(
         val totalIncome: Double = 0.0,
@@ -43,26 +88,13 @@ class DashboardViewModel @Inject constructor(
         val totalExpenses = expenses.sumOf { it.amount }
         val netPosition = totalIncome - totalExpenses
 
-        // Calculate income breakdown by source
-        val incomeBreakdown: Map<String, Double> = mapOf(
-            "Salary" to incomes.filter { it.source.contains("Salary", ignoreCase = true) }
-                .sumOf { it.amountLKR },
-            "Freelance" to incomes.filter { it.source.contains("Freelance", ignoreCase = true) }
-                .sumOf { it.amountLKR },
-            "AdSense" to incomes.filter { it.source.contains("AdSense", ignoreCase = true) }
-                .sumOf { it.amountLKR },
-            "Crypto" to incomes.filter { it.source.contains("Crypto", ignoreCase = true) }
-                .sumOf { it.amountLKR },
-        )
+        val incomeBreakdown = buildIncomeBreakdown(incomes)
 
-        // Calculate expenses by category
-        val expensesByCategory: Map<String, Double> = expenses
-            .groupBy { it.category }
-            .mapValues { (_, items) -> items.sumOf { it.amount } }
+        val expensesByCategory = buildExpensesByCategory(expenses)
 
         // Calculate committed vs discretionary
-        val fixedCosts = totalExpenses * 0.65
-        val discretionarySpend = totalExpenses * 0.35
+        val fixedCosts = expenses.filter { it.isRecurring }.sumOf { it.amount }
+        val discretionarySpend = expenses.filterNot { it.isRecurring }.sumOf { it.amount }
         val fixedPercentage = if (totalIncome > 0) (fixedCosts / totalIncome * 100) else 0.0
         val discretionaryPercentage = if (totalIncome > 0) (discretionarySpend / totalIncome * 100) else 0.0
 

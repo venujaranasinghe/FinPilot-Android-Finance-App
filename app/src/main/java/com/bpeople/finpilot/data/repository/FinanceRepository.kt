@@ -1,9 +1,13 @@
 package com.bpeople.finpilot.data.repository
 
-import com.bpeople.finpilot.data.local.ExpenseDao
-import com.bpeople.finpilot.data.local.IncomeDao
-import com.bpeople.finpilot.data.local.ProjectDao
-import com.bpeople.finpilot.data.local.GoalDao
+import com.bpeople.finpilot.data.local.dao.ExpenseDao
+import com.bpeople.finpilot.data.local.dao.IncomeDao
+import com.bpeople.finpilot.data.local.dao.FreelanceProjectDao
+import com.bpeople.finpilot.data.local.dao.GoalDao
+import com.bpeople.finpilot.data.local.entities.RoomIncome
+import com.bpeople.finpilot.data.local.entities.RoomExpense
+import com.bpeople.finpilot.data.local.entities.RoomGoal
+import com.bpeople.finpilot.data.local.entities.RoomProject
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.Goal
@@ -32,7 +36,7 @@ class FinanceRepository @Inject constructor(
     private val incomeDao: IncomeDao,
     private val expenseDao: ExpenseDao,
     private val goalDao: GoalDao,
-    private val projectDao: ProjectDao,
+    private val projectDao: FreelanceProjectDao,
 ) {
     private var incomeListener: ListenerRegistration? = null
     private var expenseListener: ListenerRegistration? = null
@@ -46,7 +50,21 @@ class FinanceRepository @Inject constructor(
             val docRef = if (entry.id.isBlank()) collection.document() else collection.document(entry.id)
             val payload = entry.copy(id = docRef.id, userId = uid)
             docRef.set(payload).await()
-            incomeDao.upsert(payload)
+            // persist to Room (map to RoomIncome)
+            val room = RoomIncome(
+                id = payload.id,
+                userId = uid,
+                source = payload.source,
+                amountOriginal = payload.amountOriginal,
+                currencyOriginal = payload.currencyOriginal,
+                amountLKR = payload.amountLKR,
+                exchangeRate = payload.exchangeRate,
+                dateMillis = payload.date?.toDate()?.time,
+                label = payload.label,
+                type = payload.type,
+                projectRef = payload.projectRef,
+            )
+            incomeDao.insertIncome(room)
             emit(Result.Success(Unit))
         } catch (t: Throwable) {
             emit(Result.Error(t))
@@ -96,8 +114,25 @@ class FinanceRepository @Inject constructor(
                     // best-effort: delete and insert
                     GlobalScope.launch {
                         try {
-                            incomeDao.deleteBetween(uid, startMillis, endMillis)
-                            incomeDao.upsertAll(list)
+                            // map to RoomIncome list
+                            val rooms = list.map { payload ->
+                                RoomIncome(
+                                    id = payload.id,
+                                    userId = uid,
+                                    source = payload.source,
+                                    amountOriginal = payload.amountOriginal,
+                                    currencyOriginal = payload.currencyOriginal,
+                                    amountLKR = payload.amountLKR,
+                                    exchangeRate = payload.exchangeRate,
+                                    dateMillis = payload.date?.toDate()?.time,
+                                    label = payload.label,
+                                    type = payload.type,
+                                    projectRef = payload.projectRef,
+                                )
+                            }
+                            // delete month range then insert each
+                            incomeDao.deleteIncomeBetween(uid, startMillis, endMillis)
+                            rooms.forEach { incomeDao.insertIncome(it) }
                         } catch (_: Throwable) {}
                     }
                 } catch (_: Throwable) {}
@@ -115,7 +150,21 @@ class FinanceRepository @Inject constructor(
             val docRef = if (entry.id.isBlank()) collection.document() else collection.document(entry.id)
             val payload = entry.copy(id = docRef.id, userId = uid)
             docRef.set(payload).await()
-            expenseDao.upsert(payload)
+            val room = RoomExpense(
+                id = payload.id,
+                userId = uid,
+                amount = payload.amount,
+                category = payload.category,
+                subCategory = payload.subCategory,
+                paymentMethod = payload.paymentMethod,
+                dateMillis = payload.date?.toDate()?.time,
+                note = payload.note,
+                isRecurring = payload.isRecurring,
+                tags = payload.tags,
+                originalCurrency = payload.originalCurrency,
+                originalAmount = payload.originalAmount,
+            )
+            expenseDao.insertExpense(room)
             emit(Result.Success(Unit))
         } catch (t: Throwable) {
             emit(Result.Error(t))
@@ -164,8 +213,24 @@ class FinanceRepository @Inject constructor(
                 val endMillis = end.toDate().time
                 GlobalScope.launch {
                     try {
-                        expenseDao.deleteBetween(uid, startMillis, endMillis)
-                        expenseDao.upsertAll(list)
+                        val rooms = list.map { payload ->
+                            RoomExpense(
+                                id = payload.id,
+                                userId = uid,
+                                amount = payload.amount,
+                                category = payload.category,
+                                subCategory = payload.subCategory,
+                                paymentMethod = payload.paymentMethod,
+                                dateMillis = payload.date?.toDate()?.time,
+                                note = payload.note,
+                                isRecurring = payload.isRecurring,
+                                tags = payload.tags,
+                                originalCurrency = payload.originalCurrency,
+                                originalAmount = payload.originalAmount,
+                            )
+                        }
+                        expenseDao.deleteExpenseBetween(uid, startMillis, endMillis)
+                        expenseDao.insertAll(rooms)
                     } catch (_: Throwable) {}
                 }
             } catch (_: Throwable) {}
@@ -195,7 +260,19 @@ class FinanceRepository @Inject constructor(
             }
             val goal = snapshot.toObject(Goal::class.java)?.copy(id = snapshot.id, userId = uid)
             // sync locally
-            goal?.let { g -> GlobalScope.launch { try { goalDao.upsert(g) } catch (_: Throwable) {} } }
+            goal?.let { g -> GlobalScope.launch { try {
+                val room = RoomGoal(
+                    id = g.id,
+                    userId = uid,
+                    title = g.title,
+                    targetAmount = g.targetAmount,
+                    currentAmount = g.currentAmount,
+                    deadlineMillis = g.deadline?.toDate()?.time,
+                    monthlyRequired = g.monthlyRequired,
+                    isActive = g.isActive,
+                )
+                goalDao.insertGoal(room)
+            } catch (_: Throwable) {} } }
             trySend(Result.Success(goal))
         }
 
@@ -223,7 +300,17 @@ class FinanceRepository @Inject constructor(
             val docRef = if (project.id.isBlank()) collection.document() else collection.document(project.id)
             val payload = project.copy(id = docRef.id, userId = uid)
             docRef.set(payload).await()
-            projectDao.upsert(payload)
+            val room = RoomProject(
+                id = payload.id,
+                userId = uid,
+                clientName = payload.clientName,
+                projectTitle = payload.projectTitle,
+                agreedAmount = payload.agreedAmount,
+                paidAmount = payload.paidAmount,
+                status = payload.status,
+                entries = payload.entries,
+            )
+            projectDao.insertProject(room)
             emit(Result.Success(Unit))
         } catch (t: Throwable) {
             emit(Result.Error(t))
@@ -238,7 +325,17 @@ class FinanceRepository @Inject constructor(
             val docRef = collection.document(project.id)
             val payload = project.copy(userId = uid)
             docRef.set(payload).await()
-            projectDao.upsert(payload)
+            val room = RoomProject(
+                id = payload.id,
+                userId = uid,
+                clientName = payload.clientName,
+                projectTitle = payload.projectTitle,
+                agreedAmount = payload.agreedAmount,
+                paidAmount = payload.paidAmount,
+                status = payload.status,
+                entries = payload.entries,
+            )
+            projectDao.insertProject(room)
             emit(Result.Success(Unit))
         } catch (t: Throwable) {
             emit(Result.Error(t))
