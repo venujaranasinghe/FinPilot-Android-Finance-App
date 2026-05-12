@@ -645,38 +645,3 @@ private fun ProjectDropdown(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun AddIncomeScreenPreview() {
-    FinPilotTheme {
-        AddIncomeContent(
-            state = IncomeViewModel.IncomeUiState(
-                source = "Freelance",
-                amountOriginal = "250",
-                currencyOriginal = "USD",
-                exchangeRate = "310",
-                amountLkrPreview = 77500.0,
-                exchangeRateLastUpdatedMillis = System.currentTimeMillis(),
-                label = "Website redesign",
-                incomeType = "One-off",
-            ),
-            snackbarHostState = androidx.compose.material3.SnackbarHostState(),
-            onNavigateToDashboard = {},
-            onNavigateToIncome = {},
-            onNavigateToExpense = {},
-            onNavigateToGoals = {},
-            onNavigateToProfile = {},
-            onSourceChange = {},
-            onAmountChange = {},
-            onCurrencyChange = {},
-            onDateChange = {},
-            onLabelChange = {},
-            onIncomeTypeChange = {},
-            onProjectRefChange = {},
-            onRequestSubmit = {},
-            onConfirmExchangeRate = {},
-            onDismissRateConfirmation = {},
-            onRefreshRates = {},
-        )
-    }
-}

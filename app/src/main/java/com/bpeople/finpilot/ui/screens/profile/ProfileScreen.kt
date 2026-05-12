@@ -517,21 +517,3 @@ fun EditNameDialog(
     )
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun ProfileScreenPreview() {
-    FinPilotTheme {
-        ProfileScreen(
-            displayName = "Alex Perera",
-            email = "alex.perera@email.com",
-            onNavigateToDashboard = {},
-            onNavigateToIncome = {},
-            onNavigateToExpense = {},
-            onNavigateToGoals = {},
-            onNavigateToProfile = {},
-            onNavigateToSettings = {},
-            onLogout = {},
-            onUpdateDisplayName = {}
-        )
-    }
-}

@@ -555,27 +555,3 @@ private fun createCsvExport(context: android.content.Context, csvContent: String
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun SettingsScreenPreview() {
-    FinPilotTheme {
-        SettingsScreen(
-            state = SettingsViewModel.SettingsUiState(
-                notificationsEnabled = true,
-                cloudSyncEnabled = true,
-                biometricsEnabled = true,
-                themeMode = ThemeMode.SYSTEM
-            ),
-            events = emptyFlow(),
-            onNavigateBack = {},
-            onNotificationsChange = {},
-            onThemeModeChange = {},
-            onCloudSyncChange = {},
-            onBiometricsChange = {},
-            onChangePassword = {},
-            onExportData = {},
-            onDeleteAccount = {},
-            onAccountDeleted = {}
-        )
-    }
-}
