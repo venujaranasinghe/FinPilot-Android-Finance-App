@@ -3,7 +3,6 @@ package com.bpeople.finpilot.ui.screens.expense
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -14,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,7 +74,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -190,21 +189,15 @@ fun AddExpenseContent(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.EXPENSE,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = { /* Currently on Expense */ },
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile
-            )
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+        ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
             // Header Area
             val primaryColor = MaterialTheme.colorScheme.primary
@@ -371,7 +364,7 @@ fun AddExpenseContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp)
-                        .padding(top = 32.dp, bottom = 16.dp)
+                        .padding(top = 32.dp, bottom = 100.dp)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
@@ -558,6 +551,16 @@ fun AddExpenseContent(
                 }
             }
         }
+        FinPilotBottomNavBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            currentTab = NavTab.EXPENSE,
+            onNavigateToDashboard = onNavigateToDashboard,
+            onNavigateToIncome = onNavigateToIncome,
+            onNavigateToExpense = { /* Currently on Expense */ },
+            onNavigateToGoals = onNavigateToGoals,
+            onNavigateToProfile = onNavigateToProfile
+        )
+        }
     }
 }
 
@@ -635,32 +638,26 @@ private fun SelectionPill(
         animationSpec = tween(durationMillis = 300),
         label = "pill_content_color"
     )
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1.0f,
-        animationSpec = tween(durationMillis = 300),
-        label = "pill_scale"
-    )
 
     Row(
         modifier = Modifier
-            .scale(scale)
             .clip(RoundedCornerShape(24.dp))
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = text,
             tint = contentColor,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(16.dp)
         )
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = contentColor
         )
     }

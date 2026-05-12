@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ enum class NavTab {
 
 @Composable
 fun FinPilotBottomNavBar(
+    modifier: Modifier = Modifier,
     currentTab: NavTab,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit,
@@ -54,14 +56,15 @@ fun FinPilotBottomNavBar(
     onNavigateToProfile: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 24.dp),
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         shape = RoundedCornerShape(32.dp),
-        color = Color.Transparent,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shadowElevation = 16.dp,
+        tonalElevation = 4.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier

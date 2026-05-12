@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -189,17 +190,9 @@ fun GoalTrackerScreenContent(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.GOALS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = onNavigateToExpense,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile
-            )
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         if (activeGoal != null) {
             Column(
                 modifier = Modifier
@@ -403,7 +396,7 @@ fun GoalTrackerScreenContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 24.dp)
-                            .padding(top = 32.dp, bottom = 16.dp)
+                            .padding(top = 32.dp, bottom = 100.dp)
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
@@ -560,6 +553,16 @@ fun GoalTrackerScreenContent(
                     }
                 }
             }
+        }
+        FinPilotBottomNavBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            currentTab = NavTab.GOALS,
+            onNavigateToDashboard = onNavigateToDashboard,
+            onNavigateToIncome = onNavigateToIncome,
+            onNavigateToExpense = onNavigateToExpense,
+            onNavigateToGoals = onNavigateToGoals,
+            onNavigateToProfile = onNavigateToProfile
+        )
         }
     }
 }

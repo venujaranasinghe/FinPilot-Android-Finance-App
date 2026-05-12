@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -67,21 +68,14 @@ fun ProfileScreen(
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.PROFILE,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = onNavigateToExpense,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile
-            )
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(bottom = 96.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             ProfileHeader(
@@ -103,6 +97,16 @@ fun ProfileScreen(
 
                 SignOutButton(onClick = onLogout)
             }
+        }
+        FinPilotBottomNavBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            currentTab = NavTab.PROFILE,
+            onNavigateToDashboard = onNavigateToDashboard,
+            onNavigateToIncome = onNavigateToIncome,
+            onNavigateToExpense = onNavigateToExpense,
+            onNavigateToGoals = onNavigateToGoals,
+            onNavigateToProfile = onNavigateToProfile
+        )
         }
     }
 }

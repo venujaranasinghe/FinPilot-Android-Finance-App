@@ -5,8 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -55,6 +58,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,7 +88,6 @@ import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.theme.ExpenseRed
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.IncomeGreen
-import com.bpeople.finpilot.ui.theme.SavingsBlue
 import com.bpeople.finpilot.ui.theme.WarningAmber
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -93,11 +97,11 @@ import kotlin.math.roundToInt
 // ── Colour palettes ───────────────────────────────────────────────────────────
 
 private val IncomePalette = listOf(
-    Color(0xFF3B82F6), // Blue   – Salary
-    Color(0xFF10B981), // Green  – Freelance
-    Color(0xFFF59E0B), // Amber  – AdSense
-    Color(0xFF8B5CF6), // Purple – Crypto
-    Color(0xFFF97316), // Orange – fallback
+    Color(0xFF6366F1), // Indigo  – Salary
+    Color(0xFF2DD4BF), // Teal    – Freelance
+    Color(0xFFF59E0B), // Amber   – AdSense
+    Color(0xFF8B5CF6), // Purple  – Crypto
+    Color(0xFFF97316), // Orange  – fallback
 )
 
 private val ExpensePalette = listOf(
@@ -110,7 +114,7 @@ private val ExpensePalette = listOf(
     Color(0xFF10B981),
 )
 
-private val GoalGradient = listOf(Color(0xFF10B981), Color(0xFF34D399), Color(0xFF6EE7B7))
+private val GoalGradient = listOf(Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFFDBA74))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -237,6 +241,7 @@ private fun GradientProgressBar(
 @Composable
 fun DashboardScreen(
     state: DashboardViewModel.DashboardUiState,
+    userName: String = "",
     insightMessage: String? = null,
     onAddExpense: () -> Unit = {},
     onNavigateToIncome: () -> Unit = {},
@@ -246,6 +251,7 @@ fun DashboardScreen(
 ) {
     var localInsight by remember(insightMessage) { mutableStateOf(insightMessage) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var showQuickAddDialog by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
 
     LaunchedEffect(isRefreshing) {
@@ -259,30 +265,24 @@ fun DashboardScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onAddExpense,
+                onClick = { showQuickAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape,
-                modifier = Modifier.size(60.dp),
+                modifier = Modifier
+                    .size(60.dp)
+                    .padding(bottom = 80.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Quick Add Expense",
+                    contentDescription = "Quick Add",
                     modifier = Modifier.size(26.dp),
                 )
             }
         },
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.DASHBOARD,
-                onNavigateToDashboard = {},
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = onAddExpense,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile,
-            )
-        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
         PullToRefreshBox(
             modifier = Modifier
                 .fillMaxSize()
@@ -294,13 +294,14 @@ fun DashboardScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
             ) {
                 item {
                     DashboardHeader(
                         totalIncome = state.totalIncome,
                         totalExpenses = state.totalExpenses,
                         netPosition = state.netPosition,
+                        userName = userName,
                         onLogout = onLogout,
                     )
                 }
@@ -359,6 +360,138 @@ fun DashboardScreen(
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
+        FinPilotBottomNavBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            currentTab = NavTab.DASHBOARD,
+            onNavigateToDashboard = {},
+            onNavigateToIncome = onNavigateToIncome,
+            onNavigateToExpense = onAddExpense,
+            onNavigateToGoals = onNavigateToGoals,
+            onNavigateToProfile = onNavigateToProfile,
+        )
+
+        if (showQuickAddDialog) {
+            QuickAddDialog(
+                onDismiss = { showQuickAddDialog = false },
+                onAddExpenseIncome = {
+                    showQuickAddDialog = false
+                    onAddExpense()
+                },
+                onAddGoal = {
+                    showQuickAddDialog = false
+                    onNavigateToGoals()
+                },
+            )
+        }
+        }
+    }
+}
+
+// ── Quick Add Dialog ──────────────────────────────────────────────────────────
+
+@Composable
+private fun QuickAddDialog(
+    onDismiss: () -> Unit,
+    onAddExpenseIncome: () -> Unit,
+    onAddGoal: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(vertical = 8.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Title
+                Text(
+                    text = "What would you like to add?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                // Expense / Income option
+                QuickAddOption(
+                    icon = Icons.Default.AttachMoney,
+                    label = "Expense / Income",
+                    description = "Record a transaction",
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    onClick = onAddExpenseIncome,
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Goal option
+                QuickAddOption(
+                    icon = Icons.Default.Flag,
+                    label = "Goal",
+                    description = "Set a savings target",
+                    iconTint = WarningAmber,
+                    onClick = onAddGoal,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickAddOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    description: String,
+    iconTint: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(iconTint.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -369,6 +502,7 @@ private fun DashboardHeader(
     totalIncome: Double,
     totalExpenses: Double,
     netPosition: Double,
+    userName: String,
     onLogout: () -> Unit,
 ) {
     val hourOfDay = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -434,7 +568,7 @@ private fun DashboardHeader(
                         letterSpacing = 0.3.sp,
                     )
                     Text(
-                        text = "Kavindu 👋",
+                        text = "${userName.ifBlank { "there" }} 👋",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -477,14 +611,17 @@ private fun DashboardHeader(
                         .fillMaxWidth()
                         .height(IntrinsicSize.Min),
                 ) {
-                    // Left accent bar — green/blue gradient
+                    // Left accent bar
                     Box(
                         modifier = Modifier
                             .width(4.dp)
                             .fillMaxHeight()
                             .background(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(IncomeGreen, SavingsBlue),
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                    ),
                                 ),
                                 shape = RoundedCornerShape(topStart = 22.dp, bottomStart = 22.dp),
                             ),
@@ -849,7 +986,7 @@ private fun SpendingChartContent(expensesByCategory: Map<String, Double>) {
     DonutPieChart(
         modifier = Modifier
             .fillMaxWidth()
-            .height(230.dp),
+            .height(280.dp),
         pieChartData = PieChartData(slices = slices, plotType = PlotType.Donut),
         pieChartConfig = pieChartConfig,
     )
@@ -1227,7 +1364,7 @@ private fun BudgetRatioContent(
                     .fillMaxHeight()
                     .background(
                         brush = Brush.horizontalGradient(
-                            listOf(SavingsBlue.copy(alpha = 0.75f), SavingsBlue),
+                            listOf(Color(0xFF818CF8).copy(alpha = 0.75f), Color(0xFF818CF8)),
                         ),
                     ),
             )
@@ -1237,7 +1374,7 @@ private fun BudgetRatioContent(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             LegendDot(color = ExpenseRed, label = "Fixed  ${fixedPercentage.roundToInt()}%")
-            LegendDot(color = SavingsBlue, label = "Flexible  ${discretionaryPercentage.roundToInt()}%")
+            LegendDot(color = Color(0xFF818CF8), label = "Flexible  ${discretionaryPercentage.roundToInt()}%")
         }
     }
 
@@ -1253,7 +1390,7 @@ private fun BudgetRatioContent(
             label = "Discretionary",
             percentage = discretionaryPercentage,
             amount = totalExpenses * (discretionaryPercentage / 100),
-            color = SavingsBlue,
+            color = Color(0xFF818CF8),
             modifier = Modifier.weight(1f),
         )
     }
