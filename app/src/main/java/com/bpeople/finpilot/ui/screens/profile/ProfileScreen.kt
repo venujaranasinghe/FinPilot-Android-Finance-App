@@ -39,6 +39,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -111,18 +113,29 @@ private fun ProfileHeader(
     email: String?,
     onNavigateToSettings: () -> Unit,
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val bgColor = MaterialTheme.colorScheme.background
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                        MaterialTheme.colorScheme.background
-                    )
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(primaryColor, primaryColor.copy(alpha = 0.72f), bgColor),
+                        endY = size.height,
+                    ),
                 )
-            )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.07f),
+                    radius = 190.dp.toPx(),
+                    center = Offset(size.width * 0.88f, size.height * 0.08f),
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.04f),
+                    radius = 130.dp.toPx(),
+                    center = Offset(size.width * 0.04f, size.height * 0.50f),
+                )
+            }
             .padding(top = 40.dp, bottom = 36.dp)
     ) {
         // Settings icon — top-right, circular (goals screen style)

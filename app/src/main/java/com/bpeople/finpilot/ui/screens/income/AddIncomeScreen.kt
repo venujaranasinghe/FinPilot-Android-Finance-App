@@ -2,6 +2,8 @@ package com.bpeople.finpilot.ui.screens.income
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -189,44 +193,49 @@ fun AddIncomeContent(
                 .padding(innerPadding),
         ) {
             // ── Header with amount entry ──────────────────────────────────
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val bgColor = MaterialTheme.colorScheme.background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondaryContainer,
-                                MaterialTheme.colorScheme.background,
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(primaryColor, primaryColor.copy(alpha = 0.72f), bgColor),
+                                endY = size.height,
                             ),
-                        ),
-                    )
-                    .padding(top = 16.dp, bottom = 40.dp),
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.07f),
+                            radius = 190.dp.toPx(),
+                            center = Offset(size.width * 0.88f, size.height * 0.08f),
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.04f),
+                            radius = 130.dp.toPx(),
+                            center = Offset(size.width * 0.04f, size.height * 0.50f),
+                        )
+                    }
+                    .padding(top = 48.dp, bottom = 48.dp),
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = "Add Income",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
                         text = "Amount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     )
                     OutlinedTextField(
                         value = state.amountOriginal,
                         onValueChange = onAmountChange,
-                        modifier = Modifier.fillMaxWidth(0.85f),
+                        modifier = Modifier.fillMaxWidth(0.9f),
                         singleLine = true,
                         textStyle = TextStyle(
-                            fontSize = 44.sp,
+                            fontSize = 48.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onBackground,
@@ -235,7 +244,7 @@ fun AddIncomeContent(
                             Text(
                                 "0.00",
                                 style = TextStyle(
-                                    fontSize = 44.sp,
+                                    fontSize = 48.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
@@ -257,12 +266,12 @@ fun AddIncomeContent(
                                         text = state.currencyOriginal,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary,
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
                                     Icon(
                                         imageVector = Icons.Rounded.ArrowDropDown,
                                         contentDescription = "Select Currency",
-                                        tint = MaterialTheme.colorScheme.secondary,
+                                        tint = MaterialTheme.colorScheme.primary,
                                     )
                                 }
                                 DropdownMenu(
@@ -300,7 +309,7 @@ fun AddIncomeContent(
                             Text(
                                 text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.secondary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium,
                             )
                             val updatedText = state.exchangeRateLastUpdatedMillis
@@ -350,23 +359,30 @@ fun AddIncomeContent(
                         .padding(horizontal = 24.dp)
                         .padding(top = 32.dp, bottom = 16.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
 
                     // ── Source selector ───────────────────────────────────
-                    SectionLabel(text = "Income Source")
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        IncomeViewModel.SOURCES.forEach { src ->
-                            SourceChip(
-                                label = src,
-                                selected = state.source == src,
-                                onClick = { onSourceChange(src) },
-                            )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Income Source",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            IncomeViewModel.SOURCES.forEach { src ->
+                                SourceChip(
+                                    label = src,
+                                    selected = state.source == src,
+                                    onClick = { onSourceChange(src) },
+                                )
+                            }
                         }
                     }
 
@@ -413,29 +429,51 @@ fun AddIncomeContent(
                     }
 
                     // ── Income type selector ──────────────────────────────
-                    SectionLabel(text = "Income Type")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        IncomeViewModel.INCOME_TYPES.forEach { type ->
-                            SourceChip(
-                                label = type,
-                                selected = state.incomeType == type,
-                                onClick = { onIncomeTypeChange(type) },
-                                modifier = Modifier.weight(1f),
-                            )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Income Type",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            IncomeViewModel.INCOME_TYPES.forEach { type ->
+                                SourceChip(
+                                    label = type,
+                                    selected = state.incomeType == type,
+                                    onClick = { onIncomeTypeChange(type) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
 
                     // ── Label / description ───────────────────────────────
-                    IncomeFormField(
-                        label = "Label / Description (optional)",
-                        value = state.label,
-                        onValueChange = onLabelChange,
-                        icon = Icons.Rounded.Label,
-                        keyboardType = KeyboardType.Text,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Details",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        OutlinedTextField(
+                            value = state.label,
+                            onValueChange = onLabelChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            singleLine = true,
+                            label = { Text("Label / Description (optional)") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    }
 
                     // ── Project reference — only for Freelance ────────────
                     AnimatedVisibility(
@@ -443,8 +481,13 @@ fun AddIncomeContent(
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SectionLabel(text = "Freelance Project (optional)")
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Freelance Project (optional)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
                             ProjectDropdown(
                                 projects = state.projects,
                                 selectedId = state.projectRef,
@@ -458,27 +501,27 @@ fun AddIncomeContent(
                     // ── Submit ────────────────────────────────────────────
                     Button(
                         onClick = onRequestSubmit,
+                        enabled = !state.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                         ),
-                        enabled = !state.isLoading,
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onSecondary,
                                 strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp),
                             )
                         } else {
                             Text(
                                 text = "Save Income",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondary,
                             )
                         }
                     }
@@ -509,24 +552,32 @@ private fun SourceChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
-    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    val textColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
-    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 300),
+        label = "chip_bg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 300),
+        label = "chip_content",
+    )
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
+            .clip(RoundedCornerShape(24.dp))
+            .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = textColor,
+            color = contentColor,
         )
     }
 }

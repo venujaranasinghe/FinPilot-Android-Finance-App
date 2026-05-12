@@ -58,9 +58,9 @@ fun FinPilotBottomNavBar(
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 24.dp),
         shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shadowElevation = 12.dp,
-        tonalElevation = 8.dp,
+        color = Color.Transparent,
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
     ) {
         Row(

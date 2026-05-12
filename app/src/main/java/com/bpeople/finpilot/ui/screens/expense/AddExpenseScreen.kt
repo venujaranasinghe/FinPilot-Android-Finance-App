@@ -72,6 +72,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -205,17 +207,29 @@ fun AddExpenseContent(
                 .padding(innerPadding)
         ) {
             // Header Area
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val bgColor = MaterialTheme.colorScheme.background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.background
-                            )
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(primaryColor, primaryColor.copy(alpha = 0.72f), bgColor),
+                                endY = size.height,
+                            ),
                         )
-                    )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.07f),
+                            radius = 190.dp.toPx(),
+                            center = Offset(size.width * 0.88f, size.height * 0.08f),
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.04f),
+                            radius = 130.dp.toPx(),
+                            center = Offset(size.width * 0.04f, size.height * 0.50f),
+                        )
+                    }
                     .padding(top = 48.dp, bottom = 48.dp)
             ) {
                 Column(
