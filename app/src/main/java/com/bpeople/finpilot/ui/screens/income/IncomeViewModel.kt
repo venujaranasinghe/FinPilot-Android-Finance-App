@@ -9,6 +9,7 @@ import com.bpeople.finpilot.data.repository.FreelanceProjectRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -27,10 +28,21 @@ class IncomeViewModel @Inject constructor(
     private val exchangeRatesRepository: ExchangeRatesRepository,
 ) : ViewModel() {
 
+    enum class HistoryDateRange(val label: String) {
+        ALL_TIME("All time"),
+        THIS_MONTH("This month"),
+        LAST_30_DAYS("Last 30 days"),
+        LAST_7_DAYS("Last 7 days"),
+    }
+
     data class IncomeUiState(
         val entries: List<IncomeEntry> = emptyList(),
+        val filteredEntries: List<IncomeEntry> = emptyList(),
         val projects: List<FreelanceProject> = emptyList(),
         val source: String = SOURCES.first(),
+        val historyDateRange: HistoryDateRange = HistoryDateRange.ALL_TIME,
+        val historySourceFilter: String? = null,
+        val historyIncomeTypeFilter: String? = null,
         val amountOriginal: String = "",
         val currencyOriginal: String = "LKR",
         val exchangeRate: String = "1.0",
@@ -61,7 +73,10 @@ class IncomeViewModel @Inject constructor(
             .let { flow ->
                 viewModelScope.launch {
                     flow.collect { entries ->
-                        _incomeState.update { it.copy(entries = entries) }
+                        _incomeState.update { current ->
+                            val updated = current.copy(entries = entries)
+                            updated.copy(filteredEntries = filterHistoryEntries(updated, entries))
+                        }
                     }
                 }
             }
@@ -151,6 +166,38 @@ class IncomeViewModel @Inject constructor(
 
     fun onProjectRefChange(value: String) {
         _incomeState.update { it.copy(projectRef = value, errorMessage = null) }
+    }
+
+    fun onHistoryDateRangeChange(value: HistoryDateRange) {
+        _incomeState.update { current ->
+            val updated = current.copy(historyDateRange = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun onHistorySourceFilterChange(value: String?) {
+        _incomeState.update { current ->
+            val updated = current.copy(historySourceFilter = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun onHistoryIncomeTypeFilterChange(value: String?) {
+        _incomeState.update { current ->
+            val updated = current.copy(historyIncomeTypeFilter = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun clearHistoryFilters() {
+        _incomeState.update { current ->
+            val updated = current.copy(
+                historyDateRange = HistoryDateRange.ALL_TIME,
+                historySourceFilter = null,
+                historyIncomeTypeFilter = null,
+            )
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
     }
 
     fun consumeSubmitted() {
@@ -259,6 +306,37 @@ class IncomeViewModel @Inject constructor(
         return amountOriginal * rate
     }
 
+    private fun filterHistoryEntries(
+        state: IncomeUiState,
+        entries: List<IncomeEntry>,
+    ): List<IncomeEntry> {
+        val now = System.currentTimeMillis()
+        val startMillis = when (state.historyDateRange) {
+            HistoryDateRange.ALL_TIME -> null
+            HistoryDateRange.THIS_MONTH -> Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            HistoryDateRange.LAST_30_DAYS -> now - 30L * 24 * 60 * 60 * 1000
+            HistoryDateRange.LAST_7_DAYS -> now - 7L * 24 * 60 * 60 * 1000
+        }
+
+        return entries.filter { entry ->
+            val entryMillis = entry.date?.toDate()?.time ?: return@filter false
+            val displayType = DISPLAY_TYPE_BY_KEY[entry.type] ?: entry.type
+            val matchesDate = startMillis == null || entryMillis >= startMillis
+            val matchesSource = state.historySourceFilter.isNullOrBlank() ||
+                entry.source.equals(state.historySourceFilter, ignoreCase = true)
+            val matchesIncomeType = state.historyIncomeTypeFilter.isNullOrBlank() ||
+                displayType.equals(state.historyIncomeTypeFilter, ignoreCase = true)
+
+            matchesDate && matchesSource && matchesIncomeType
+        }
+    }
+
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)
 
     companion object {
@@ -270,5 +348,6 @@ class IncomeViewModel @Inject constructor(
             "Recurring" to "RECURRING",
             "Variable" to "VARIABLE",
         )
+        val DISPLAY_TYPE_BY_KEY = INCOME_TYPE_KEYS.entries.associate { (display, key) -> key to display }
     }
 }

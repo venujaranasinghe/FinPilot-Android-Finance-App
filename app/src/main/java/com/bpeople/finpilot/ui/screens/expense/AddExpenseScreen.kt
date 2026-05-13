@@ -131,6 +131,10 @@ fun AddExpenseScreen(
         onSubCategoryChange = viewModel::onSubCategoryChange,
         onNoteChange = viewModel::onNoteChange,
         onRecurringChange = viewModel::onRecurringChange,
+        onHistoryDateRangeChange = viewModel::onHistoryDateRangeChange,
+        onHistoryCategoryFilterChange = viewModel::onHistoryCategoryFilterChange,
+        onHistoryPaymentMethodFilterChange = viewModel::onHistoryPaymentMethodFilterChange,
+        onClearHistoryFilters = viewModel::clearHistoryFilters,
         onRequestSubmit = viewModel::requestSubmit,
         onConfirmExchangeRate = viewModel::confirmExchangeRate,
         onDismissRateConfirmation = viewModel::dismissRateConfirmation,
@@ -155,6 +159,10 @@ fun AddExpenseContent(
     onSubCategoryChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onRecurringChange: (Boolean) -> Unit,
+    onHistoryDateRangeChange: (ExpenseViewModel.HistoryDateRange) -> Unit,
+    onHistoryCategoryFilterChange: (String?) -> Unit,
+    onHistoryPaymentMethodFilterChange: (String?) -> Unit,
+    onClearHistoryFilters: () -> Unit,
     onRequestSubmit: () -> Unit,
     onConfirmExchangeRate: () -> Unit,
     onDismissRateConfirmation: () -> Unit,
@@ -553,10 +561,13 @@ fun AddExpenseContent(
                     if (state.entries.isNotEmpty()) {
                         val pageSize = 10
                         var historyPage by remember { mutableStateOf(0) }
-                        val sortedEntries = state.entries.sortedByDescending { it.date?.seconds ?: 0L }
-                        val totalPages = (sortedEntries.size + pageSize - 1) / pageSize
-                        val currentPage = historyPage.coerceIn(0, totalPages - 1)
-                        val pagedEntries = sortedEntries.drop(currentPage * pageSize).take(pageSize)
+                        val sortedEntries = state.filteredEntries.sortedByDescending { it.date?.seconds ?: 0L }
+                        val totalPages = if (sortedEntries.isEmpty()) 0 else (sortedEntries.size + pageSize - 1) / pageSize
+                        val currentPage = if (totalPages == 0) 0 else historyPage.coerceIn(0, totalPages - 1)
+                        val pagedEntries = if (sortedEntries.isEmpty()) emptyList() else sortedEntries.drop(currentPage * pageSize).take(pageSize)
+                        val hasActiveFilters = state.historyDateRange != ExpenseViewModel.HistoryDateRange.ALL_TIME ||
+                            !state.historyCategoryFilter.isNullOrBlank() ||
+                            !state.historyPaymentMethodFilter.isNullOrBlank()
 
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
@@ -575,12 +586,57 @@ fun AddExpenseContent(
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = "${sortedEntries.size} records",
+                                text = if (hasActiveFilters) "${sortedEntries.size} of ${state.entries.size} records" else "${sortedEntries.size} records",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                             )
                         }
 
+                        ExpenseHistoryFilters(
+                            state = state,
+                            onHistoryDateRangeChange = onHistoryDateRangeChange,
+                            onHistoryCategoryFilterChange = onHistoryCategoryFilterChange,
+                            onHistoryPaymentMethodFilterChange = onHistoryPaymentMethodFilterChange,
+                            onClearHistoryFilters = onClearHistoryFilters,
+                        )
+
+                        if (pagedEntries.isEmpty()) {
+                            Text(
+                                text = "No expenses match the current filters.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                pagedEntries.forEach { entry ->
+                                    ExpenseHistoryItem(entry = entry)
+                                }
+                            }
+                        }
+
+                        if (totalPages > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = { historyPage = (currentPage - 1).coerceAtLeast(0) },
+                                    enabled = currentPage > 0,
+                                ) {
+                                    Text("← Prev")
+                                }
+                                Text(
+                                    text = "Page ${currentPage + 1} of $totalPages",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                                TextButton(
+                                    onClick = { historyPage = (currentPage + 1).coerceAtMost(totalPages - 1) },
+                                    enabled = currentPage < totalPages - 1,
+                                ) {
+                                    Text("Next →")
+                                }
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             pagedEntries.forEach { entry ->
                                 ExpenseHistoryItem(entry = entry)
@@ -687,6 +743,111 @@ private fun PaymentMethodSelector(
 }
 
 @Composable
+private fun ExpenseHistoryFilters(
+    state: ExpenseViewModel.ExpenseUiState,
+    onHistoryDateRangeChange: (ExpenseViewModel.HistoryDateRange) -> Unit,
+    onHistoryCategoryFilterChange: (String?) -> Unit,
+    onHistoryPaymentMethodFilterChange: (String?) -> Unit,
+    onClearHistoryFilters: () -> Unit,
+) {
+    val hasActiveFilters = state.historyDateRange != ExpenseViewModel.HistoryDateRange.ALL_TIME ||
+        !state.historyCategoryFilter.isNullOrBlank() ||
+        !state.historyPaymentMethodFilter.isNullOrBlank()
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Audit filters",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (hasActiveFilters) {
+                TextButton(onClick = onClearHistoryFilters) {
+                    Text("Clear")
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ExpenseViewModel.HistoryDateRange.entries.forEach { range ->
+                SelectionPill(
+                    text = range.label,
+                    icon = Icons.Rounded.CalendarToday,
+                    isSelected = state.historyDateRange == range,
+                    onClick = { onHistoryDateRangeChange(range) },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SelectionPill(
+                text = "All categories",
+                icon = Icons.Rounded.Category,
+                isSelected = state.historyCategoryFilter.isNullOrBlank(),
+                onClick = { onHistoryCategoryFilterChange(null) },
+            )
+            ExpenseViewModel.CATEGORIES.forEach { category ->
+                SelectionPill(
+                    text = category,
+                    icon = categoryIcon(category),
+                    isSelected = state.historyCategoryFilter == category,
+                    onClick = { onHistoryCategoryFilterChange(category) },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SelectionPill(
+                text = "All methods",
+                icon = Icons.Rounded.CreditCard,
+                isSelected = state.historyPaymentMethodFilter.isNullOrBlank(),
+                onClick = { onHistoryPaymentMethodFilterChange(null) },
+            )
+            ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
+                SelectionPill(
+                    text = method,
+                    icon = paymentMethodIcon(method),
+                    isSelected = state.historyPaymentMethodFilter == method,
+                    onClick = { onHistoryPaymentMethodFilterChange(method) },
+                )
+            }
+        }
+    }
+}
+
+private fun categoryIcon(category: String): ImageVector = when (category) {
+    "Food" -> Icons.Rounded.Restaurant
+    "Transport" -> Icons.Rounded.DirectionsCar
+    "Housing" -> Icons.Rounded.Home
+    "Subscriptions" -> Icons.Rounded.Subscriptions
+    "Entertainment" -> Icons.Rounded.Movie
+    "Health" -> Icons.Rounded.Favorite
+    else -> Icons.Rounded.Category
+}
+
+private fun paymentMethodIcon(method: String): ImageVector = when (method) {
+    "Card" -> Icons.Rounded.CreditCard
+    "Cash" -> Icons.Rounded.Money
+    "Bank Transfer" -> Icons.Rounded.AccountBalance
+    "Auto-Debit" -> Icons.Rounded.Autorenew
+    else -> Icons.Rounded.CreditCard
+}
+
+@Composable
 private fun SelectionPill(
     text: String,
     icon: ImageVector,
@@ -769,6 +930,12 @@ private fun ExpenseHistoryItem(entry: ExpenseEntry) {
                 if (!entry.note.isNullOrBlank()) {
                     Text(
                         text = entry.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                } else {
+                    Text(
+                        text = entry.paymentMethod,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
