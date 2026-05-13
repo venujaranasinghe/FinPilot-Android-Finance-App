@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -90,9 +91,11 @@ import com.bpeople.finpilot.ui.theme.ExpenseRed
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.IncomeGreen
 import com.bpeople.finpilot.ui.theme.WarningAmber
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.math.absoluteValue
 
@@ -328,6 +331,34 @@ fun DashboardScreen(
                         )
                     }
                 } else {
+                    item {
+                        SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            MonthOverMonthContent(
+                                currentMonthLabel = state.currentMonthLabel,
+                                previousMonthLabel = state.previousMonthLabel,
+                                comparisons = state.monthOverMonthComparisons,
+                            )
+                        }
+                    }
+                    item {
+                        SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            TopCategoryInsightsContent(
+                                currentMonthLabel = state.currentMonthLabel,
+                                previousMonthLabel = state.previousMonthLabel,
+                                insights = state.topCategoryInsights,
+                            )
+                        }
+                    }
+                    item {
+                        SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            DidYouKnowContent(message = state.didYouKnowInsight)
+                        }
+                    }
+                    item {
+                        SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            RecentTransactionsContent(transactions = state.recentTransactions)
+                        }
+                    }
                     item {
                         SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             IncomeBreakdownContent(incomeBreakdown = state.incomeBreakdown)
@@ -811,6 +842,452 @@ private fun InsightBanner(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+// ── Monthly Insights ──────────────────────────────────────────────────────────
+
+@Composable
+private fun MonthOverMonthContent(
+    currentMonthLabel: String,
+    previousMonthLabel: String,
+    comparisons: List<DashboardViewModel.MonthComparison>,
+) {
+    SectionHeader(
+        title = "Month-over-Month",
+        subtitle = "$currentMonthLabel vs $previousMonthLabel",
+    )
+
+    if (comparisons.isEmpty()) {
+        EmptyDataHint("Not enough data to compare months yet.")
+        return
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        comparisons.forEach { comparison ->
+            MonthComparisonCard(comparison = comparison)
+        }
+    }
+}
+
+@Composable
+private fun MonthComparisonCard(comparison: DashboardViewModel.MonthComparison) {
+    val change = comparison.changePercentage
+    val directionUp = change >= 0.0
+    val trendIsGood = if (comparison.increaseIsGood) change >= 0.0 else change <= 0.0
+
+    val accentColor = when {
+        change == 0.0 -> MaterialTheme.colorScheme.onSurfaceVariant
+        trendIsGood -> IncomeGreen
+        else -> ExpenseRed
+    }
+    val deltaPrefix = if (change > 0.0) "+" else ""
+
+    Column(
+        modifier = Modifier
+            .width(172.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(accentColor.copy(alpha = 0.07f))
+            .border(0.5.dp, accentColor.copy(alpha = 0.30f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = comparison.label.uppercase(),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 0.8.sp,
+            )
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(accentColor.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (directionUp) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+
+        Text(
+            text = formatLKRFull(comparison.currentAmount),
+            fontSize = 17.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Box(
+            modifier = Modifier
+                .background(accentColor.copy(alpha = 0.13f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        ) {
+            Text(
+                text = "$deltaPrefix${"%.1f".format(change)}%",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = accentColor,
+            )
+        }
+
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+            thickness = 0.5.dp,
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "LAST MONTH",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 0.6.sp,
+            )
+            Text(
+                text = formatLKRFull(comparison.previousAmount),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopCategoryInsightsContent(
+    currentMonthLabel: String,
+    previousMonthLabel: String,
+    insights: List<DashboardViewModel.CategoryInsight>,
+) {
+    SectionHeader(
+        title = "Top 3 Category Insights",
+        subtitle = "$currentMonthLabel spending leaders",
+    )
+
+    if (insights.isEmpty()) {
+        EmptyDataHint("No current-month category data yet.")
+        return
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        insights.forEachIndexed { index, insight ->
+            TopCategoryInsightCard(
+                rank = index + 1,
+                previousMonthLabel = previousMonthLabel,
+                insight = insight,
+            )
+        }
+    }
+}
+
+private val RankGold = Color(0xFFFFB300)
+private val RankSilver = Color(0xFF9E9E9E)
+private val RankBronze = Color(0xFFBF8553)
+
+@Composable
+private fun TopCategoryInsightCard(
+    rank: Int,
+    previousMonthLabel: String,
+    insight: DashboardViewModel.CategoryInsight,
+) {
+    val change = insight.changePercentage
+    val isDown = change <= 0.0
+    val changeColor = when {
+        change == 0.0 -> MaterialTheme.colorScheme.onSurfaceVariant
+        isDown -> IncomeGreen
+        else -> ExpenseRed
+    }
+    val trendPrefix = if (change > 0.0) "+" else ""
+    val rankColor = when (rank) {
+        1 -> RankGold
+        2 -> RankSilver
+        else -> RankBronze
+    }
+    val shareProgress = (insight.sharePercentage / 100).coerceIn(0.0, 1.0).toFloat()
+
+    Column(
+        modifier = Modifier
+            .width(195.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
+            .border(
+                width = 0.5.dp,
+                color = rankColor.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Rank badge + change chip
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(rankColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = "#$rank",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = rankColor,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Icon(
+                    imageVector = if (change >= 0.0) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = null,
+                    tint = changeColor,
+                    modifier = Modifier.size(11.dp),
+                )
+                Text(
+                    text = "$trendPrefix${"%.1f".format(change)}%",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = changeColor,
+                )
+            }
+        }
+
+        // Category name
+        Text(
+            text = insight.category,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        // Current spend
+        Text(
+            text = formatLKRFull(insight.currentAmount),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = ExpenseRed,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        // Share of total spend progress
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "OF TOTAL",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 0.5.sp,
+                )
+                Text(
+                    text = "${insight.sharePercentage.roundToInt()}%",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(shareProgress)
+                        .fillMaxHeight()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                listOf(ExpenseRed, ExpenseRed.copy(alpha = 0.65f)),
+                            ),
+                        ),
+                )
+            }
+        }
+
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+            thickness = 0.5.dp,
+        )
+
+        // vs previous month
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "VS ${previousMonthLabel.uppercase()}",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 0.5.sp,
+            )
+            Text(
+                text = formatLKRFull(insight.previousAmount),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DidYouKnowContent(message: String?) {
+    SectionHeader(title = "Did You Know?", subtitle = "Auto-generated insight")
+
+    if (message.isNullOrBlank()) {
+        EmptyDataHint("Add more transactions this month to unlock contextual insights.")
+        return
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(WarningAmber.copy(alpha = 0.10f))
+            .border(
+                width = 0.5.dp,
+                color = WarningAmber.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = "💡",
+            fontSize = 16.sp,
+        )
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun RecentTransactionsContent(transactions: List<DashboardViewModel.RecentTransaction>) {
+    SectionHeader(title = "Recent Transactions", subtitle = "Latest 5 entries across income and expenses")
+
+    if (transactions.isEmpty()) {
+        EmptyDataHint("No recent transactions to show yet.")
+        return
+    }
+
+    val dateFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        transactions.forEach { transaction ->
+            RecentTransactionRow(
+                transaction = transaction,
+                formattedDate = dateFormat.format(transaction.dateMillis),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentTransactionRow(
+    transaction: DashboardViewModel.RecentTransaction,
+    formattedDate: String,
+) {
+    val accentColor = if (transaction.isExpense) ExpenseRed else IncomeGreen
+    val amountPrefix = if (transaction.isExpense) "-" else "+"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(accentColor.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (transaction.isExpense) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = transaction.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = transaction.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "$amountPrefix${formatLKRFull(transaction.amount)}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = accentColor,
+            )
+            Text(
+                text = formattedDate,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

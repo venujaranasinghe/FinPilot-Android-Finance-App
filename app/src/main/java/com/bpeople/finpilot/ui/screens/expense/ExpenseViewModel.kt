@@ -9,6 +9,7 @@ import com.bpeople.finpilot.data.repository.GoalRepository
 import com.bpeople.finpilot.data.repository.ExchangeRatesRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.ceil
@@ -27,11 +28,22 @@ class ExpenseViewModel @Inject constructor(
     private val exchangeRatesRepository: ExchangeRatesRepository,
 ) : ViewModel() {
 
+    enum class HistoryDateRange(val label: String) {
+        ALL_TIME("All time"),
+        THIS_MONTH("This month"),
+        LAST_30_DAYS("Last 30 days"),
+        LAST_7_DAYS("Last 7 days"),
+    }
+
     data class ExpenseUiState(
         val entries: List<ExpenseEntry> = emptyList(),
+        val filteredEntries: List<ExpenseEntry> = emptyList(),
         val amount: String = "",
         val category: String = CATEGORIES.first(),
         val paymentMethod: String = PAYMENT_METHODS.first(),
+        val historyDateRange: HistoryDateRange = HistoryDateRange.ALL_TIME,
+        val historyCategoryFilter: String? = null,
+        val historyPaymentMethodFilter: String? = null,
         val dateMillis: Long = System.currentTimeMillis(),
         val note: String = "",
         val subCategory: String = "",
@@ -62,7 +74,10 @@ class ExpenseViewModel @Inject constructor(
             .let { flow ->
                 viewModelScope.launch {
                     flow.collect { entries ->
-                        _expenseState.update { it.copy(entries = entries) }
+                        _expenseState.update { current ->
+                            val updated = current.copy(entries = entries)
+                            updated.copy(filteredEntries = filterHistoryEntries(updated, entries))
+                        }
                     }
                 }
             }
@@ -118,6 +133,38 @@ class ExpenseViewModel @Inject constructor(
 
     fun onPaymentMethodChange(value: String) {
         _expenseState.update { it.copy(paymentMethod = value, errorMessage = null) }
+    }
+
+    fun onHistoryDateRangeChange(value: HistoryDateRange) {
+        _expenseState.update { current ->
+            val updated = current.copy(historyDateRange = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun onHistoryCategoryFilterChange(value: String?) {
+        _expenseState.update { current ->
+            val updated = current.copy(historyCategoryFilter = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun onHistoryPaymentMethodFilterChange(value: String?) {
+        _expenseState.update { current ->
+            val updated = current.copy(historyPaymentMethodFilter = value)
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun clearHistoryFilters() {
+        _expenseState.update { current ->
+            val updated = current.copy(
+                historyDateRange = HistoryDateRange.ALL_TIME,
+                historyCategoryFilter = null,
+                historyPaymentMethodFilter = null,
+            )
+            updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
     }
 
     fun onDateChange(value: Long) {
@@ -259,6 +306,36 @@ class ExpenseViewModel @Inject constructor(
         val amount = state.amount.toDoubleOrNull() ?: return 0.0
         val rate = state.exchangeRate.toDoubleOrNull() ?: 1.0
         return amount * rate
+    }
+
+    private fun filterHistoryEntries(
+        state: ExpenseUiState,
+        entries: List<ExpenseEntry>,
+    ): List<ExpenseEntry> {
+        val now = System.currentTimeMillis()
+        val startMillis = when (state.historyDateRange) {
+            HistoryDateRange.ALL_TIME -> null
+            HistoryDateRange.THIS_MONTH -> Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            HistoryDateRange.LAST_30_DAYS -> now - 30L * 24 * 60 * 60 * 1000
+            HistoryDateRange.LAST_7_DAYS -> now - 7L * 24 * 60 * 60 * 1000
+        }
+
+        return entries.filter { entry ->
+            val entryMillis = entry.date?.toDate()?.time ?: return@filter false
+            val matchesDate = startMillis == null || entryMillis >= startMillis
+            val matchesCategory = state.historyCategoryFilter.isNullOrBlank() ||
+                entry.category.equals(state.historyCategoryFilter, ignoreCase = true)
+            val matchesPaymentMethod = state.historyPaymentMethodFilter.isNullOrBlank() ||
+                entry.paymentMethod.equals(state.historyPaymentMethodFilter, ignoreCase = true)
+
+            matchesDate && matchesCategory && matchesPaymentMethod
+        }
     }
 
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)

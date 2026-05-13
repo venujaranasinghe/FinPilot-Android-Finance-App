@@ -28,8 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.FilterAlt
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Loop
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -118,6 +122,10 @@ fun AddIncomeScreen(
         onLabelChange = viewModel::onLabelChange,
         onIncomeTypeChange = viewModel::onIncomeTypeChange,
         onProjectRefChange = viewModel::onProjectRefChange,
+        onHistoryDateRangeChange = viewModel::onHistoryDateRangeChange,
+        onHistorySourceFilterChange = viewModel::onHistorySourceFilterChange,
+        onHistoryIncomeTypeFilterChange = viewModel::onHistoryIncomeTypeFilterChange,
+        onClearHistoryFilters = viewModel::clearHistoryFilters,
         onRequestSubmit = viewModel::requestSubmit,
         onConfirmExchangeRate = viewModel::confirmExchangeRate,
         onDismissRateConfirmation = viewModel::dismissRateConfirmation,
@@ -142,6 +150,10 @@ fun AddIncomeContent(
     onLabelChange: (String) -> Unit,
     onIncomeTypeChange: (String) -> Unit,
     onProjectRefChange: (String) -> Unit,
+    onHistoryDateRangeChange: (IncomeViewModel.HistoryDateRange) -> Unit,
+    onHistorySourceFilterChange: (String?) -> Unit,
+    onHistoryIncomeTypeFilterChange: (String?) -> Unit,
+    onClearHistoryFilters: () -> Unit,
     onRequestSubmit: () -> Unit,
     onConfirmExchangeRate: () -> Unit,
     onDismissRateConfirmation: () -> Unit,
@@ -535,10 +547,13 @@ fun AddIncomeContent(
                         if (state.entries.isNotEmpty()) {
                             val pageSize = 10
                             var historyPage by remember { mutableStateOf(0) }
-                            val sortedEntries = state.entries.sortedByDescending { it.date?.seconds ?: 0L }
-                            val totalPages = (sortedEntries.size + pageSize - 1) / pageSize
-                            val currentPage = historyPage.coerceIn(0, totalPages - 1)
-                            val pagedEntries = sortedEntries.drop(currentPage * pageSize).take(pageSize)
+                            val sortedEntries = state.filteredEntries.sortedByDescending { it.date?.seconds ?: 0L }
+                            val totalPages = if (sortedEntries.isEmpty()) 0 else (sortedEntries.size + pageSize - 1) / pageSize
+                            val currentPage = if (totalPages == 0) 0 else historyPage.coerceIn(0, totalPages - 1)
+                            val pagedEntries = if (sortedEntries.isEmpty()) emptyList() else sortedEntries.drop(currentPage * pageSize).take(pageSize)
+                            val hasActiveFilters = state.historyDateRange != IncomeViewModel.HistoryDateRange.ALL_TIME ||
+                                !state.historySourceFilter.isNullOrBlank() ||
+                                !state.historyIncomeTypeFilter.isNullOrBlank()
 
                             HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp),
@@ -557,39 +572,57 @@ fun AddIncomeContent(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Text(
-                                    text = "${sortedEntries.size} records",
+                                    text = if (hasActiveFilters) "${sortedEntries.size} of ${state.entries.size} records" else "${sortedEntries.size} records",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 )
                             }
 
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                pagedEntries.forEach { entry ->
-                                    IncomeHistoryItem(entry = entry)
+                            IncomeHistoryFilters(
+                                state = state,
+                                onHistoryDateRangeChange = onHistoryDateRangeChange,
+                                onHistorySourceFilterChange = onHistorySourceFilterChange,
+                                onHistoryIncomeTypeFilterChange = onHistoryIncomeTypeFilterChange,
+                                onClearHistoryFilters = onClearHistoryFilters,
+                            )
+
+                            if (pagedEntries.isEmpty()) {
+                                Text(
+                                    text = "No income entries match the current filters.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    pagedEntries.forEach { entry ->
+                                        IncomeHistoryItem(entry = entry)
+                                    }
                                 }
                             }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                TextButton(
-                                    onClick = { historyPage = (currentPage - 1).coerceAtLeast(0) },
-                                    enabled = currentPage > 0,
+                            if (totalPages > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text("← Prev")
-                                }
-                                Text(
-                                    text = "Page ${currentPage + 1} of $totalPages",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                )
-                                TextButton(
-                                    onClick = { historyPage = (currentPage + 1).coerceAtMost(totalPages - 1) },
-                                    enabled = currentPage < totalPages - 1,
-                                ) {
-                                    Text("Next →")
+                                    TextButton(
+                                        onClick = { historyPage = (currentPage - 1).coerceAtLeast(0) },
+                                        enabled = currentPage > 0,
+                                    ) {
+                                        Text("← Prev")
+                                    }
+                                    Text(
+                                        text = "Page ${currentPage + 1} of $totalPages",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    )
+                                    TextButton(
+                                        onClick = { historyPage = (currentPage + 1).coerceAtMost(totalPages - 1) },
+                                        enabled = currentPage < totalPages - 1,
+                                    ) {
+                                        Text("Next →")
+                                    }
                                 }
                             }
                         }
@@ -612,7 +645,144 @@ fun AddIncomeContent(
     }
 }
 
+@Composable
+private fun IncomeHistoryFilters(
+    state: IncomeViewModel.IncomeUiState,
+    onHistoryDateRangeChange: (IncomeViewModel.HistoryDateRange) -> Unit,
+    onHistorySourceFilterChange: (String?) -> Unit,
+    onHistoryIncomeTypeFilterChange: (String?) -> Unit,
+    onClearHistoryFilters: () -> Unit,
+) {
+    val hasActiveFilters = state.historyDateRange != IncomeViewModel.HistoryDateRange.ALL_TIME ||
+        !state.historySourceFilter.isNullOrBlank() ||
+        !state.historyIncomeTypeFilter.isNullOrBlank()
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Audit filters",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (hasActiveFilters) {
+                TextButton(onClick = onClearHistoryFilters) {
+                    Text("Clear")
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            IncomeViewModel.HistoryDateRange.entries.forEach { range ->
+                IncomeFilterChip(
+                    label = range.label,
+                    icon = Icons.Rounded.CalendarToday,
+                    selected = state.historyDateRange == range,
+                    onClick = { onHistoryDateRangeChange(range) },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            IncomeFilterChip(
+                label = "All sources",
+                icon = Icons.Rounded.Work,
+                selected = state.historySourceFilter.isNullOrBlank(),
+                onClick = { onHistorySourceFilterChange(null) },
+            )
+            IncomeViewModel.SOURCES.forEach { source ->
+                IncomeFilterChip(
+                    label = source,
+                    icon = Icons.Rounded.Category,
+                    selected = state.historySourceFilter == source,
+                    onClick = { onHistorySourceFilterChange(source) },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            IncomeFilterChip(
+                label = "All types",
+                icon = Icons.Rounded.Tune,
+                selected = state.historyIncomeTypeFilter.isNullOrBlank(),
+                onClick = { onHistoryIncomeTypeFilterChange(null) },
+            )
+            IncomeViewModel.INCOME_TYPES.forEach { incomeType ->
+                IncomeFilterChip(
+                    label = incomeType,
+                    icon = Icons.Rounded.Loop,
+                    selected = state.historyIncomeTypeFilter == incomeType,
+                    onClick = { onHistoryIncomeTypeFilterChange(incomeType) },
+                )
+            }
+        }
+    }
+}
+
 // ── Small reusable composables ─────────────────────────────────────────────
+
+@Composable
+private fun IncomeFilterChip(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 300),
+        label = "income_filter_bg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 300),
+        label = "income_filter_content",
+    )
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = contentColor,
+        )
+    }
+}
 
 @Composable
 private fun IncomeHistoryItem(entry: IncomeEntry) {
@@ -873,6 +1043,10 @@ private fun AddIncomeScreenPreview() {
             onLabelChange = {},
             onIncomeTypeChange = {},
             onProjectRefChange = {},
+            onHistoryDateRangeChange = {},
+            onHistorySourceFilterChange = {},
+            onHistoryIncomeTypeFilterChange = {},
+            onClearHistoryFilters = {},
             onRequestSubmit = {},
             onConfirmExchangeRate = {},
             onDismissRateConfirmation = {},
