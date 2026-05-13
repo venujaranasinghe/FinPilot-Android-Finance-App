@@ -33,6 +33,8 @@ class GoalViewModel @Inject constructor(
     data class GoalUiState(
         val allGoals: List<Goal> = emptyList(),
         val selectedGoalIndex: Int = 0,
+        val editingGoalId: String? = null,
+        val pendingSelectionGoalId: String? = null,
         // Form fields for the create/edit bottom sheet
         val title: String = "",
         val targetAmount: String = "",
@@ -59,13 +61,21 @@ class GoalViewModel @Inject constructor(
             .let { flow ->
                 viewModelScope.launch {
                     flow.collect { goals ->
-                        val index = _goalState.value.selectedGoalIndex
-                            .coerceAtMost((goals.size - 1).coerceAtLeast(0))
+                        val currentState = _goalState.value
+                        val pendingSelectionIndex = currentState.pendingSelectionGoalId
+                            ?.let { pendingId -> goals.indexOfFirst { it.id == pendingId } }
+                            ?.takeIf { it >= 0 }
+
+                        val index = pendingSelectionIndex
+                            ?: currentState.selectedGoalIndex
+                                .coerceAtMost((goals.size - 1).coerceAtLeast(0))
+
                         val selected = goals.getOrNull(index)
                         _goalState.update {
                             it.copy(
                                 allGoals = goals,
                                 selectedGoalIndex = index,
+                                pendingSelectionGoalId = if (pendingSelectionIndex != null) null else it.pendingSelectionGoalId,
                                 progressPercent = calculateProgress(selected),
                                 monthlyRequired = calculateMonthlyRequired(selected),
                             )
@@ -122,6 +132,7 @@ class GoalViewModel @Inject constructor(
     fun prepareCreateGoal() {
         _goalState.update {
             it.copy(
+                editingGoalId = null,
                 title = "",
                 targetAmount = "",
                 currentAmount = "",
@@ -135,6 +146,7 @@ class GoalViewModel @Inject constructor(
     fun prepareEditGoal(goal: Goal) {
         _goalState.update {
             it.copy(
+                editingGoalId = goal.id,
                 title = goal.title,
                 targetAmount = goal.targetAmount.toInt().toString(),
                 currentAmount = goal.currentAmount.toInt().toString(),
@@ -160,7 +172,7 @@ class GoalViewModel @Inject constructor(
 
         val deadline = state.deadlineMillis?.let { Timestamp(Date(it)) }
         val goal = Goal(
-            id = state.activeGoal?.id ?: UUID.randomUUID().toString(),
+            id = state.editingGoalId ?: UUID.randomUUID().toString(),
             title = state.title,
             targetAmount = targetAmount,
             currentAmount = currentAmount,
@@ -173,6 +185,8 @@ class GoalViewModel @Inject constructor(
             goalRepository.upsertGoal(goal)
             _goalState.update {
                 it.copy(
+                    editingGoalId = null,
+                    pendingSelectionGoalId = if (state.editingGoalId == null) goal.id else null,
                     title = "",
                     targetAmount = "",
                     currentAmount = "",
