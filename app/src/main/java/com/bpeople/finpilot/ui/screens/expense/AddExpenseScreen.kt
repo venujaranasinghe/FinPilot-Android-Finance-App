@@ -362,7 +362,7 @@ fun AddExpenseContent(
                 }
             }
 
-            // Form Area
+            // Form Areaclear
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
@@ -637,33 +637,6 @@ fun AddExpenseContent(
                                 ) {
                                     Text("Next →")
                                 }
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            pagedEntries.forEach { entry ->
-                                ExpenseHistoryItem(entry = entry)
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            TextButton(
-                                onClick = { historyPage = (currentPage - 1).coerceAtLeast(0) },
-                                enabled = currentPage > 0,
-                            ) {
-                                Text("← Prev")
-                            }
-                            Text(
-                                text = "Page ${currentPage + 1} of $totalPages",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            )
-                            TextButton(
-                                onClick = { historyPage = (currentPage + 1).coerceAtMost(totalPages - 1) },
-                                enabled = currentPage < totalPages - 1,
-                            ) {
-                                Text("Next →")
                             }
                         }
                     }

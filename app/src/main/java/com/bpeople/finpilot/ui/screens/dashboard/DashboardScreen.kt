@@ -356,7 +356,7 @@ fun DashboardScreen(
                     }
                     item {
                         SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            RecentTransactionsContent(transactions = state.recentTransactions)
+                            SpendingChartContent(expensesByCategory = state.expensesByCategory)
                         }
                     }
                     item {
@@ -366,7 +366,7 @@ fun DashboardScreen(
                     }
                     item {
                         SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            SpendingChartContent(expensesByCategory = state.expensesByCategory)
+                            RecentTransactionsContent(transactions = state.recentTransactions)
                         }
                     }
                     item {

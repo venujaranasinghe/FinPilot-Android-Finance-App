@@ -305,29 +305,6 @@ class DashboardViewModel @Inject constructor(
         }
         val nextStart = currentStart.clone() as Calendar
         nextStart.add(Calendar.MONTH, 1)
-    data class DashboardUiState(
-        val totalIncome: Double = 0.0,
-        val totalExpenses: Double = 0.0,
-        val netPosition: Double = 0.0,
-        val activeGoal: Goal? = null,
-        val allGoals: List<Goal> = emptyList(),
-        val goalProgressPercent: Float = 0f,
-        val monthlyRequired: Double = 0.0,
-        val incomeBreakdown: Map<String, Double> = emptyMap(),
-        val expensesByCategory: Map<String, Double> = emptyMap(),
-        val fixedCostsPercentage: Double = 0.0,
-        val discretionaryPercentage: Double = 0.0,
-    )
-
-    val dashboardState: StateFlow<DashboardUiState> = combine(
-        incomeRepository.observeIncome(),
-        expenseRepository.observeExpenses(),
-        goalRepository.observeGoals(),
-    ) { incomes, expenses, goals ->
-        val activeGoal = goals.firstOrNull { it.isActive }
-        val totalIncome = incomes.sumOf { it.amountLKR }
-        val totalExpenses = expenses.sumOf { it.amount }
-        val netPosition = totalIncome - totalExpenses
 
         val previousStart = currentStart.clone() as Calendar
         previousStart.add(Calendar.MONTH, -1)
@@ -414,25 +391,5 @@ class DashboardViewModel @Inject constructor(
             else -> "LKR %.0f".format(safe)
         }
     }
-        val progressPercent = if (activeGoal != null && activeGoal.targetAmount > 0.0) {
-            (activeGoal.currentAmount / activeGoal.targetAmount).coerceIn(0.0, 1.0).toFloat()
-        } else {
-            0f
-        }
-
-        DashboardUiState(
-            totalIncome = totalIncome,
-            totalExpenses = totalExpenses,
-            netPosition = netPosition,
-            activeGoal = activeGoal,
-            allGoals = goals,
-            goalProgressPercent = progressPercent,
-            monthlyRequired = activeGoal?.monthlyRequired ?: 0.0,
-            incomeBreakdown = incomeBreakdown,
-            expensesByCategory = expensesByCategory,
-            fixedCostsPercentage = fixedPercentage,
-            discretionaryPercentage = discretionaryPercentage,
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardUiState())
 }
 
