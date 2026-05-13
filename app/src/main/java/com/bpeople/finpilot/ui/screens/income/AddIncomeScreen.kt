@@ -47,6 +47,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -528,6 +530,71 @@ fun AddIncomeContent(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        // ── Income History with Pagination ────────────────────
+                        if (state.entries.isNotEmpty()) {
+                            val pageSize = 10
+                            var historyPage by remember { mutableStateOf(0) }
+                            val sortedEntries = state.entries.sortedByDescending { it.date?.seconds ?: 0L }
+                            val totalPages = (sortedEntries.size + pageSize - 1) / pageSize
+                            val currentPage = historyPage.coerceIn(0, totalPages - 1)
+                            val pagedEntries = sortedEntries.drop(currentPage * pageSize).take(pageSize)
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "Income History",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "${sortedEntries.size} records",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                )
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                pagedEntries.forEach { entry ->
+                                    IncomeHistoryItem(entry = entry)
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = { historyPage = (currentPage - 1).coerceAtLeast(0) },
+                                    enabled = currentPage > 0,
+                                ) {
+                                    Text("← Prev")
+                                }
+                                Text(
+                                    text = "Page ${currentPage + 1} of $totalPages",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                                TextButton(
+                                    onClick = { historyPage = (currentPage + 1).coerceAtMost(totalPages - 1) },
+                                    enabled = currentPage < totalPages - 1,
+                                ) {
+                                    Text("Next →")
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -546,6 +613,76 @@ fun AddIncomeContent(
 }
 
 // ── Small reusable composables ─────────────────────────────────────────────
+
+@Composable
+private fun IncomeHistoryItem(entry: IncomeEntry) {
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = entry.source.take(2).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Column {
+                Text(
+                    text = entry.source,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (!entry.label.isNullOrBlank()) {
+                    Text(
+                        text = entry.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+                Text(
+                    text = entry.date?.toDate()?.let { dateFormat.format(it) } ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "+${entry.currencyOriginal} ${"%.2f".format(entry.amountOriginal)}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            if (entry.currencyOriginal != "LKR") {
+                Text(
+                    text = "≈ LKR ${"%.2f".format(entry.amountLKR)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun SectionLabel(text: String) {

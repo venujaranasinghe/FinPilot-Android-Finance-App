@@ -182,9 +182,12 @@ fun GoalTrackerScreenContent(
         }
     }
 
-    LaunchedEffect(goalState.selectedGoalIndex) {
-        if (allGoals.isNotEmpty() && pagerState.currentPage != goalState.selectedGoalIndex) {
-            pagerState.animateScrollToPage(goalState.selectedGoalIndex)
+    LaunchedEffect(goalState.selectedGoalIndex, allGoals.size) {
+        if (allGoals.isEmpty() || pagerState.pageCount == 0) return@LaunchedEffect
+
+        val targetPage = goalState.selectedGoalIndex.coerceIn(0, allGoals.lastIndex)
+        if (pagerState.currentPage != targetPage && targetPage < pagerState.pageCount) {
+            runCatching { pagerState.animateScrollToPage(targetPage) }
         }
     }
 
@@ -277,8 +280,12 @@ fun GoalTrackerScreenContent(
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 32.dp),
                             pageSpacing = 16.dp
                         ) { page ->
-                            val goal = allGoals[page]
-                            val progressValue = (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+                            val goal = allGoals.getOrNull(page) ?: return@HorizontalPager
+                            val progressValue = if (goal.targetAmount > 0.0) {
+                                (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+                            } else {
+                                0f
+                            }
                             val progressAnimatable = remember(page) { Animatable(0f) }
                             LaunchedEffect(page == pagerState.currentPage, animationTrigger) {
                                 if (animationTrigger && page == pagerState.currentPage) {
@@ -670,7 +677,8 @@ private fun SavingsHistoryChart(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val maxAmount = savingsHistory.maxOfOrNull { it.amount } ?: 1.0
+                val maxAmount = savingsHistory.maxOfOrNull { it.amount } ?: 0.0
+                val safeMaxAmount = if (maxAmount > 0.0) maxAmount else 1.0
 
                 savingsHistory.takeLast(6).forEach { entry ->
                     Row(
@@ -687,7 +695,8 @@ private fun SavingsHistoryChart(
                             modifier = Modifier.width(40.dp)
                         )
                         
-                        val targetFill = (entry.amount / maxAmount).toFloat()
+                        val rawFill = (entry.amount / safeMaxAmount).toFloat()
+                        val targetFill = if (rawFill.isFinite()) rawFill.coerceIn(0f, 1f) else 0f
                         val animatedFill by animateFloatAsState(
                             targetValue = if (animationTrigger) targetFill else 0f,
                             animationSpec = tween(durationMillis = 1000),

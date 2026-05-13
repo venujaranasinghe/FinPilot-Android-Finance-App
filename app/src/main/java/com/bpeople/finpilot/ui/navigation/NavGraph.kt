@@ -231,10 +231,9 @@ fun FinPilotNavGraph(
         composable(NavRoutes.Profile.route) {
             val profileViewModel: ProfileViewModel = hiltViewModel()
             val currentUser by profileViewModel.currentUser.collectAsState()
-            val userProfile by profileViewModel.userProfile.collectAsState()
             ProfileScreen(
-                displayName = userProfile?.displayName ?: currentUser?.displayName,
-                email = userProfile?.email ?: currentUser?.email,
+                displayName = currentUser?.displayName,
+                email = currentUser?.email,
                 onNavigateToDashboard = {
                     navController.navigate(NavRoutes.Dashboard.route)
                 },
