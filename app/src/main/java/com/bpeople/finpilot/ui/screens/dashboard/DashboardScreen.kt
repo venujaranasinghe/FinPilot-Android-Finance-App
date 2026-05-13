@@ -341,7 +341,8 @@ fun DashboardScreen(
                     item {
                         SectionCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             GoalProgressContent(
-                                goal = state.activeGoal,
+                                activeGoal = state.activeGoal,
+                                allGoals = state.allGoals,
                                 progressPercent = state.goalProgressPercent,
                                 monthlyRequired = state.monthlyRequired,
                                 onNavigateToGoals = onNavigateToGoals,
@@ -988,7 +989,7 @@ private fun SpendingChartContent(expensesByCategory: Map<String, Double>) {
     DonutPieChart(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp),
+            .height(340.dp),
         pieChartData = PieChartData(slices = slices, plotType = PlotType.Donut),
         pieChartConfig = pieChartConfig,
     )
@@ -1082,71 +1083,128 @@ private fun SpendingChartContent(expensesByCategory: Map<String, Double>) {
 
 @Composable
 private fun GoalProgressContent(
-    goal: Goal?,
+    activeGoal: Goal?,
+    allGoals: List<Goal>,
     progressPercent: Float,
     monthlyRequired: Double,
     onNavigateToGoals: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SectionHeader(title = "Savings Goal", subtitle = "Track your target")
-        if (goal != null) {
-            Icon(
-                imageVector = Icons.Default.Flag,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
-
-    if (goal == null) {
-        Column(
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(70.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🎯", fontSize = 32.sp)
-            }
-            Text(
-                text = "No active savings goal",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "Set a goal to track your savings progress and stay on target.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                lineHeight = 18.sp,
-            )
-            OutlinedButton(
-                onClick = onNavigateToGoals,
-                shape = RoundedCornerShape(10.dp),
-            ) {
+            SectionHeader(title = "Savings Goals", subtitle = "Track all your targets")
+            if (activeGoal != null) {
                 Icon(
                     imageVector = Icons.Default.Flag,
                     contentDescription = null,
-                    modifier = Modifier.size(15.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Set a Savings Goal", fontSize = 13.sp)
             }
         }
-        return
-    }
 
+        if (activeGoal == null) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🎯", fontSize = 32.sp)
+                }
+                Text(
+                    text = "No active savings goal",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "Set a goal to track your savings progress and stay on target.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp,
+                )
+                OutlinedButton(
+                    onClick = onNavigateToGoals,
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Set a Savings Goal", fontSize = 13.sp)
+                }
+            }
+            return
+        }
+
+        // Active goal card
+        ActiveGoalCard(
+            goal = activeGoal,
+            progressPercent = progressPercent,
+            monthlyRequired = monthlyRequired,
+        )
+
+        // Other goals section
+        if (allGoals.size > 1) {
+            val otherGoals = allGoals.filter { it.id != activeGoal.id }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Other Goals",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "${otherGoals.size} goals",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    otherGoals.forEach { goal ->
+                        GoalMiniCard(goal = goal)
+                    }
+                }
+            }
+        }
+
+        // View all button
+        OutlinedButton(
+            onClick = onNavigateToGoals,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp),
+            shape = RoundedCornerShape(10.dp),
+        ) {
+            Text("Manage All Goals", fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun ActiveGoalCard(
+    goal: Goal,
+    progressPercent: Float,
+    monthlyRequired: Double,
+) {
     val animatedProgress by animateFloatAsState(
         targetValue = progressPercent.coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 1200),
@@ -1155,143 +1213,264 @@ private fun GoalProgressContent(
     val completedPct = (animatedProgress * 100).roundToInt()
     val remaining = (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0)
 
-    // Title row + badge
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(16.dp),
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = goal.title,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "Savings Goal",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.3.sp,
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Box(
-            modifier = Modifier
-                .background(
-                    color = when {
-                        completedPct >= 100 -> IncomeGreen
-                        completedPct >= 50  -> IncomeGreen.copy(alpha = 0.15f)
-                        else                -> MaterialTheme.colorScheme.primaryContainer
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                )
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-        ) {
-            Text(
-                text = "$completedPct% complete",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = when {
-                    completedPct >= 100 -> Color.White
-                    completedPct >= 50  -> IncomeGreen
-                    else                -> MaterialTheme.colorScheme.primary
-                },
-            )
-        }
-    }
-
-    // Saved / Target / Remaining
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        GoalMetricCell(
-            label = "Saved",
-            value = formatLKRFull(goal.currentAmount),
-            color = IncomeGreen,
-            modifier = Modifier.weight(1f),
-        )
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(36.dp)
-                .align(Alignment.CenterVertically)
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        )
-        GoalMetricCell(
-            label = "Target",
-            value = formatLKRFull(goal.targetAmount),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            align = Alignment.CenterHorizontally,
-        )
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(36.dp)
-                .align(Alignment.CenterVertically)
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        )
-        GoalMetricCell(
-            label = "Remaining",
-            value = formatLKRFull(remaining),
-            color = WarningAmber,
-            modifier = Modifier.weight(1f),
-            align = Alignment.End,
-        )
-    }
-
-    // Gradient progress bar
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        GradientProgressBar(
-            progress = animatedProgress,
-            gradientColors = GoalGradient,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            height = 10.dp,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "LKR 0",
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = formatLKRFull(goal.targetAmount),
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-
-    // Monthly savings tip
-    if (monthlyRequired > 0) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(IncomeGreen.copy(alpha = 0.08f))
-                .border(0.5.dp, IncomeGreen.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(
-                imageVector = Icons.Default.TrendingUp,
-                contentDescription = null,
-                tint = IncomeGreen,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = "Save ${formatLKRFull(monthlyRequired)} / month to reach your goal on time",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
-                lineHeight = 16.sp,
+            // Title row + badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = goal.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "Active Goal",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.3.sp,
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = when {
+                                completedPct >= 100 -> IncomeGreen
+                                completedPct >= 50  -> IncomeGreen.copy(alpha = 0.15f)
+                                else                -> MaterialTheme.colorScheme.primary
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                        )
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text(
+                        text = "$completedPct%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            completedPct >= 100 -> Color.White
+                            completedPct >= 50  -> IncomeGreen
+                            else                -> Color.White
+                        },
+                    )
+                }
+            }
+
+            // Saved / Target / Remaining
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                GoalMetricCell(
+                    label = "Saved",
+                    value = formatLKRFull(goal.currentAmount),
+                    color = IncomeGreen,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(36.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                )
+                GoalMetricCell(
+                    label = "Target",
+                    value = formatLKRFull(goal.targetAmount),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                    align = Alignment.CenterHorizontally,
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(36.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                )
+                GoalMetricCell(
+                    label = "Remaining",
+                    value = formatLKRFull(remaining),
+                    color = WarningAmber,
+                    modifier = Modifier.weight(1f),
+                    align = Alignment.End,
+                )
+            }
+
+            // Gradient progress bar
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                GradientProgressBar(
+                    progress = animatedProgress,
+                    gradientColors = GoalGradient,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    height = 12.dp,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "LKR 0",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = formatLKRFull(goal.targetAmount),
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Monthly savings tip
+            if (monthlyRequired > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(IncomeGreen.copy(alpha = 0.1f))
+                        .border(0.5.dp, IncomeGreen.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.TrendingUp,
+                        contentDescription = null,
+                        tint = IncomeGreen,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = "Save ${formatLKRFull(monthlyRequired)}/month",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GoalMiniCard(goal: Goal) {
+    val progressPercent = if (goal.targetAmount > 0.0) {
+        (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+    } else {
+        0f
+    }
+    val completedPct = (progressPercent * 100).roundToInt()
+    val remaining = (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = goal.title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "$completedPct%",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        completedPct >= 100 -> IncomeGreen
+                        completedPct >= 50  -> WarningAmber
+                        else                -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = formatLKRFull(goal.currentAmount),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = IncomeGreen,
+                    )
+                    Text(
+                        text = "Saved",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = formatLKRFull(remaining),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = WarningAmber,
+                    )
+                    Text(
+                        text = "Remaining",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            GradientProgressBar(
+                progress = progressPercent,
+                gradientColors = GoalGradient,
+                trackColor = MaterialTheme.colorScheme.surface,
+                height = 6.dp,
             )
         }
     }

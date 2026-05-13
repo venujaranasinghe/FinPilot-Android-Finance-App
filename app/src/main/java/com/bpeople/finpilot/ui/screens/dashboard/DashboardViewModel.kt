@@ -70,6 +70,7 @@ class DashboardViewModel @Inject constructor(
         val totalExpenses: Double = 0.0,
         val netPosition: Double = 0.0,
         val activeGoal: Goal? = null,
+        val allGoals: List<Goal> = emptyList(),
         val goalProgressPercent: Float = 0f,
         val monthlyRequired: Double = 0.0,
         val incomeBreakdown: Map<String, Double> = emptyMap(),
@@ -81,8 +82,9 @@ class DashboardViewModel @Inject constructor(
     val dashboardState: StateFlow<DashboardUiState> = combine(
         incomeRepository.observeIncome(),
         expenseRepository.observeExpenses(),
-        goalRepository.observeActiveGoal(),
-    ) { incomes, expenses, goal ->
+        goalRepository.observeGoals(),
+    ) { incomes, expenses, goals ->
+        val activeGoal = goals.firstOrNull { it.isActive }
         val totalIncome = incomes.sumOf { it.amountLKR }
         val totalExpenses = expenses.sumOf { it.amount }
         val netPosition = totalIncome - totalExpenses
@@ -104,8 +106,8 @@ class DashboardViewModel @Inject constructor(
         val fixedPercentage = if (totalExpenses > 0) (fixedCosts / totalExpenses * 100) else 0.0
         val discretionaryPercentage = if (totalExpenses > 0) 100.0 - fixedPercentage else 0.0
 
-        val progressPercent = if (goal != null && goal.targetAmount > 0.0) {
-            (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+        val progressPercent = if (activeGoal != null && activeGoal.targetAmount > 0.0) {
+            (activeGoal.currentAmount / activeGoal.targetAmount).coerceIn(0.0, 1.0).toFloat()
         } else {
             0f
         }
@@ -114,9 +116,10 @@ class DashboardViewModel @Inject constructor(
             totalIncome = totalIncome,
             totalExpenses = totalExpenses,
             netPosition = netPosition,
-            activeGoal = goal,
+            activeGoal = activeGoal,
+            allGoals = goals,
             goalProgressPercent = progressPercent,
-            monthlyRequired = goal?.monthlyRequired ?: 0.0,
+            monthlyRequired = activeGoal?.monthlyRequired ?: 0.0,
             incomeBreakdown = incomeBreakdown,
             expensesByCategory = expensesByCategory,
             fixedCostsPercentage = fixedPercentage,
