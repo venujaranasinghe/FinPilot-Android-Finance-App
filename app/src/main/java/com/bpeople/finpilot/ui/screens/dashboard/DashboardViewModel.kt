@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     incomeRepository: IncomeRepository,
@@ -88,15 +87,22 @@ class DashboardViewModel @Inject constructor(
         val totalExpenses = expenses.sumOf { it.amount }
         val netPosition = totalIncome - totalExpenses
 
-        val incomeBreakdown = buildIncomeBreakdown(incomes)
+        // Income breakdown grouped by source name
+        val incomeBreakdown: Map<String, Double> = incomes
+            .groupBy { it.source }
+            .mapValues { (_, items) -> items.sumOf { it.amountLKR } }
+            .filter { it.value > 0 }
 
-        val expensesByCategory = buildExpensesByCategory(expenses)
+        // Expenses grouped by category
+        val expensesByCategory: Map<String, Double> = expenses
+            .groupBy { it.category }
+            .mapValues { (_, items) -> items.sumOf { it.amount } }
+            .filter { it.value > 0 }
 
-        // Calculate committed vs discretionary
+        // Fixed = recurring expenses; discretionary = non-recurring
         val fixedCosts = expenses.filter { it.isRecurring }.sumOf { it.amount }
-        val discretionarySpend = expenses.filterNot { it.isRecurring }.sumOf { it.amount }
-        val fixedPercentage = if (totalIncome > 0) (fixedCosts / totalIncome * 100) else 0.0
-        val discretionaryPercentage = if (totalIncome > 0) (discretionarySpend / totalIncome * 100) else 0.0
+        val fixedPercentage = if (totalExpenses > 0) (fixedCosts / totalExpenses * 100) else 0.0
+        val discretionaryPercentage = if (totalExpenses > 0) 100.0 - fixedPercentage else 0.0
 
         val progressPercent = if (goal != null && goal.targetAmount > 0.0) {
             (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()

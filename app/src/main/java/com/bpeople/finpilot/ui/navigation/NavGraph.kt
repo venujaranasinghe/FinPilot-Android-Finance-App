@@ -123,11 +123,14 @@ fun FinPilotNavGraph(
             val dashboardState by dashboardViewModel.dashboardState.collectAsState()
             val insight = navController.currentBackStackEntry?.savedStateHandle?.get<String>("expense_insight")
             val currentUser by authViewModel.currentUser.collectAsState()
-            val userProfile by dashboardViewModel.userProfile.collectAsState()
+            val userName = currentUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: currentUser?.email?.substringBefore("@")
+                    ?.replaceFirstChar { it.titlecase() }
+                ?: ""
 
             DashboardScreen(
                 state = dashboardState,
-                displayName = userProfile?.displayName ?: currentUser?.displayName,
+                userName = userName,
                 insightMessage = insight,
                 onAddExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)

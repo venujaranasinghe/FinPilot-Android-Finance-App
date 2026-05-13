@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,6 +57,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -187,17 +190,9 @@ fun GoalTrackerScreenContent(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.GOALS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = onNavigateToExpense,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile
-            )
-        }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         if (activeGoal != null) {
             Column(
                 modifier = Modifier
@@ -205,17 +200,29 @@ fun GoalTrackerScreenContent(
                     .padding(innerPadding)
             ) {
                 // Pager Header
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val bgColor = MaterialTheme.colorScheme.background
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.background
-                                )
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(primaryColor, primaryColor.copy(alpha = 0.72f), bgColor),
+                                    endY = size.height,
+                                ),
                             )
-                        )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.07f),
+                                radius = 190.dp.toPx(),
+                                center = Offset(size.width * 0.88f, size.height * 0.08f),
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.04f),
+                                radius = 130.dp.toPx(),
+                                center = Offset(size.width * 0.04f, size.height * 0.50f),
+                            )
+                        }
                         .padding(top = 40.dp, bottom = 32.dp)
                 ) {
                     Column(
@@ -389,7 +396,7 @@ fun GoalTrackerScreenContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 24.dp)
-                            .padding(top = 32.dp, bottom = 16.dp)
+                            .padding(top = 32.dp, bottom = 100.dp)
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
@@ -546,6 +553,16 @@ fun GoalTrackerScreenContent(
                     }
                 }
             }
+        }
+        FinPilotBottomNavBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            currentTab = NavTab.GOALS,
+            onNavigateToDashboard = onNavigateToDashboard,
+            onNavigateToIncome = onNavigateToIncome,
+            onNavigateToExpense = onNavigateToExpense,
+            onNavigateToGoals = onNavigateToGoals,
+            onNavigateToProfile = onNavigateToProfile
+        )
         }
     }
 }
