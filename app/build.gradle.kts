@@ -83,4 +83,5 @@ dependencies {
     implementation(libs.google.play.services.auth)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
+    implementation("co.yml:ycharts:2.1.0")
 }

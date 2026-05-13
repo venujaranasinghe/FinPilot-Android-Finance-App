@@ -2,6 +2,8 @@ package com.bpeople.finpilot.ui.screens.income
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -56,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -172,8 +176,364 @@ fun AddIncomeContent(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                // ── Header with amount entry ──────────────────────────────────
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val bgColor = MaterialTheme.colorScheme.background
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(primaryColor, primaryColor.copy(alpha = 0.72f), bgColor),
+                                    endY = size.height,
+                                ),
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.07f),
+                                radius = 190.dp.toPx(),
+                                center = Offset(size.width * 0.88f, size.height * 0.08f),
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.04f),
+                                radius = 130.dp.toPx(),
+                                center = Offset(size.width * 0.04f, size.height * 0.50f),
+                            )
+                        }
+                        .padding(top = 48.dp, bottom = 48.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = "Amount",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        )
+                        OutlinedTextField(
+                            value = state.amountOriginal,
+                            onValueChange = onAmountChange,
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            ),
+                            placeholder = {
+                                Text(
+                                    "0.00",
+                                    style = TextStyle(
+                                        fontSize = 48.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            },
+                            leadingIcon = {
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { expanded = true }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = state.currencyOriginal,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Rounded.ArrowDropDown,
+                                            contentDescription = "Select Currency",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false },
+                                    ) {
+                                        IncomeViewModel.CURRENCIES.forEach { cur ->
+                                            DropdownMenuItem(
+                                                text = { Text(cur) },
+                                                onClick = {
+                                                    onCurrencyChange(cur)
+                                                    expanded = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                            ),
+                        )
+
+                        // LKR equivalent — shown only for foreign currency
+                        AnimatedVisibility(
+                            visible = showExchangeRate,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically(),
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                val updatedText = state.exchangeRateLastUpdatedMillis
+                                    ?.let { rateUpdatedFormat.format(java.util.Date(it)) }
+                                    ?: "unknown"
+                                val rateSuffix = if (state.exchangeRateIsStale) " (stale)" else ""
+                                Text(
+                                    text = if (state.exchangeRateAvailable) {
+                                        "Rate: 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} • $updatedText$rateSuffix"
+                                    } else {
+                                        "Rate unavailable — try again later"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                    textAlign = TextAlign.Center,
+                                )
+                                TextButton(
+                                    onClick = onRefreshRates,
+                                    enabled = !state.isLoading && !state.isRefreshingRates,
+                                ) {
+                                    if (state.isRefreshingRates) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(12.dp),
+                                            strokeWidth = 1.5.dp,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
+                                    Text("Refresh rates")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Form card ────────────────────────────────────────────────
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 32.dp, bottom = 100.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+
+                        // ── Source selector ───────────────────────────────────
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Income Source",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                IncomeViewModel.SOURCES.forEach { src ->
+                                    SourceChip(
+                                        label = src,
+                                        selected = state.source == src,
+                                        onClick = { onSourceChange(src) },
+                                    )
+                                }
+                            }
+                        }
+
+                        // ── Date picker ───────────────────────────────────────
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .clickable {
+                                    val calendar = Calendar.getInstance().apply {
+                                        timeInMillis = state.dateMillis
+                                    }
+                                    DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val selected = Calendar.getInstance().apply {
+                                                set(year, month, dayOfMonth, 0, 0, 0)
+                                                set(Calendar.MILLISECOND, 0)
+                                            }
+                                            onDateChange(selected.timeInMillis)
+                                        },
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH),
+                                        calendar.get(Calendar.DAY_OF_MONTH),
+                                    ).show()
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CalendarToday,
+                                contentDescription = "Date",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = "Date",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = dateFormat.format(java.util.Date(state.dateMillis)),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+
+                        // ── Income type selector ──────────────────────────────
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Income Type",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                IncomeViewModel.INCOME_TYPES.forEach { type ->
+                                    SourceChip(
+                                        label = type,
+                                        selected = state.incomeType == type,
+                                        onClick = { onIncomeTypeChange(type) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        }
+
+                        // ── Label / description ───────────────────────────────
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Details",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            OutlinedTextField(
+                                value = state.label,
+                                onValueChange = onLabelChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                singleLine = true,
+                                label = { Text("Label / Description (optional)") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            )
+                        }
+
+                        // ── Project reference — only for Freelance ────────────
+                        AnimatedVisibility(
+                            visible = state.source == "Freelance",
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically(),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    text = "Freelance Project (optional)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                ProjectDropdown(
+                                    projects = state.projects,
+                                    selectedId = state.projectRef,
+                                    onSelect = onProjectRefChange,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // ── Submit ────────────────────────────────────────────
+                        Button(
+                            onClick = onRequestSubmit,
+                            enabled = !state.isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        ) {
+                            if (state.isLoading) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            } else {
+                                Text(
+                                    text = "Save Income",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+            }
+
             com.bpeople.finpilot.ui.components.FinPilotBottomNavBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
                 currentTab = com.bpeople.finpilot.ui.components.NavTab.INCOME,
                 onNavigateToDashboard = onNavigateToDashboard,
                 onNavigateToIncome = { /* Currently on Income */ },
@@ -181,311 +541,6 @@ fun AddIncomeContent(
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
             )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            // ── Header with amount entry ──────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondaryContainer,
-                                MaterialTheme.colorScheme.background,
-                            ),
-                        ),
-                    )
-                    .padding(top = 16.dp, bottom = 40.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = "Add Income",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Amount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    )
-                    OutlinedTextField(
-                        value = state.amountOriginal,
-                        onValueChange = onAmountChange,
-                        modifier = Modifier.fillMaxWidth(0.85f),
-                        singleLine = true,
-                        textStyle = TextStyle(
-                            fontSize = 44.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        ),
-                        placeholder = {
-                            Text(
-                                "0.00",
-                                style = TextStyle(
-                                    fontSize = 44.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                                ),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        },
-                        leadingIcon = {
-                            var expanded by remember { mutableStateOf(false) }
-                            Box {
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { expanded = true }
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = state.currencyOriginal,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Rounded.ArrowDropDown,
-                                        contentDescription = "Select Currency",
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                ) {
-                                    IncomeViewModel.CURRENCIES.forEach { cur ->
-                                        DropdownMenuItem(
-                                            text = { Text(cur) },
-                                            onClick = {
-                                                onCurrencyChange(cur)
-                                                expanded = false
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                        ),
-                    )
-
-                    // LKR equivalent — shown only for foreign currency
-                    AnimatedVisibility(
-                        visible = showExchangeRate,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            val updatedText = state.exchangeRateLastUpdatedMillis
-                                ?.let { rateUpdatedFormat.format(java.util.Date(it)) }
-                                ?: "unknown"
-                            val rateSuffix = if (state.exchangeRateIsStale) " (stale)" else ""
-                            Text(
-                                text = if (state.exchangeRateAvailable) {
-                                    "Rate: 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} • $updatedText$rateSuffix"
-                                } else {
-                                    "Rate unavailable — try again later"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                textAlign = TextAlign.Center,
-                            )
-                            TextButton(
-                                onClick = onRefreshRates,
-                                enabled = !state.isLoading && !state.isRefreshingRates,
-                            ) {
-                                if (state.isRefreshingRates) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(12.dp),
-                                        strokeWidth = 1.5.dp,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                }
-                                Text("Refresh rates")
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Form card ────────────────────────────────────────────────
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 32.dp, bottom = 16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-
-                    // ── Source selector ───────────────────────────────────
-                    SectionLabel(text = "Income Source")
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        IncomeViewModel.SOURCES.forEach { src ->
-                            SourceChip(
-                                label = src,
-                                selected = state.source == src,
-                                onClick = { onSourceChange(src) },
-                            )
-                        }
-                    }
-
-                    // ── Date picker ───────────────────────────────────────
-                    SectionLabel(text = "Date")
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .clickable {
-                                val calendar = Calendar.getInstance().apply {
-                                    timeInMillis = state.dateMillis
-                                }
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, dayOfMonth ->
-                                        val selected = Calendar.getInstance().apply {
-                                            set(year, month, dayOfMonth, 0, 0, 0)
-                                            set(Calendar.MILLISECOND, 0)
-                                        }
-                                        onDateChange(selected.timeInMillis)
-                                    },
-                                    calendar.get(Calendar.YEAR),
-                                    calendar.get(Calendar.MONTH),
-                                    calendar.get(Calendar.DAY_OF_MONTH),
-                                ).show()
-                            }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = dateFormat.format(java.util.Date(state.dateMillis)),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Icon(
-                            imageVector = Icons.Rounded.CalendarToday,
-                            contentDescription = "Pick date",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    // ── Income type selector ──────────────────────────────
-                    SectionLabel(text = "Income Type")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        IncomeViewModel.INCOME_TYPES.forEach { type ->
-                            SourceChip(
-                                label = type,
-                                selected = state.incomeType == type,
-                                onClick = { onIncomeTypeChange(type) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-
-                    // ── Label / description ───────────────────────────────
-                    IncomeFormField(
-                        label = "Label / Description (optional)",
-                        value = state.label,
-                        onValueChange = onLabelChange,
-                        icon = Icons.Rounded.Label,
-                        keyboardType = KeyboardType.Text,
-                    )
-
-                    // ── Project reference — only for Freelance ────────────
-                    AnimatedVisibility(
-                        visible = state.source == "Freelance",
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SectionLabel(text = "Freelance Project (optional)")
-                            ProjectDropdown(
-                                projects = state.projects,
-                                selectedId = state.projectRef,
-                                onSelect = onProjectRefChange,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // ── Submit ────────────────────────────────────────────
-                    Button(
-                        onClick = onRequestSubmit,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                        ),
-                        enabled = !state.isLoading,
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onSecondary,
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Text(
-                                text = "Save Income",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondary,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
         }
     }
 }
@@ -509,24 +564,32 @@ private fun SourceChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
-    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    val textColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
-    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 300),
+        label = "chip_bg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 300),
+        label = "chip_content",
+    )
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
+            .clip(RoundedCornerShape(24.dp))
+            .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = textColor,
+            color = contentColor,
         )
     }
 }
@@ -627,12 +690,12 @@ private fun ProjectDropdown(
                                 text = project.projectTitle,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
-                            )
-                            Text(
-                                text = project.clientName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            )
+                        )
+                        Text(
+                            text = project.clientName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
                         }
                     },
                     onClick = {
@@ -660,7 +723,7 @@ private fun AddIncomeScreenPreview() {
                 label = "Website redesign",
                 incomeType = "One-off",
             ),
-            snackbarHostState = androidx.compose.material3.SnackbarHostState(),
+            snackbarHostState = SnackbarHostState(),
             onNavigateToDashboard = {},
             onNavigateToIncome = {},
             onNavigateToExpense = {},
