@@ -6,6 +6,8 @@ import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.GoalRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
+import com.bpeople.finpilot.data.model.UserProfile
+import com.bpeople.finpilot.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +20,50 @@ class DashboardViewModel @Inject constructor(
     incomeRepository: IncomeRepository,
     expenseRepository: ExpenseRepository,
     goalRepository: GoalRepository,
+    userRepository: UserRepository
 ) : ViewModel() {
+
+    val userProfile: StateFlow<UserProfile?> = userRepository.getUserProfile()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun buildIncomeBreakdown(incomes: List<com.bpeople.finpilot.data.model.IncomeEntry>): Map<String, Double> {
+        if (incomes.isEmpty()) return emptyMap()
+
+        val grouped = incomes
+            .groupBy { entry -> entry.source.trim().ifBlank { "Other" } }
+            .mapValues { (_, items) -> items.sumOf { it.amountLKR } }
+            .filterValues { it > 0.0 }
+
+        if (grouped.isEmpty()) return emptyMap()
+
+        // Keep UI readable: show top 4 sources, merge the rest into "Other".
+        val sorted = grouped.entries.sortedByDescending { it.value }
+        val top = sorted.take(4).associate { it.key to it.value }.toMutableMap()
+        val restTotal = sorted.drop(4).sumOf { it.value }
+        if (restTotal > 0.0) {
+            top["Other"] = (top["Other"] ?: 0.0) + restTotal
+        }
+        return top
+    }
+
+    private fun buildExpensesByCategory(expenses: List<com.bpeople.finpilot.data.model.ExpenseEntry>): Map<String, Double> {
+        if (expenses.isEmpty()) return emptyMap()
+
+        val grouped = expenses
+            .groupBy { entry -> entry.category.trim().ifBlank { "Other" } }
+            .mapValues { (_, items) -> items.sumOf { it.amount } }
+            .filterValues { it > 0.0 }
+
+        if (grouped.isEmpty()) return emptyMap()
+
+        val sorted = grouped.entries.sortedByDescending { it.value }
+        val top = sorted.take(5).associate { it.key to it.value }.toMutableMap()
+        val restTotal = sorted.drop(5).sumOf { it.value }
+        if (restTotal > 0.0) {
+            top["Other"] = (top["Other"] ?: 0.0) + restTotal
+        }
+        return top
+    }
 
     data class DashboardUiState(
         val totalIncome: Double = 0.0,

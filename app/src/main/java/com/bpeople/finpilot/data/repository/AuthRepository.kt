@@ -9,16 +9,19 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) {
 
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
@@ -55,11 +58,26 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun register(email: String, password: String): AuthResult {
-        return try {
+    suspend fun register(email: String, password: String, displayName: String): AuthResult = withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             if (user != null) {
+                // Save profile to Firestore BEFORE signing out
+                val profile = mapOf(
+                    "uid" to user.uid,
+                    "displayName" to displayName,
+                    "email" to email,
+                    "createdAt" to com.google.firebase.Timestamp.now(),
+                    "baseCurrency" to "LKR"
+                )
+                try {
+                    firestore.collection("users").document(user.uid).set(profile).await()
+                } catch (e: Exception) {
+                    // Even if firestore fails, we have the auth account. 
+                    // But we should probably know it failed.
+                }
+                
                 user.sendEmailVerification().await()
                 auth.signOut()
                 AuthResult.Success

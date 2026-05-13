@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -1419,6 +1420,41 @@ private fun BudgetRatioContent(
             lineHeight = 17.sp,
         )
     }
+}
+
+private fun committedDiscretionaryHint(fixedCostsPercentage: Double): String {
+    val fixedRounded = fixedCostsPercentage.coerceAtLeast(0.0).roundToInt()
+    return if (fixedCostsPercentage >= 50.0) {
+        "Your fixed costs are ${fixedRounded}% of income. Aim for <50% for better flexibility."
+    } else {
+        "Nice! Your fixed costs are ${fixedRounded}% of income — below the recommended 50% threshold."
+    }
+}
+
+private fun chartColorForIndex(index: Int): Color {
+    val palette = listOf(
+        Color(0xFF1976D2),
+        Color(0xFF388E3C),
+        Color(0xFFFBC02D),
+        Color(0xFFD32F2F),
+        Color(0xFF7B1FA2),
+        Color(0xFF00838F),
+    )
+    return palette[index % palette.size]
+}
+
+private fun categoryColor(category: String): Color {
+    // A small deterministic palette based on category text.
+    val colors = listOf(
+        Color(0xFFFF6F00),
+        Color(0xFF1976D2),
+        Color(0xFF7B1FA2),
+        Color(0xFF388E3C),
+        Color(0xFFD32F2F),
+        Color(0xFF455A64),
+    )
+    val idx = (category.trim().lowercase().hashCode().absoluteValue) % colors.size
+    return colors[idx]
 }
 
 @Composable
