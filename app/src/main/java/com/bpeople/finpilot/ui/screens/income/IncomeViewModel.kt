@@ -60,6 +60,10 @@ class IncomeViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val errorMessage: String? = null,
         val isSubmitted: Boolean = false,
+        // Sheet & delete state
+        val showAddSheet: Boolean = false,
+        val pendingDeleteEntry: IncomeEntry? = null,
+        val showMonthlyView: Boolean = true,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -298,6 +302,60 @@ class IncomeViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun onShowAddSheet() {
+        _incomeState.update { it.copy(showAddSheet = true) }
+    }
+
+    fun onHideAddSheet() {
+        _incomeState.update { current ->
+            current.copy(
+                showAddSheet = false,
+                amountOriginal = "",
+                currencyOriginal = "LKR",
+                exchangeRate = "1.0",
+                amountLkrPreview = 0.0,
+                exchangeRateConfirmed = true,
+                showRateConfirmation = false,
+                label = "",
+                projectRef = "",
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun onToggleMonthlyView() {
+        _incomeState.update { it.copy(showMonthlyView = !it.showMonthlyView) }
+    }
+
+    fun deleteIncome(entry: IncomeEntry) {
+        _incomeState.update { it.copy(pendingDeleteEntry = entry) }
+        viewModelScope.launch {
+            runCatching { incomeRepository.deleteIncome(entry.id) }
+                .onFailure { t ->
+                    _incomeState.update {
+                        it.copy(
+                            pendingDeleteEntry = null,
+                            errorMessage = t.message ?: "Failed to delete entry",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun undoDelete() {
+        val entry = _incomeState.value.pendingDeleteEntry ?: return
+        _incomeState.update { it.copy(pendingDeleteEntry = null) }
+        viewModelScope.launch { runCatching { incomeRepository.addIncome(entry) } }
+    }
+
+    fun consumePendingDelete() {
+        _incomeState.update { it.copy(pendingDeleteEntry = null) }
+    }
+
+    fun consumeError() {
+        _incomeState.update { it.copy(errorMessage = null) }
     }
 
     private fun calculateAmountLkr(state: IncomeUiState): Double {

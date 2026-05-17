@@ -98,6 +98,7 @@ fun AddExpenseScreen(
     viewModel: ExpenseViewModel,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit = {},
+    onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onExpenseAdded: (String) -> Unit,
@@ -121,6 +122,7 @@ fun AddExpenseScreen(
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToIncome = onNavigateToIncome,
+        onNavigateToTransactions = onNavigateToTransactions,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
         onAmountChange = viewModel::onAmountChange,
@@ -149,6 +151,7 @@ fun AddExpenseContent(
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit = {},
+    onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onAmountChange: (String) -> Unit,
@@ -651,6 +654,7 @@ fun AddExpenseContent(
             onNavigateToDashboard = onNavigateToDashboard,
             onNavigateToIncome = onNavigateToIncome,
             onNavigateToExpense = { /* Currently on Expense */ },
+            onNavigateToTransactions = onNavigateToTransactions,
             onNavigateToGoals = onNavigateToGoals,
             onNavigateToProfile = onNavigateToProfile
         )

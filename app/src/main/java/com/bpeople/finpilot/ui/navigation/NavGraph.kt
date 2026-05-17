@@ -20,6 +20,7 @@ import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
 import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
+import com.bpeople.finpilot.ui.screens.expense.ExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
@@ -29,6 +30,8 @@ import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
 import com.bpeople.finpilot.ui.screens.profile.ProfileViewModel
 import com.bpeople.finpilot.ui.screens.profile.SettingsScreen
 import com.bpeople.finpilot.ui.screens.profile.SettingsViewModel
+import com.bpeople.finpilot.ui.screens.transactions.TransactionScreen
+import com.bpeople.finpilot.ui.screens.transactions.TransactionViewModel
 
 @Composable
 fun FinPilotNavGraph(
@@ -164,6 +167,9 @@ fun FinPilotNavGraph(
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
+                },
                 onNavigateToGoals = {
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
                 },
@@ -178,13 +184,16 @@ fun FinPilotNavGraph(
 
         composable(NavRoutes.AddExpense.route) {
             val expenseViewModel: ExpenseViewModel = hiltViewModel()
-            AddExpenseScreen(
+            ExpenseScreen(
                 viewModel = expenseViewModel,
-                onNavigateToDashboard = { 
-                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false) 
+                onNavigateToDashboard = {
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
                 },
                 onNavigateToIncome = {
                     navController.navigate(NavRoutes.AddIncome.route)
+                },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
                 },
                 onNavigateToGoals = {
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
@@ -222,18 +231,41 @@ fun FinPilotNavGraph(
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
+                },
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
                 }
             )
         }
 
+        composable(NavRoutes.Transactions.route) {
+            val transactionViewModel: TransactionViewModel = hiltViewModel()
+            TransactionScreen(
+                viewModel = transactionViewModel,
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Transactions.route) { inclusive = true }
+                    }
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
+            )
+        }
+
         composable(NavRoutes.Profile.route) {
             val profileViewModel: ProfileViewModel = hiltViewModel()
             val currentUser by profileViewModel.currentUser.collectAsState()
+            val profileUiState by profileViewModel.uiState.collectAsState()
             ProfileScreen(
                 displayName = currentUser?.displayName,
                 email = currentUser?.email,
+                uiState = profileUiState,
                 onNavigateToDashboard = {
                     navController.navigate(NavRoutes.Dashboard.route)
                 },
@@ -242,6 +274,9 @@ fun FinPilotNavGraph(
                 },
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
                 },
                 onNavigateToGoals = {
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
@@ -256,7 +291,24 @@ fun FinPilotNavGraph(
                         popUpTo(NavRoutes.Profile.route) { inclusive = true }
                     }
                 },
-                onUpdateDisplayName = profileViewModel::updateDisplayName
+                onUpdateDisplayName = profileViewModel::updateDisplayName,
+                onDeleteAccount = {
+                    profileViewModel.signOut()
+                    navController.navigate(NavRoutes.Login.route) {
+                        popUpTo(NavRoutes.Profile.route) { inclusive = true }
+                    }
+                },
+                onSetUsdEnabled = profileViewModel::setUsdEnabled,
+                onSetUsdtEnabled = profileViewModel::setUsdtEnabled,
+                onSetAutoConvert = profileViewModel::setAutoConvert,
+                onToggleIncomeSource = profileViewModel::toggleIncomeSource,
+                onAddIncomeSource = profileViewModel::addIncomeSource,
+                onNotifySalaryReminder = profileViewModel::setNotifySalaryReminder,
+                onNotifyWeeklySummary = profileViewModel::setNotifyWeeklySummary,
+                onNotifyGoalMilestone = profileViewModel::setNotifyGoalMilestone,
+                onNotifyBudgetOverspend = profileViewModel::setNotifyBudgetOverspend,
+                onBudgetThreshold = profileViewModel::setBudgetOverspendThreshold,
+                onDarkMode = profileViewModel::setDarkMode,
             )
         }
 

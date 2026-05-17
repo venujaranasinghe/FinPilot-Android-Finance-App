@@ -37,6 +37,11 @@ class ExpenseRepository @Inject constructor(
         documentRef.set(payload).await()
     }
 
+    suspend fun deleteExpense(id: String) {
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection("users").document(uid).collection("expenses").document(id).delete().await()
+    }
+
     private fun attachListener(uid: String?) {
         listenerRegistration?.remove()
         listenerRegistration = null
