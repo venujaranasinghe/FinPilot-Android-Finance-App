@@ -37,6 +37,11 @@ class IncomeRepository @Inject constructor(
         documentRef.set(payload).await()
     }
 
+    suspend fun deleteIncome(id: String) {
+        val uid = auth.currentUser?.uid ?: return
+        firestore.collection("users").document(uid).collection("income").document(id).delete().await()
+    }
+
     private fun attachListener(uid: String?) {
         listenerRegistration?.remove()
         listenerRegistration = null

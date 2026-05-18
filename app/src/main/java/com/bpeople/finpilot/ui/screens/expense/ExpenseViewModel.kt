@@ -61,6 +61,14 @@ class ExpenseViewModel @Inject constructor(
         val exchangeRateConfirmed: Boolean = true,
         val showRateConfirmation: Boolean = false,
         val isRefreshingRates: Boolean = false,
+        // Enhanced expense screen state
+        val showAddSheet: Boolean = false,
+        val pendingDeleteEntry: ExpenseEntry? = null,
+        val warningBannerDismissed: Boolean = false,
+        val selectedCategoryFilter: String = "All",
+        val selectedChartCategory: String? = null,
+        val showTrendChart: Boolean = false,
+        val isSubmitted: Boolean = false,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -278,6 +286,8 @@ class ExpenseViewModel @Inject constructor(
                         insightMessage = buildGoalInsight(amount, it.activeGoal),
                         exchangeRateConfirmed = true,
                         showRateConfirmation = false,
+                        isSubmitted = true,
+                        showAddSheet = false,
                     )
                 }
             }.onFailure { throwable ->
@@ -344,5 +354,99 @@ class ExpenseViewModel @Inject constructor(
         val CATEGORIES = listOf("Food", "Transport", "Housing", "Subscriptions", "Entertainment", "Health", "Other")
         val PAYMENT_METHODS = listOf("Card", "Cash", "Bank Transfer", "Auto-Debit")
         val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
+    }
+
+    // ── Sheet visibility ──────────────────────────────────────────────────────
+    fun onShowAddSheet() {
+        _expenseState.update {
+            it.copy(
+                showAddSheet = true,
+                amount = "",
+                note = "",
+                subCategory = "",
+                isRecurring = false,
+                category = CATEGORIES.first(),
+                paymentMethod = PAYMENT_METHODS.first(),
+                dateMillis = System.currentTimeMillis(),
+                currency = "LKR",
+                errorMessage = null,
+                isSubmitted = false,
+            )
+        }
+    }
+
+    fun onHideAddSheet() {
+        _expenseState.update { it.copy(showAddSheet = false, errorMessage = null) }
+    }
+
+    fun consumeSubmitted() {
+        _expenseState.update { it.copy(isSubmitted = false) }
+    }
+
+    // ── Delete with undo ──────────────────────────────────────────────────────
+    fun deleteExpense(entry: ExpenseEntry) {
+        _expenseState.update { it.copy(pendingDeleteEntry = entry) }
+        viewModelScope.launch {
+            runCatching { expenseRepository.deleteExpense(entry.id) }
+                .onFailure { error ->
+                    _expenseState.update {
+                        it.copy(
+                            pendingDeleteEntry = null,
+                            errorMessage = error.message ?: "Failed to delete expense",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun undoDelete() {
+        val entry = _expenseState.value.pendingDeleteEntry ?: return
+        _expenseState.update { it.copy(pendingDeleteEntry = null) }
+        viewModelScope.launch {
+            runCatching { expenseRepository.addExpense(entry) }
+        }
+    }
+
+    fun consumePendingDelete() {
+        _expenseState.update { it.copy(pendingDeleteEntry = null) }
+    }
+
+    // ── Duplicate entry ───────────────────────────────────────────────────────
+    fun duplicateExpense(entry: ExpenseEntry) {
+        viewModelScope.launch {
+            runCatching {
+                expenseRepository.addExpense(
+                    entry.copy(
+                        id = "",
+                        date = com.google.firebase.Timestamp(java.util.Date(System.currentTimeMillis())),
+                    )
+                )
+            }.onFailure { error ->
+                _expenseState.update { it.copy(errorMessage = error.message ?: "Failed to duplicate") }
+            }
+        }
+    }
+
+    // ── UI filters ────────────────────────────────────────────────────────────
+    fun onCategoryFilterChange(category: String) {
+        _expenseState.update { it.copy(selectedCategoryFilter = category, selectedChartCategory = null) }
+    }
+
+    fun onChartCategorySelect(category: String?) {
+        _expenseState.update { current ->
+            val newFilter = if (current.selectedChartCategory == category) null else category
+            current.copy(
+                selectedChartCategory = newFilter,
+                selectedCategoryFilter = newFilter ?: "All",
+            )
+        }
+    }
+
+    fun onToggleTrendChart() {
+        _expenseState.update { it.copy(showTrendChart = !it.showTrendChart) }
+    }
+
+    fun dismissWarningBanner() {
+        _expenseState.update { it.copy(warningBannerDismissed = true) }
     }
 }

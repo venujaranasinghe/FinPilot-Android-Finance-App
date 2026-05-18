@@ -1,34 +1,30 @@
 package com.bpeople.finpilot.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CompareArrows
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.ShoppingCart
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,131 +32,172 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+private val OrangePrimary = Color(0xFFF97316)
 
 enum class NavTab {
-    DASHBOARD, INCOME, EXPENSE, GOALS, PROFILE
+    HOME, TRANSACTIONS, GOALS, PROFILE,
+    // Legacy values — treated as HOME/TRANSACTIONS by the bar renderer
+    DASHBOARD, INCOME, EXPENSE,
 }
+
+private fun NavTab.resolved(): NavTab = when (this) {
+    NavTab.DASHBOARD -> NavTab.HOME
+    NavTab.INCOME, NavTab.EXPENSE -> NavTab.TRANSACTIONS
+    else -> this
+}
+
+private data class NavItem(
+    val tab: NavTab,
+    val label: String,
+    val icon: ImageVector,
+)
+
+private val navItems = listOf(
+    NavItem(NavTab.HOME, "Home", Icons.Rounded.Home),
+    NavItem(NavTab.TRANSACTIONS, "Transactions", Icons.Rounded.CompareArrows),
+    NavItem(NavTab.GOALS, "Goals", Icons.Rounded.EmojiEvents),
+    NavItem(NavTab.PROFILE, "Profile", Icons.Rounded.Person),
+)
 
 @Composable
 fun FinPilotBottomNavBar(
     modifier: Modifier = Modifier,
     currentTab: NavTab,
-    onNavigateToDashboard: () -> Unit,
-    onNavigateToIncome: () -> Unit,
-    onNavigateToExpense: () -> Unit,
-    onNavigateToGoals: () -> Unit,
-    onNavigateToProfile: () -> Unit,
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
+    onNavigateToExpense: () -> Unit = {},
+    onNavigateToTransactions: () -> Unit = {},
+    onNavigateToGoals: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
 ) {
-    Surface(
+    val active = currentTab.resolved()
+
+    val blurModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        Modifier.graphicsLayer {
+            renderEffect = BlurEffect(20f, 20f, TileMode.Clamp)
+        }
+    } else {
+        Modifier
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = 16.dp,
-        tonalElevation = 4.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+        // Blur layer (API 31+) — drawn behind the card
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .then(blurModifier),
+            )
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(
+                    alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.88f else 0.97f,
+                ),
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 24.dp),
         ) {
-            NavBarItem(
-                icon = Icons.Rounded.Home,
-                label = "Home",
-                isSelected = currentTab == NavTab.DASHBOARD,
-                onClick = onNavigateToDashboard
-            )
-            NavBarItem(
-                icon = Icons.Rounded.TrendingUp,
-                label = "Income",
-                isSelected = currentTab == NavTab.INCOME,
-                onClick = onNavigateToIncome
-            )
-            NavBarItem(
-                icon = Icons.Rounded.ShoppingCart,
-                label = "Expense",
-                isSelected = currentTab == NavTab.EXPENSE,
-                onClick = onNavigateToExpense
-            )
-            NavBarItem(
-                icon = Icons.Rounded.Star,
-                label = "Goals",
-                isSelected = currentTab == NavTab.GOALS,
-                onClick = onNavigateToGoals
-            )
-            NavBarItem(
-                icon = Icons.Rounded.Person,
-                label = "Profile",
-                isSelected = currentTab == NavTab.PROFILE,
-                onClick = onNavigateToProfile
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                navItems.forEach { item ->
+                    NavBarItem(
+                        item = item,
+                        isActive = item.tab == active,
+                        onClick = {
+                            when (item.tab) {
+                                NavTab.HOME -> onNavigateToDashboard()
+                                NavTab.TRANSACTIONS -> onNavigateToTransactions()
+                                NavTab.GOALS -> onNavigateToGoals()
+                                NavTab.PROFILE -> onNavigateToProfile()
+                                else -> {}
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun NavBarItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    item: NavItem,
+    isActive: Boolean,
+    onClick: () -> Unit,
 ) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else Color.Transparent,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "nav_bg_color"
+    val iconTint by animateColorAsState(
+        targetValue = if (isActive) OrangePrimary else Color(0xFF9CA3AF),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "nav_tint_${item.tab}",
     )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "nav_content_color"
+    val labelColor by animateColorAsState(
+        targetValue = if (isActive) OrangePrimary else Color.Transparent,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "nav_label_${item.tab}",
     )
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "nav_scale"
+        targetValue = if (isActive) 1.08f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "nav_scale_${item.tab}",
     )
 
-    Box(
+    Column(
         modifier = Modifier
             .scale(scale)
-            .clip(RoundedCornerShape(24.dp))
-            .background(backgroundColor)
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            AnimatedVisibility(
-                visible = isSelected,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally()
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = contentColor
-                )
-            }
-        }
+        Icon(
+            imageVector = item.icon,
+            contentDescription = item.label,
+            tint = iconTint,
+            modifier = Modifier.size(24.dp),
+        )
+
+        // Label — only visible when active; invisible text keeps column height stable
+        Text(
+            text = item.label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = labelColor,
+        )
+
+        // Orange dot indicator
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(if (isActive) OrangePrimary else Color.Transparent),
+        )
     }
 }
