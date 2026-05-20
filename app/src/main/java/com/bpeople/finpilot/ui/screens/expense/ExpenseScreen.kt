@@ -1,179 +1,47 @@
 package com.bpeople.finpilot.ui.screens.expense
 
 import android.app.DatePickerDialog
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Autorenew
-import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.CardGiftcard
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.CreditCard
-import androidx.compose.material.icons.rounded.DirectionsCar
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Fastfood
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.LocalGroceryStore
-import androidx.compose.material.icons.rounded.LocalHospital
-import androidx.compose.material.icons.rounded.Money
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.Subscriptions
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.*
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.*
+import androidx.compose.ui.unit.*
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.GlassTheme
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import kotlin.math.cos
+import java.util.*
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
-// ── Colour constants ──────────────────────────────────────────────────────────
-
-private val Orange = Color(0xFFFF6B00)
-private val OrangeLight = Color(0xFFFFF3E0)
-private val AmberWarning = Color(0xFFF59E0B)
-private val AmberWarningBg = Color(0xFFFFFBEB)
-private val SurfaceWhite = Color(0xFFFFFFFF)
-private val BgGray = Color(0xFFF9FAFB)
-private val TextPrimary = Color(0xFF1F2937)
-private val TextSecondary = Color(0xFF6B7280)
-private val Divider = Color(0xFFE5E7EB)
-
-// Category colours (Orange primary, rest muted palette)
-private val categoryColors = mapOf(
-    "Food" to Color(0xFFFF6B00),
-    "Transport" to Color(0xFF3B82F6),
-    "Housing" to Color(0xFF8B5CF6),
-    "Subscriptions" to Color(0xFF10B981),
-    "Entertainment" to Color(0xFFF59E0B),
-    "Health" to Color(0xFFEF4444),
-    "Other" to Color(0xFF9CA3AF),
-)
-
-private fun categoryColor(cat: String): Color =
-    categoryColors[cat] ?: Color(0xFF9CA3AF)
-
-private fun categoryIcon(cat: String): ImageVector = when (cat) {
-    "Food" -> Icons.Rounded.Restaurant
-    "Transport" -> Icons.Rounded.DirectionsCar
-    "Housing" -> Icons.Rounded.Home
-    "Subscriptions" -> Icons.Rounded.Subscriptions
-    "Entertainment" -> Icons.Rounded.Movie
-    "Health" -> Icons.Rounded.LocalHospital
-    else -> Icons.Rounded.MoreHoriz
-}
-
-private fun paymentMethodIcon(method: String): ImageVector = when {
-    method.equals("Card", ignoreCase = true) -> Icons.Rounded.CreditCard
-    method.equals("Cash", ignoreCase = true) -> Icons.Rounded.Money
-    method.contains("Auto", ignoreCase = true) -> Icons.Rounded.Autorenew
-    else -> Icons.Rounded.CreditCard
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 private fun formatLKRFull(amount: Double) = "LKR %,.0f".format(amount)
-private fun formatLKR(amount: Double): String = when {
+private fun formatLKRShort(amount: Double): String = when {
     amount >= 1_000_000 -> "LKR %.1fM".format(amount / 1_000_000)
-    amount >= 1_000 -> "LKR %.0fK".format(amount / 1_000)
-    else -> "LKR ${amount.roundToInt()}"
+    amount >= 1_000     -> "LKR %.0fK".format(amount / 1_000)
+    else                -> "LKR ${amount.roundToInt()}"
 }
 
 private fun dateLabel(millis: Long): String {
@@ -181,7 +49,7 @@ private fun dateLabel(millis: Long): String {
     val yesterday = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, -1) }
     val date = Calendar.getInstance().also { it.timeInMillis = millis }
     return when {
-        isSameDay(date, today) -> "Today"
+        isSameDay(date, today)     -> "Today"
         isSameDay(date, yesterday) -> "Yesterday"
         else -> SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(millis))
     }
@@ -189,15 +57,46 @@ private fun dateLabel(millis: Long): String {
 
 private fun isSameDay(a: Calendar, b: Calendar): Boolean =
     a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-        a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
 private fun currentMonthStartMillis(): Long = Calendar.getInstance().apply {
     set(Calendar.DAY_OF_MONTH, 1)
-    set(Calendar.HOUR_OF_DAY, 0)
-    set(Calendar.MINUTE, 0)
-    set(Calendar.SECOND, 0)
-    set(Calendar.MILLISECOND, 0)
+    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
 }.timeInMillis
+
+private data class MonthTrend(val label: String, val amount: Float)
+
+private fun computeMonthlyTrend(entries: List<ExpenseEntry>): List<MonthTrend> {
+    val cal = Calendar.getInstance()
+    return (5 downTo 0).map { back ->
+        val c = (cal.clone() as Calendar).also { it.add(Calendar.MONTH, -back) }
+        val y = c.get(Calendar.YEAR); val m = c.get(Calendar.MONTH)
+        val label = SimpleDateFormat("MMM", Locale.getDefault()).format(c.time)
+        val total = entries.filter { e ->
+            val ec = Calendar.getInstance().also { it.time = e.date?.toDate() ?: return@filter false }
+            ec.get(Calendar.YEAR) == y && ec.get(Calendar.MONTH) == m
+        }.sumOf { it.amount }.toFloat()
+        MonthTrend(label, total)
+    }
+}
+
+private fun categoryIcon(cat: String): ImageVector = when (cat) {
+    "Food"          -> Icons.Rounded.Restaurant
+    "Transport"     -> Icons.Rounded.DirectionsCar
+    "Housing"       -> Icons.Rounded.Home
+    "Subscriptions" -> Icons.Rounded.Subscriptions
+    "Entertainment" -> Icons.Rounded.Movie
+    "Health"        -> Icons.Rounded.LocalHospital
+    else            -> Icons.Rounded.MoreHoriz
+}
+
+private fun paymentMethodIcon(method: String): ImageVector = when {
+    method.equals("Card", ignoreCase = true)    -> Icons.Rounded.CreditCard
+    method.equals("Cash", ignoreCase = true)    -> Icons.Rounded.Money
+    method.contains("Auto", ignoreCase = true)  -> Icons.Rounded.Autorenew
+    else                                        -> Icons.Rounded.CreditCard
+}
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -215,38 +114,29 @@ fun ExpenseScreen(
     val state by viewModel.expenseState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Submitted → close sheet, show snackbar
     LaunchedEffect(state.isSubmitted) {
         if (!state.isSubmitted) return@LaunchedEffect
         viewModel.consumeSubmitted()
         snackbarHostState.showSnackbar("Expense saved!")
     }
-
-    // Insight message
     LaunchedEffect(state.insightMessage) {
         val insight = state.insightMessage ?: return@LaunchedEffect
-        viewModel.consumeInsight()
-        onExpenseAdded(insight)
+        viewModel.consumeInsight(); onExpenseAdded(insight)
     }
-
-    // Pending delete undo
     LaunchedEffect(state.pendingDeleteEntry) {
         val entry = state.pendingDeleteEntry ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
-            message = "${entry.category} expense deleted",
+            "${entry.category} expense deleted",
             actionLabel = "Undo",
             duration = SnackbarDuration.Short,
         )
         when (result) {
             SnackbarResult.ActionPerformed -> viewModel.undoDelete()
-            SnackbarResult.Dismissed -> viewModel.consumePendingDelete()
+            SnackbarResult.Dismissed       -> viewModel.consumePendingDelete()
         }
     }
-
-    // Errors
     LaunchedEffect(state.errorMessage) {
-        val msg = state.errorMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(msg)
+        state.errorMessage?.let { snackbarHostState.showSnackbar(it) }
     }
 
     ExpenseListContent(
@@ -254,7 +144,6 @@ fun ExpenseScreen(
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToIncome = onNavigateToIncome,
-        onNavigateToExpense = {},
         onNavigateToTransactions = onNavigateToTransactions,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
@@ -275,8 +164,6 @@ fun ExpenseScreen(
         onSubCategoryChange = viewModel::onSubCategoryChange,
         onRecurringChange = viewModel::onRecurringChange,
         onRequestSubmit = viewModel::requestSubmit,
-        onConfirmExchangeRate = viewModel::confirmExchangeRate,
-        onDismissRateConfirmation = viewModel::dismissRateConfirmation,
         onRefreshRates = viewModel::refreshExchangeRates,
     )
 }
@@ -290,7 +177,6 @@ fun ExpenseListContent(
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit,
-    onNavigateToExpense: () -> Unit,
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
@@ -311,8 +197,6 @@ fun ExpenseListContent(
     onSubCategoryChange: (String) -> Unit,
     onRecurringChange: (Boolean) -> Unit,
     onRequestSubmit: () -> Unit,
-    onConfirmExchangeRate: () -> Unit,
-    onDismissRateConfirmation: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
     // Add expense bottom sheet
@@ -320,9 +204,10 @@ fun ExpenseListContent(
         ModalBottomSheet(
             onDismissRequest = onHideAddSheet,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = SurfaceWhite,
+            containerColor = GlassTheme.BgMid,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         ) {
-            AddExpenseFormSheet(
+            GlassAddExpenseSheet(
                 state = state,
                 onAmountChange = onAmountChange,
                 onCurrencyChange = onCurrencyChange,
@@ -338,49 +223,39 @@ fun ExpenseListContent(
         }
     }
 
-    // Compute month data
+    // Monthly data
     val monthStart = remember { currentMonthStartMillis() }
     val monthEntries = remember(state.entries) {
         state.entries.filter { (it.date?.toDate()?.time ?: 0L) >= monthStart }
     }
     val monthTotal = monthEntries.sumOf { it.amount }
-    val committedTotal = monthEntries.filter { it.isRecurring }.sumOf { it.amount }
-    val discretionaryTotal = monthEntries.filter { !it.isRecurring }.sumOf { it.amount }
+    val committed = monthEntries.filter { it.isRecurring }.sumOf { it.amount }
+    val discretionary = monthEntries.filter { !it.isRecurring }.sumOf { it.amount }
 
-    // Category totals for donut chart
     val categoryTotals = remember(monthEntries) {
         monthEntries.groupBy { it.category }
             .mapValues { (_, v) -> v.sumOf { it.amount } }
-            .entries
-            .sortedByDescending { it.value }
+            .entries.sortedByDescending { it.value }
     }
 
-    // Zombie subscriptions: recurring entries in current month
-    val zombieSubscriptions = remember(monthEntries) {
+    val zombies = remember(monthEntries) {
         monthEntries
             .filter { it.isRecurring && it.paymentMethod.contains("Auto", ignoreCase = true) }
             .distinctBy { it.category + it.note + it.subCategory }
     }
 
-    // Filter entries for list
     val displayEntries = remember(state.entries, state.selectedCategoryFilter) {
         if (state.selectedCategoryFilter == "All") state.entries
         else state.entries.filter { it.category.equals(state.selectedCategoryFilter, ignoreCase = true) }
     }
 
-    // Group by date for sticky headers
     val groupedByDate = remember(displayEntries) {
         displayEntries
             .sortedByDescending { it.date?.seconds ?: 0L }
-            .groupBy { entry ->
-                val millis = entry.date?.toDate()?.time ?: 0L
-                dateLabel(millis)
-            }
-            .entries
-            .toList()
+            .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
+            .entries.toList()
     }
 
-    // Monthly trend data (last 6 months)
     val trendData = remember(state.entries) { computeMonthlyTrend(state.entries) }
 
     Scaffold(
@@ -389,50 +264,78 @@ fun ExpenseListContent(
             ExtendedFloatingActionButton(
                 onClick = onShowAddSheet,
                 icon = {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add Expense", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
                 },
-                text = { Text("Add Expense", fontWeight = FontWeight.Bold) },
-                containerColor = Orange,
+                text = {
+                    Text("Add Expense", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                },
+                containerColor = GlassTheme.Orange,
                 contentColor = Color.White,
+                shape = RoundedCornerShape(28.dp),
             )
         },
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.TRANSACTIONS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = { /* already here */ },
-                onNavigateToTransactions = onNavigateToTransactions,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile,
-            )
-        },
-        containerColor = BgGray,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
     ) { pv ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(pv),
-            contentPadding = PaddingValues(bottom = 88.dp),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(GlassTheme.BgStart, GlassTheme.BgMid, GlassTheme.BgEnd)
+                    )
+                )
         ) {
-                // ── Header ───────────────────────────────────────────────────
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            GlassTheme.Orange.copy(alpha = 0.16f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(size.width * 0.88f, size.height * 0.10f),
+                        radius = 260.dp.toPx(),
+                    ),
+                    center = Offset(size.width * 0.88f, size.height * 0.10f),
+                    radius = 260.dp.toPx(),
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            GlassTheme.OrangeLight.copy(alpha = 0.10f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(size.width * 0.18f, size.height * 0.70f),
+                        radius = 220.dp.toPx(),
+                    ),
+                    center = Offset(size.width * 0.18f, size.height * 0.70f),
+                    radius = 220.dp.toPx(),
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(pv),
+                contentPadding = PaddingValues(bottom = 88.dp),
+            ) {
+                // ── Hero header ──────────────────────────────────────────────
                 item {
-                    ExpenseHeaderCard(
+                    GlassExpenseHeader(
                         monthTotal = monthTotal,
-                        committedTotal = committedTotal,
-                        discretionaryTotal = discretionaryTotal,
+                        committed = committed,
+                        discretionary = discretionary,
                         entryCount = monthEntries.size,
                     )
                 }
 
-                // ── Discretionary warning banner ─────────────────────────────
+                // ── Discretionary warning ─────────────────────────────────────
                 if (!state.warningBannerDismissed && monthTotal > 0) {
-                    val discRatio = discretionaryTotal / monthTotal
-                    if (discRatio > 0.40) {
+                    val ratio = discretionary / monthTotal
+                    if (ratio > 0.40) {
                         item {
-                            DiscretionaryWarningBanner(
-                                percent = (discRatio * 100).roundToInt(),
+                            GlassWarningBanner(
+                                percent = (ratio * 100).roundToInt(),
                                 onDismiss = onDismissWarning,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                             )
@@ -440,10 +343,10 @@ fun ExpenseListContent(
                     }
                 }
 
-                // ── Donut chart ──────────────────────────────────────────────
+                // ── Donut chart ───────────────────────────────────────────────
                 if (categoryTotals.isNotEmpty()) {
                     item {
-                        ExpenseCategoryDonutChart(
+                        GlassDonutCard(
                             data = categoryTotals,
                             selectedCategory = state.selectedChartCategory,
                             onSegmentTap = onChartCategorySelect,
@@ -454,7 +357,7 @@ fun ExpenseListContent(
 
                 // ── Category filter bar ───────────────────────────────────────
                 item {
-                    CategoryFilterBar(
+                    GlassCategoryFilterBar(
                         categories = listOf("All") + ExpenseViewModel.CATEGORIES,
                         selected = state.selectedCategoryFilter,
                         onSelect = onCategoryFilterChange,
@@ -462,30 +365,30 @@ fun ExpenseListContent(
                     )
                 }
 
-                // ── Zombie subscriptions section ─────────────────────────────
-                if (zombieSubscriptions.isNotEmpty()) {
+                // ── Zombie subscriptions ──────────────────────────────────────
+                if (zombies.isNotEmpty()) {
                     item {
-                        ZombieSubscriptionsSection(
-                            entries = zombieSubscriptions,
+                        GlassZombieSection(
+                            entries = zombies,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                         )
                     }
                 }
 
-                // ── Shimmer skeleton on load ─────────────────────────────────
+                // ── Shimmer loading ───────────────────────────────────────────
                 if (state.isLoading) {
                     items(5) {
-                        ShimmerExpenseCard(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+                        GlassShimmerCard(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                         )
                     }
                     return@LazyColumn
                 }
 
                 // ── Empty state ───────────────────────────────────────────────
-                if (displayEntries.isEmpty() && !state.isLoading) {
+                if (displayEntries.isEmpty()) {
                     item {
-                        EmptyExpenseState(
+                        GlassEmptyState(
                             category = state.selectedCategoryFilter,
                             onAddClick = onShowAddSheet,
                         )
@@ -493,13 +396,13 @@ fun ExpenseListContent(
                     return@LazyColumn
                 }
 
-                // ── Date-grouped expense list ─────────────────────────────────
-                groupedByDate.forEach { (dateLabel, entries) ->
-                    stickyHeader(key = "header_$dateLabel") {
-                        DateStickyHeader(label = dateLabel)
+                // ── Date-grouped list ─────────────────────────────────────────
+                groupedByDate.forEach { (label, entries) ->
+                    stickyHeader(key = "header_$label") {
+                        GlassDateHeader(label = label)
                     }
                     items(entries, key = { it.id }) { entry ->
-                        SwipeableExpenseRow(
+                        GlassSwipeableRow(
                             entry = entry,
                             onDelete = { onDeleteEntry(entry) },
                             onDuplicate = { onDuplicateEntry(entry) },
@@ -508,9 +411,9 @@ fun ExpenseListContent(
                     }
                 }
 
-                // ── Monthly trend chart (collapsible) ─────────────────────────
+                // ── Monthly trend ─────────────────────────────────────────────
                 item {
-                    MonthlyTrendSection(
+                    GlassMonthlyTrend(
                         trendData = trendData,
                         expanded = state.showTrendChart,
                         onToggle = onToggleTrendChart,
@@ -518,108 +421,111 @@ fun ExpenseListContent(
                     )
                 }
             }
+
+            // Floating Bottom Nav
+            FinPilotBottomNavBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                currentTab = NavTab.TRANSACTIONS,
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
+                onNavigateToExpense = {},
+                onNavigateToTransactions = onNavigateToTransactions,
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile,
+            )
+        }
     }
 }
 
-// ── Section 1: Header ─────────────────────────────────────────────────────────
+// ── Hero header ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun ExpenseHeaderCard(
+private fun GlassExpenseHeader(
     monthTotal: Double,
-    committedTotal: Double,
-    discretionaryTotal: Double,
+    committed: Double,
+    discretionary: Double,
     entryCount: Int,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(listOf(Orange, Color(0xFFFF8C00), BgGray)),
-            )
+            .drawBehind {
+                // Orange orb top-right
+                drawCircle(
+                    color = Color(0x2EFF6B00),
+                    radius = 220.dp.toPx(),
+                    center = Offset(size.width * 0.92f, -60.dp.toPx()),
+                )
+                // Purple orb left
+                drawCircle(
+                    color = Color(0x1A534AB7),
+                    radius = 150.dp.toPx(),
+                    center = Offset(size.width * 0.05f, size.height * 0.7f),
+                )
+            }
             .padding(top = 52.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
     ) {
-        // Decorative circles
-        Canvas(modifier = Modifier.matchParentSize()) {
-            drawCircle(Color.White.copy(alpha = 0.07f), 170.dp.toPx(), Offset(size.width * 0.92f, 0f))
-            drawCircle(Color.White.copy(alpha = 0.05f), 110.dp.toPx(), Offset(size.width * 0.04f, size.height * 0.65f))
-        }
-
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = "This Month's Expenses",
-                fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.85f),
-                letterSpacing = 0.5.sp,
+                "THIS MONTH'S EXPENSES",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 2.sp,
+                color = GlassTheme.TextHint,
             )
-
             Text(
-                text = formatLKRFull(monthTotal),
-                fontSize = 40.sp,
+                formatLKRFull(monthTotal),
+                fontSize = 44.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = GlassTheme.TextPrimary,
+                letterSpacing = (-1.5).sp,
             )
 
-            // Committed vs Discretionary pill badges
+            // Badge row
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseBadge(
-                    text = "${formatLKR(committedTotal)} committed",
-                    bgColor = Color.White.copy(alpha = 0.20f),
-                    textColor = Color.White,
-                )
-                ExpenseBadge(
-                    text = "${formatLKR(discretionaryTotal)} discretionary",
-                    bgColor = Color.White.copy(alpha = 0.20f),
-                    textColor = Color.White,
-                )
+                GlassHeroBadge("${formatLKRShort(committed)} committed")
+                GlassHeroBadge("${formatLKRShort(discretionary)} discretionary")
             }
-
-            ExpenseBadge(
-                text = "$entryCount entries",
-                bgColor = Color.White.copy(alpha = 0.15f),
-                textColor = Color.White.copy(alpha = 0.9f),
-            )
+            GlassHeroBadge("$entryCount entries")
         }
     }
 }
 
 @Composable
-private fun ExpenseBadge(text: String, bgColor: Color, textColor: Color) {
+private fun GlassHeroBadge(text: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(bgColor)
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = GlassTheme.TextSecondary)
     }
 }
 
-// ── Discretionary warning banner ──────────────────────────────────────────────
+// ── Warning banner ────────────────────────────────────────────────────────────
 
 @Composable
-private fun DiscretionaryWarningBanner(
-    percent: Int,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun GlassWarningBanner(percent: Int, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(AmberWarningBg)
-            .border(1.dp, AmberWarning.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .clip(RoundedCornerShape(14.dp))
+            .background(GlassTheme.AmberDim)
+            .border(1.dp, GlassTheme.AmberBorder, RoundedCornerShape(14.dp))
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Rounded.Warning, null, tint = AmberWarning, modifier = Modifier.size(18.dp))
+        Icon(Icons.Rounded.Warning, null, tint = GlassTheme.Amber, modifier = Modifier.size(18.dp))
         Text(
-            text = "Discretionary spend is $percent% of income — consider cutting back.",
+            "Discretionary spend is $percent% of income — consider cutting back.",
             fontSize = 12.sp,
             color = Color(0xFF92400E),
             modifier = Modifier.weight(1f),
@@ -627,7 +533,7 @@ private fun DiscretionaryWarningBanner(
         Icon(
             Icons.Rounded.Close,
             contentDescription = "Dismiss",
-            tint = AmberWarning.copy(alpha = 0.7f),
+            tint = GlassTheme.Amber.copy(alpha = 0.7f),
             modifier = Modifier
                 .size(18.dp)
                 .clickable(onClick = onDismiss),
@@ -635,143 +541,144 @@ private fun DiscretionaryWarningBanner(
     }
 }
 
-// ── Section 2: Donut chart ────────────────────────────────────────────────────
+// ── Donut chart card ──────────────────────────────────────────────────────────
 
 @Composable
-private fun ExpenseCategoryDonutChart(
+private fun GlassDonutCard(
     data: List<Map.Entry<String, Double>>,
     selectedCategory: String?,
     onSegmentTap: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val total = data.sumOf { it.value }.coerceAtLeast(1.0)
-    val categoryCount = data.size
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(SurfaceWhite)
-            .border(0.5.dp, Divider, RoundedCornerShape(20.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(20.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Spend by Category", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text(
+            "SPEND BY CATEGORY",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            color = GlassTheme.TextHint,
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // Donut chart canvas
-            Box(modifier = Modifier.size(160.dp), contentAlignment = Alignment.Center) {
-                Canvas(modifier = Modifier.size(160.dp)) {
-                    val strokeWidth = 32.dp.toPx()
-                    val radius = (size.minDimension - strokeWidth) / 2f
-                    val center = Offset(size.width / 2f, size.height / 2f)
+            // Donut
+            Box(modifier = Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.size(150.dp)) {
+                    val strokeW = 28.dp.toPx()
+                    val r = (size.minDimension - strokeW) / 2f
+                    val cx = size.width / 2f; val cy = size.height / 2f
                     var startAngle = -90f
 
-                    data.forEachIndexed { index, (cat, amt) ->
+                    // Background ring
+                    drawCircle(
+                        color = GlassTheme.GlassBorder,
+                        radius = r,
+                        center = Offset(cx, cy),
+                        style = Stroke(strokeW),
+                    )
+
+                    data.forEach { (cat, amt) ->
                         val sweep = (amt / total * 360f).toFloat()
                         val isSelected = selectedCategory == cat
-                        val alpha = if (selectedCategory == null || isSelected) 1f else 0.35f
-                        val extraStroke = if (isSelected) 6.dp.toPx() else 0f
+                        val alpha = if (selectedCategory == null || isSelected) 1f else 0.25f
+                        val extraStroke = if (isSelected) 8.dp.toPx() else 0f
 
                         drawArc(
-                            color = categoryColor(cat).copy(alpha = alpha),
-                            startAngle = startAngle + 1f,
-                            sweepAngle = sweep - 2f,
+                            color = GlassTheme.categoryColor(cat).copy(alpha = alpha),
+                            startAngle = startAngle + 1.5f,
+                            sweepAngle = sweep - 3f,
                             useCenter = false,
-                            topLeft = Offset(
-                                center.x - radius - (extraStroke / 2),
-                                center.y - radius - (extraStroke / 2),
-                            ),
-                            size = Size(
-                                (radius * 2 + extraStroke),
-                                (radius * 2 + extraStroke),
-                            ),
-                            style = Stroke(width = strokeWidth + extraStroke, cap = StrokeCap.Butt),
+                            topLeft = Offset(cx - r - extraStroke / 2, cy - r - extraStroke / 2),
+                            size = Size(r * 2 + extraStroke, r * 2 + extraStroke),
+                            style = Stroke(strokeW + extraStroke, cap = StrokeCap.Round),
                         )
                         startAngle += sweep
                     }
                 }
-
-                // Center label
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "$categoryCount",
-                        fontSize = 22.sp,
+                        "${data.size}",
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (selectedCategory != null) categoryColor(selectedCategory) else Orange,
+                        color = if (selectedCategory != null) GlassTheme.categoryColor(selectedCategory)
+                        else GlassTheme.OrangeLight,
                     )
                     Text(
-                        text = if (selectedCategory != null) selectedCategory else "categories",
+                        selectedCategory ?: "categories",
                         fontSize = 10.sp,
-                        color = TextSecondary,
+                        color = GlassTheme.TextHint,
                         textAlign = TextAlign.Center,
                     )
                 }
             }
 
             // Legend
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 data.forEach { (cat, amt) ->
                     val pct = (amt / total * 100).roundToInt()
                     val isSelected = selectedCategory == cat
+                    val catColor = GlassTheme.categoryColor(cat)
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isSelected) categoryColor(cat).copy(alpha = 0.08f)
-                                else Color.Transparent
-                            )
-                            .clickable { onSegmentTap(cat) }
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) catColor.copy(alpha = 0.12f) else Color.Transparent)
+                            .clickable { onSegmentTap(if (isSelected) null else cat) }
+                            .padding(horizontal = 8.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(8.dp)
                                 .clip(CircleShape)
-                                .background(categoryColor(cat)),
+                                .background(catColor),
                         )
                         Text(
                             cat,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) categoryColor(cat) else TextPrimary,
+                            color = if (isSelected) catColor else GlassTheme.TextSecondary,
                             modifier = Modifier.weight(1f),
                         )
                         Text(
                             "$pct%",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary,
+                            color = GlassTheme.TextHint,
                         )
                     }
                 }
             }
         }
 
-        // Tap hint
         Text(
-            text = "Tap a segment or legend to filter list",
+            "Tap legend to filter",
             fontSize = 10.sp,
-            color = TextSecondary,
+            color = GlassTheme.TextHint,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
     }
 }
 
-// ── Section 3: Category filter bar ───────────────────────────────────────────
+// ── Category filter bar ───────────────────────────────────────────────────────
 
 @Composable
-private fun CategoryFilterBar(
+private fun GlassCategoryFilterBar(
     categories: List<String>,
     selected: String,
     onSelect: (String) -> Unit,
@@ -786,24 +693,22 @@ private fun CategoryFilterBar(
     ) {
         categories.forEach { cat ->
             val isActive = selected == cat
-            val bgColor by animateColorAsState(
-                if (isActive) Orange else SurfaceWhite,
-                animationSpec = tween(180),
-                label = "chip_bg_$cat",
+            val bg by animateColorAsState(
+                if (isActive) GlassTheme.Orange else GlassTheme.GlassBg,
+                tween(180), label = "filter_$cat",
             )
             val textColor by animateColorAsState(
-                if (isActive) Color.White else TextSecondary,
-                animationSpec = tween(180),
-                label = "chip_text_$cat",
+                if (isActive) Color.White else GlassTheme.TextSecondary,
+                tween(180), label = "filter_text_$cat",
             )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(bgColor)
+                    .background(bg)
                     .border(
-                        width = 1.dp,
-                        color = if (isActive) Orange else Divider,
-                        shape = RoundedCornerShape(20.dp),
+                        1.dp,
+                        if (isActive) Color.Transparent else GlassTheme.GlassBorder,
+                        RoundedCornerShape(20.dp),
                     )
                     .clickable { onSelect(cat) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -817,38 +722,42 @@ private fun CategoryFilterBar(
 // ── Date sticky header ────────────────────────────────────────────────────────
 
 @Composable
-private fun DateStickyHeader(label: String) {
+private fun GlassDateHeader(label: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BgGray)
-            .padding(horizontal = 20.dp, vertical = 6.dp),
+            .background(
+                Brush.verticalGradient(
+                    listOf(GlassTheme.BgStart, Color.Transparent)
+                )
+            )
+            .padding(horizontal = 20.dp, vertical = 8.dp),
     ) {
         Text(
-            text = label,
-            fontSize = 12.sp,
+            label.uppercase(),
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = TextSecondary,
-            letterSpacing = 0.8.sp,
+            letterSpacing = 1.5.sp,
+            color = GlassTheme.TextHint,
         )
     }
 }
 
-// ── Swipeable expense row ─────────────────────────────────────────────────────
+// ── Swipeable row ─────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableExpenseRow(
+private fun GlassSwipeableRow(
     entry: ExpenseEntry,
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> { onDelete(); true }
-                SwipeToDismissBoxValue.StartToEnd -> { onDuplicate(); false } // reset after duplicate
+        confirmValueChange = {
+            when (it) {
+                SwipeToDismissBoxValue.EndToStart   -> { onDelete(); true }
+                SwipeToDismissBoxValue.StartToEnd   -> { onDuplicate(); false }
                 else -> false
             }
         },
@@ -861,74 +770,74 @@ private fun SwipeableExpenseRow(
         enableDismissFromEndToStart = true,
         backgroundContent = {
             val isDelete = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
-            val isDuplicate = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
-            val bgColor = when {
-                isDelete -> Color(0xFFEF4444)
-                isDuplicate -> Color(0xFF10B981)
-                else -> Color.Transparent
+            val isDup    = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+            val bgColor  = when {
+                isDelete -> Color(0x33FF4D6D)
+                isDup    -> Color(0x2234D399)
+                else     -> Color.Transparent
             }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .background(bgColor)
+                    .border(1.dp, if (isDelete) Color(0x59FF4D6D) else if (isDup) Color(0x5934D399) else Color.Transparent, RoundedCornerShape(18.dp))
                     .padding(horizontal = 20.dp),
                 contentAlignment = if (isDelete) Alignment.CenterEnd else Alignment.CenterStart,
             ) {
                 if (isDelete) {
-                    Icon(Icons.Default.Delete, null, tint = Color.White, modifier = Modifier.size(22.dp))
-                } else if (isDuplicate) {
-                    Icon(Icons.Rounded.ContentCopy, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.Delete, null, tint = GlassTheme.Danger, modifier = Modifier.size(20.dp))
+                } else if (isDup) {
+                    Icon(Icons.Rounded.ContentCopy, null, tint = GlassTheme.Success, modifier = Modifier.size(20.dp))
                 }
             }
         },
         modifier = modifier,
     ) {
-        ExpenseListItem(entry = entry)
+        GlassExpenseItem(entry)
     }
 }
 
-// ── Single expense item ───────────────────────────────────────────────────────
+// ── Expense list item ─────────────────────────────────────────────────────────
 
 @Composable
-private fun ExpenseListItem(
-    entry: ExpenseEntry,
-    modifier: Modifier = Modifier,
-) {
-    val color = categoryColor(entry.category)
+private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier) {
+    val catColor = GlassTheme.categoryColor(entry.category)
     val isAutoDebit = entry.paymentMethod.contains("Auto", ignoreCase = true) || entry.isRecurring
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceWhite)
-            .border(0.5.dp, Divider, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorderLight, RoundedCornerShape(18.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Category icon circle
+        // Category icon with glow tint
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .background(color.copy(alpha = 0.12f), CircleShape),
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(catColor.copy(alpha = 0.15f))
+                .border(1.dp, catColor.copy(alpha = 0.25f), RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(categoryIcon(entry.category), null, tint = color, modifier = Modifier.size(20.dp))
+            Icon(categoryIcon(entry.category), null, tint = catColor, modifier = Modifier.size(20.dp))
         }
 
-        // Merchant / note
+        // Text
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = entry.subCategory?.takeIf { it.isNotBlank() } ?: entry.category,
+                    entry.subCategory?.takeIf { it.isNotBlank() } ?: entry.category,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = GlassTheme.TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -936,44 +845,47 @@ private fun ExpenseListItem(
                 if (isAutoDebit) {
                     Icon(
                         Icons.Rounded.Autorenew,
-                        contentDescription = "Recurring",
-                        tint = Orange.copy(alpha = 0.8f),
-                        modifier = Modifier.size(14.dp),
+                        null,
+                        tint = GlassTheme.OrangeLight.copy(alpha = 0.8f),
+                        modifier = Modifier.size(13.dp),
                     )
                 }
             }
-            entry.note?.takeIf { it.isNotBlank() }?.let { note ->
-                Text(note, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            entry.note?.takeIf { it.isNotBlank() }?.let {
+                Text(it, fontSize = 11.sp, color = GlassTheme.TextHint, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
 
-        // Right side: amount + payment method chip
+        // Right side
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = formatLKRFull(entry.amount),
+                formatLKRFull(entry.amount),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFEF4444),
+                color = GlassTheme.Danger,
             )
-            PaymentMethodChip(method = entry.paymentMethod)
+            GlassPaymentChip(method = entry.paymentMethod)
         }
     }
 }
 
 @Composable
-private fun PaymentMethodChip(method: String) {
-    val isAutoDebit = method.contains("Auto", ignoreCase = true)
+private fun GlassPaymentChip(method: String) {
+    val isAuto  = method.contains("Auto", ignoreCase = true)
+    val isCard  = method.equals("Card", ignoreCase = true)
+    val isCash  = method.equals("Cash", ignoreCase = true)
     val chipColor = when {
-        method.equals("Card", ignoreCase = true) -> Color(0xFF3B82F6)
-        method.equals("Cash", ignoreCase = true) -> Color(0xFF10B981)
-        isAutoDebit -> Orange
-        else -> TextSecondary
+        isCard -> GlassTheme.CatTransport
+        isCash -> GlassTheme.Success
+        isAuto -> GlassTheme.Orange
+        else   -> GlassTheme.TextHint
     }
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(chipColor.copy(alpha = 0.1f))
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .background(chipColor.copy(alpha = 0.12f))
+            .border(0.5.dp, chipColor.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -982,21 +894,18 @@ private fun PaymentMethodChip(method: String) {
     }
 }
 
-// ── Zombie subscriptions section ──────────────────────────────────────────────
+// ── Zombie subscriptions ──────────────────────────────────────────────────────
 
 @Composable
-private fun ZombieSubscriptionsSection(
-    entries: List<ExpenseEntry>,
-    modifier: Modifier = Modifier,
-) {
+private fun GlassZombieSection(entries: List<ExpenseEntry>, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(true) }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceWhite)
-            .border(1.dp, AmberWarning.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(GlassTheme.AmberDim)
+            .border(1.dp, GlassTheme.AmberBorder, RoundedCornerShape(18.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -1007,7 +916,7 @@ private fun ZombieSubscriptionsSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("🧟", fontSize = 16.sp)
                 Text(
                     "Zombie Subscriptions",
@@ -1018,16 +927,21 @@ private fun ZombieSubscriptionsSection(
                 Box(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(AmberWarning)
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .background(GlassTheme.Amber)
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
                 ) {
-                    Text("${entries.size}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        "${entries.size}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1A0808),
+                    )
                 }
             }
             Icon(
                 if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 null,
-                tint = AmberWarning,
+                tint = GlassTheme.Amber,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -1042,34 +956,35 @@ private fun ZombieSubscriptionsSection(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(AmberWarningBg)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x14F59E0B))
+                            .border(1.dp, Color(0x33F59E0B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Icon(categoryIcon(entry.category), null, tint = AmberWarning, modifier = Modifier.size(18.dp))
+                        Icon(categoryIcon(entry.category), null, tint = GlassTheme.Amber, modifier = Modifier.size(18.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 entry.subCategory?.takeIf { it.isNotBlank() } ?: entry.category,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF78350F),
+                                color = Color(0xFF92400E),
                             )
                             Text(
-                                formatLKRFull(entry.amount) + "/mo",
+                                "${formatLKRFull(entry.amount)}/mo",
                                 fontSize = 11.sp,
-                                color = Color(0xFF92400E),
+                                color = Color(0xFFB45309),
                             )
                         }
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(AmberWarning.copy(alpha = 0.15f))
-                                .border(1.dp, AmberWarning.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                .background(Color(0x26F59E0B))
+                                .border(1.dp, Color(0x66F59E0B), RoundedCornerShape(10.dp))
                                 .padding(horizontal = 10.dp, vertical = 5.dp),
                         ) {
-                            Text("Cancel?", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AmberWarning)
+                            Text("Cancel?", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GlassTheme.Amber)
                         }
                     }
                 }
@@ -1078,29 +993,10 @@ private fun ZombieSubscriptionsSection(
     }
 }
 
-// ── Monthly trend section ─────────────────────────────────────────────────────
-
-private data class MonthTrend(val label: String, val amount: Float)
-
-private fun computeMonthlyTrend(entries: List<ExpenseEntry>): List<MonthTrend> {
-    val cal = Calendar.getInstance()
-    return (5 downTo 0).map { monthsBack ->
-        val c = cal.clone() as Calendar
-        c.add(Calendar.MONTH, -monthsBack)
-        val year = c.get(Calendar.YEAR)
-        val month = c.get(Calendar.MONTH)
-        val label = SimpleDateFormat("MMM", Locale.getDefault()).format(c.time)
-        val total = entries.filter { e ->
-            val d = e.date?.toDate() ?: return@filter false
-            val ec = Calendar.getInstance().also { it.time = d }
-            ec.get(Calendar.YEAR) == year && ec.get(Calendar.MONTH) == month
-        }.sumOf { it.amount }.toFloat()
-        MonthTrend(label, total)
-    }
-}
+// ── Monthly trend ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MonthlyTrendSection(
+private fun GlassMonthlyTrend(
     trendData: List<MonthTrend>,
     expanded: Boolean,
     onToggle: () -> Unit,
@@ -1110,8 +1006,8 @@ private fun MonthlyTrendSection(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(SurfaceWhite)
-            .border(0.5.dp, Divider, RoundedCornerShape(20.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(20.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -1123,15 +1019,16 @@ private fun MonthlyTrendSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Monthly Spend Trend",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                "MONTHLY TREND",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.5.sp,
+                color = GlassTheme.TextHint,
             )
             Icon(
                 if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                 null,
-                tint = TextSecondary,
+                tint = GlassTheme.TextHint,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -1141,58 +1038,59 @@ private fun MonthlyTrendSection(
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
         ) {
-            MonthlyBarChart(trendData = trendData)
+            GlassBarChart(trendData = trendData)
         }
     }
 }
 
 @Composable
-private fun MonthlyBarChart(trendData: List<MonthTrend>) {
+private fun GlassBarChart(trendData: List<MonthTrend>) {
     if (trendData.isEmpty()) return
     val maxVal = trendData.maxOf { it.amount }.coerceAtLeast(1f)
-    val highestIndex = trendData.indexOfFirst { it.amount == trendData.maxOf { m -> m.amount } }
+    val highestIdx = trendData.indexOfFirst { it.amount == trendData.maxOf { m -> m.amount } }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp),
-        ) {
-            val barCount = trendData.size
-            val spacing = 10.dp.toPx()
-            val barWidth = (size.width - spacing * (barCount + 1)) / barCount
-            val chartHeight = size.height - 20.dp.toPx()
+        Canvas(modifier = Modifier.fillMaxWidth().height(130.dp)) {
+            val count = trendData.size
+            val spacing = 8.dp.toPx()
+            val barW = (size.width - spacing * (count + 1)) / count
+            val chartH = size.height - 16.dp.toPx()
 
             trendData.forEachIndexed { i, item ->
-                val barH = (item.amount / maxVal) * chartHeight
-                val left = spacing + i * (barWidth + spacing)
-                val top = chartHeight - barH
-                val isHighest = i == highestIndex
+                val barH = (item.amount / maxVal) * chartH
+                val left = spacing + i * (barW + spacing)
+                val top = chartH - barH
+                val isHighest = i == highestIdx
 
-                // Bar
+                // Bar glow background
+                if (isHighest) {
+                    drawRoundRect(
+                        color = Color(0x33FF6B00),
+                        topLeft = Offset(left - 4, top - 4),
+                        size = Size(barW + 8, barH + 8),
+                        cornerRadius = CornerRadius(8.dp.toPx()),
+                    )
+                }
+
                 drawRoundRect(
-                    color = if (isHighest) Orange else Orange.copy(alpha = 0.45f),
+                    color = if (isHighest) GlassTheme.Orange else GlassTheme.Orange.copy(alpha = 0.35f),
                     topLeft = Offset(left, top),
-                    size = Size(barWidth, barH),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
+                    size = Size(barW, barH),
+                    cornerRadius = CornerRadius(6.dp.toPx()),
                 )
 
-                // Annotation dot on highest
                 if (isHighest) {
                     drawCircle(
-                        color = Orange,
+                        color = GlassTheme.OrangeLight,
                         radius = 4.dp.toPx(),
-                        center = Offset(left + barWidth / 2, top - 8.dp.toPx()),
+                        center = Offset(left + barW / 2, top - 10.dp.toPx()),
                     )
                 }
             }
         }
 
-        // X-axis labels
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             trendData.forEach { item ->
@@ -1201,147 +1099,125 @@ private fun MonthlyBarChart(trendData: List<MonthTrend>) {
                     item.label,
                     fontSize = 10.sp,
                     fontWeight = if (isHighest) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isHighest) Orange else TextSecondary,
+                    color = if (isHighest) GlassTheme.OrangeLight else GlassTheme.TextHint,
                 )
             }
         }
 
-        // Highest annotation text
-        if (trendData.isNotEmpty()) {
-            val highest = trendData.maxByOrNull { it.amount }
-            if (highest != null && highest.amount > 0f) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Orange.copy(alpha = 0.1f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        "Peak: ${highest.label} · ${formatLKRFull(highest.amount.toDouble())}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Orange,
-                    )
-                }
+        val peak = trendData.maxByOrNull { it.amount }
+        if (peak != null && peak.amount > 0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(GlassTheme.OrangeDim)
+                    .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+            ) {
+                Text(
+                    "Peak: ${peak.label} · ${formatLKRFull(peak.amount.toDouble())}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GlassTheme.OrangeLight,
+                )
             }
         }
     }
 }
 
-// ── Shimmer skeleton ──────────────────────────────────────────────────────────
+// ── Shimmer ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ShimmerExpenseCard(modifier: Modifier = Modifier) {
+private fun GlassShimmerCard(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerX by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutLinearInEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmer_x",
+    val shimX by transition.animateFloat(
+        -1f, 2f,
+        infiniteRepeatable(tween(1200, easing = FastOutLinearInEasing), RepeatMode.Restart),
+        label = "sx",
     )
-
-    val shimmerColors = listOf(
-        Color(0xFFE5E7EB),
-        Color(0xFFF3F4F6),
-        Color(0xFFE5E7EB),
-    )
-
     val brush = Brush.horizontalGradient(
-        colors = shimmerColors,
-        startX = shimmerX * 400,
-        endX = shimmerX * 400 + 400,
+        listOf(Color(0x1AFFFFFF), Color(0x33FFFFFF), Color(0x1AFFFFFF)),
+        startX = shimX * 400,
+        endX = shimX * 400 + 400,
     )
-
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceWhite)
-            .border(0.5.dp, Divider, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorderLight, RoundedCornerShape(18.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(brush))
+        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(brush))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(modifier = Modifier.height(14.dp).fillMaxWidth(0.55f).clip(RoundedCornerShape(4.dp)).background(brush))
-            Box(modifier = Modifier.height(10.dp).fillMaxWidth(0.35f).clip(RoundedCornerShape(4.dp)).background(brush))
+            Box(modifier = Modifier.height(13.dp).fillMaxWidth(0.5f).clip(RoundedCornerShape(4.dp)).background(brush))
+            Box(modifier = Modifier.height(10.dp).fillMaxWidth(0.3f).clip(RoundedCornerShape(4.dp)).background(brush))
         }
-        Box(modifier = Modifier.height(14.dp).width(70.dp).clip(RoundedCornerShape(4.dp)).background(brush))
+        Box(modifier = Modifier.height(13.dp).width(68.dp).clip(RoundedCornerShape(4.dp)).background(brush))
     }
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun EmptyExpenseState(
-    category: String,
-    onAddClick: () -> Unit,
-) {
+private fun GlassEmptyState(category: String, onAddClick: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
+        modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            text = if (category == "All") "🧾" else when (category) {
-                "Food" -> "🍔"
-                "Transport" -> "🚗"
-                "Housing" -> "🏠"
+            when (category) {
+                "All"           -> "🧾"
+                "Food"          -> "🍔"
+                "Transport"     -> "🚗"
+                "Housing"       -> "🏠"
                 "Subscriptions" -> "📺"
                 "Entertainment" -> "🎬"
-                "Health" -> "💊"
-                else -> "📂"
+                "Health"        -> "💊"
+                else            -> "📂"
             },
-            fontSize = 48.sp,
+            fontSize = 52.sp,
         )
         Text(
-            text = if (category == "All") "No expenses yet" else "No $category expenses",
+            if (category == "All") "No expenses yet" else "No $category expenses",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = GlassTheme.TextPrimary,
         )
         Text(
-            text = "Tap the button below to record your first expense",
+            "Tap the button below to track your first expense",
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = GlassTheme.TextHint,
             textAlign = TextAlign.Center,
         )
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(Orange)
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.Orange)
                 .clickable(onClick = onAddClick)
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 28.dp, vertical = 14.dp),
         ) {
-            Text("Add Expense", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Add Expense", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
         }
     }
 }
 
 // ── Add Expense bottom sheet ──────────────────────────────────────────────────
 
-private data class QuickAddPreset(
-    val label: String,
-    val emoji: String,
-    val category: String,
-    val merchant: String,
-)
+private data class QuickPreset(val label: String, val emoji: String, val category: String, val merchant: String)
 
-private val quickAddPresets = listOf(
-    QuickAddPreset("PickMe", "🛵", "Transport", "PickMe"),
-    QuickAddPreset("UberEats", "🍔", "Food", "UberEats"),
-    QuickAddPreset("Gym", "💪", "Health", "Gym"),
+private val quickPresets = listOf(
+    QuickPreset("PickMe", "🛵", "Transport", "PickMe"),
+    QuickPreset("UberEats", "🍔", "Food", "UberEats"),
+    QuickPreset("Gym", "💪", "Health", "Gym"),
+    QuickPreset("Keells", "🛒", "Food", "Keells"),
 )
 
 @Composable
-private fun AddExpenseFormSheet(
+private fun GlassAddExpenseSheet(
     state: ExpenseViewModel.ExpenseUiState,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
@@ -1356,343 +1232,331 @@ private fun AddExpenseFormSheet(
 ) {
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchange = state.currency != "LKR"
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(top = 8.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        // Handle bar
+        // Drag handle
         Box(
             modifier = Modifier
-                .width(40.dp)
-                .height(4.dp)
                 .align(Alignment.CenterHorizontally)
+                .padding(top = 8.dp)
+                .width(40.dp).height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFFE5E7EB)),
+                .background(GlassTheme.GlassBorder),
         )
 
         Text(
             "Add Expense",
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = TextPrimary,
+            color = GlassTheme.TextPrimary,
         )
 
-        // Quick-add shortcuts
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-        ) {
-            quickAddPresets.forEach { preset ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(OrangeLight)
-                        .border(1.dp, Orange.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        .clickable {
-                            onCategoryChange(preset.category)
-                            onSubCategoryChange(preset.merchant)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
+        // Quick presets
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Quick Add")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                quickPresets.forEach { p ->
                     Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(GlassTheme.OrangeDim)
+                            .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(14.dp))
+                            .clickable { onCategoryChange(p.category); onSubCategoryChange(p.merchant) }
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(preset.emoji, fontSize = 14.sp)
-                        Text(preset.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Orange)
+                        Text(p.emoji, fontSize = 14.sp)
+                        Text(p.label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GlassTheme.OrangeLight)
                     }
                 }
             }
         }
 
-        // Amount field (large)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Amount", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        // Amount
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Amount")
+
             OutlinedTextField(
                 value = state.amount,
                 onValueChange = onAmountChange,
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Start,
-                    color = TextPrimary,
+                    fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
+                    color = GlassTheme.TextPrimary,
                 ),
                 placeholder = {
                     Text(
                         "0.00",
                         style = TextStyle(
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFD1D5DB),
+                            fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
+                            color = GlassTheme.TextHint,
                         ),
                     )
                 },
-                prefix = {
-                    Text(
-                        "LKR",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Orange,
-                        modifier = Modifier.padding(end = 6.dp),
-                    )
+                leadingIcon = {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(GlassTheme.OrangeDim)
+                                .clickable { expanded = true }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(state.currency, fontWeight = FontWeight.ExtraBold, color = GlassTheme.OrangeLight, fontSize = 14.sp)
+                            Icon(Icons.Rounded.ArrowDropDown, null, tint = GlassTheme.OrangeLight, modifier = Modifier.size(16.dp))
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            containerColor = GlassTheme.BgMid,
+                        ) {
+                            ExpenseViewModel.CURRENCIES.forEach { cur ->
+                                DropdownMenuItem(
+                                    text = { Text(cur, color = GlassTheme.TextPrimary) },
+                                    onClick = { onCurrencyChange(cur); expanded = false },
+                                )
+                            }
+                        }
+                    }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Orange,
-                    unfocusedBorderColor = Divider,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = GlassTheme.Orange,
+                    unfocusedBorderColor = GlassTheme.GlassBorder,
+                    focusedContainerColor = GlassTheme.GlassSurface,
+                    unfocusedContainerColor = GlassTheme.GlassBg,
+                    cursorColor = GlassTheme.Orange,
                 ),
-                shape = RoundedCornerShape(14.dp),
             )
+
+            AnimatedVisibility(
+                showExchange,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(GlassTheme.OrangeDim)
+                        .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(14.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                        fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GlassTheme.OrangeLight,
+                    )
+                    val rateText = state.exchangeRateLastUpdatedMillis
+                        ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                    Text(
+                        "1 ${state.currency} = LKR ${state.exchangeRate} · $rateText" +
+                                if (state.exchangeRateIsStale) " · stale" else "",
+                        fontSize = 11.sp, color = GlassTheme.TextSecondary,
+                    )
+                    TextButton(onClick = onRefreshRates, enabled = !state.isRefreshingRates) {
+                        if (state.isRefreshingRates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = GlassTheme.OrangeLight,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.OrangeLight)
+                    }
+                }
+            }
         }
 
-        // Category picker (icon grid)
+        // Category grid
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Category", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
-            CategoryIconGrid(
+            SheetLabel("Category")
+            GlassCategoryGrid(
                 categories = ExpenseViewModel.CATEGORIES,
                 selected = state.category,
                 onSelect = onCategoryChange,
             )
         }
 
-        // Merchant / note field
-        OutlinedTextField(
-            value = state.subCategory,
-            onValueChange = onSubCategoryChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Merchant / note") },
-            placeholder = { Text("e.g. Keells, PickMe, Netflix") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Orange,
-                unfocusedBorderColor = Divider,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-            ),
-            shape = RoundedCornerShape(14.dp),
-        )
-
-        // Payment method toggle
+        // Merchant
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Payment Method", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
-                    val isSelected = state.paymentMethod == method
-                    val bgColor by animateColorAsState(
-                        if (isSelected) Orange else SurfaceWhite,
-                        animationSpec = tween(150),
-                        label = "pm_$method",
-                    )
-                    val textColor by animateColorAsState(
-                        if (isSelected) Color.White else TextSecondary,
-                        animationSpec = tween(150),
-                        label = "pm_text_$method",
-                    )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(bgColor)
-                            .border(
-                                1.dp,
-                                if (isSelected) Orange else Divider,
-                                RoundedCornerShape(12.dp),
-                            )
-                            .clickable { onPaymentMethodChange(method) }
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(paymentMethodIcon(method), null, tint = textColor, modifier = Modifier.size(14.dp))
-                        Text(method, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = textColor)
-                    }
-                }
-            }
-        }
-
-        // Date selector
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFF9FAFB))
-                .border(1.dp, Divider, RoundedCornerShape(14.dp))
-                .clickable {
-                    val cal = Calendar.getInstance().also { it.timeInMillis = state.dateMillis }
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d ->
-                            onDateChange(Calendar.getInstance().also { c ->
-                                c.set(y, m, d, 0, 0, 0)
-                                c.set(Calendar.MILLISECOND, 0)
-                            }.timeInMillis)
-                        },
-                        cal.get(Calendar.YEAR),
-                        cal.get(Calendar.MONTH),
-                        cal.get(Calendar.DAY_OF_MONTH),
-                    ).show()
-                }
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(Icons.Rounded.CalendarToday, null, tint = Orange, modifier = Modifier.size(18.dp))
-            Column {
-                Text("Date", fontSize = 11.sp, color = TextSecondary)
-                Text(
-                    dateFormat.format(Date(state.dateMillis)),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                )
-            }
-        }
-
-        // Recurring auto-debit indicator
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (state.isRecurring) OrangeLight else Color(0xFFF9FAFB))
-                .border(
-                    1.dp,
-                    if (state.isRecurring) Orange.copy(alpha = 0.4f) else Divider,
-                    RoundedCornerShape(14.dp),
-                )
-                .clickable { onRecurringChange(!state.isRecurring) }
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(
-                    Icons.Rounded.Autorenew,
-                    null,
-                    tint = if (state.isRecurring) Orange else TextSecondary,
-                    modifier = Modifier.size(18.dp),
-                )
-                Column {
-                    Text(
-                        "Recurring / Auto-debit",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (state.isRecurring) Orange else TextPrimary,
-                    )
-                    Text("Marks this as a recurring charge", fontSize = 11.sp, color = TextSecondary)
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(if (state.isRecurring) Orange else Divider),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.isRecurring) {
-                    Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                }
-            }
-        }
-
-        // Error message
-        state.errorMessage?.let { msg ->
-            Text(msg, fontSize = 12.sp, color = Color(0xFFEF4444))
-        }
-
-        // Save button
-        Button(
-            onClick = onRequestSubmit,
-            enabled = !state.isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Orange,
-                contentColor = Color.White,
-            ),
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = Color.White,
-                )
-            } else {
-                Text("Save Expense", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-            }
-        }
-    }
-}
-
-// ── Category icon grid (3-column) ─────────────────────────────────────────────
-
-@Composable
-private fun CategoryIconGrid(
-    categories: List<String>,
-    selected: String,
-    onSelect: (String) -> Unit,
-) {
-    val chunked = categories.chunked(3)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        chunked.forEach { row ->
-            Row(
+            SheetLabel("Merchant (optional)")
+            OutlinedTextField(
+                value = state.subCategory,
+                onValueChange = onSubCategoryChange,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                row.forEach { cat ->
-                    val isSelected = selected == cat
-                    val color = categoryColor(cat)
-                    val bgColor by animateColorAsState(
-                        if (isSelected) color else Color(0xFFF9FAFB),
-                        animationSpec = tween(180),
-                        label = "cat_bg_$cat",
+                singleLine = true,
+                placeholder = { Text("e.g. Keells, PickMe, Netflix", fontSize = 13.sp, color = GlassTheme.TextHint) },
+                textStyle = TextStyle(fontSize = 14.sp, color = GlassTheme.TextPrimary),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GlassTheme.Orange,
+                    unfocusedBorderColor = GlassTheme.GlassBorder,
+                    focusedContainerColor = GlassTheme.GlassSurface,
+                    unfocusedContainerColor = GlassTheme.GlassBg,
+                    cursorColor = GlassTheme.Orange,
+                ),
+            )
+        }
+
+        // Note
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Note (optional)")
+            OutlinedTextField(
+                value = state.note,
+                onValueChange = onNoteChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("e.g. Friday lunch with team", fontSize = 13.sp, color = GlassTheme.TextHint) },
+                textStyle = TextStyle(fontSize = 14.sp, color = GlassTheme.TextPrimary),
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GlassTheme.Orange,
+                    unfocusedBorderColor = GlassTheme.GlassBorder,
+                    focusedContainerColor = GlassTheme.GlassSurface,
+                    unfocusedContainerColor = GlassTheme.GlassBg,
+                    cursorColor = GlassTheme.Orange,
+                ),
+            )
+        }
+
+        // Payment methods
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Payment Method")
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
+                    val isSel = state.paymentMethod == method
+                    val bg by animateColorAsState(
+                        if (isSel) GlassTheme.Orange else GlassTheme.GlassBg, tween(150), label = "pm_$method",
+                    )
+                    val tc by animateColorAsState(
+                        if (isSel) Color.White else GlassTheme.TextSecondary, tween(150), label = "pmt_$method",
                     )
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(bgColor)
-                            .border(
-                                1.5.dp,
-                                if (isSelected) color else Divider,
-                                RoundedCornerShape(12.dp),
-                            )
-                            .clickable { onSelect(cat) }
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(bg)
+                            .border(1.dp, if (isSel) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+                            .clickable { onPaymentMethodChange(method) }
                             .padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        Icon(
-                            categoryIcon(cat),
-                            null,
-                            tint = if (isSelected) Color.White else color,
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Text(
-                            cat,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isSelected) Color.White else TextPrimary,
-                        )
+                        Icon(paymentMethodIcon(method), null, tint = if (isSel) Color.White else GlassTheme.OrangeLight, modifier = Modifier.size(16.dp))
+                        Text(method, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = tc, textAlign = TextAlign.Center)
                     }
                 }
-                // Fill empty cells in last row
-                repeat(3 - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+
+        // Date
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Date")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(GlassTheme.GlassBg)
+                    .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+                    .clickable {
+                        val cal = Calendar.getInstance().also { it.timeInMillis = state.dateMillis }
+                        DatePickerDialog(context, { _, y, m, d ->
+                            onDateChange(Calendar.getInstance().also { c ->
+                                c.set(y, m, d, 0, 0, 0); c.set(Calendar.MILLISECOND, 0)
+                            }.timeInMillis)
+                        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                    }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(Icons.Rounded.CalendarToday, null, tint = GlassTheme.OrangeLight, modifier = Modifier.size(20.dp))
+                Text(
+                    dateFormat.format(Date(state.dateMillis)),
+                    fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = GlassTheme.TextPrimary,
+                )
+            }
+        }
+
+        // Recurring toggle
+        GlassRecurringRow(isRecurring = state.isRecurring, onRecurringChange = onRecurringChange)
+
+        // Error
+        state.errorMessage?.let {
+            Text(it, fontSize = 12.sp, color = GlassTheme.Danger)
+        }
+
+        // Save
+        GlassSaveButton(isLoading = state.isLoading, onClick = onRequestSubmit)
+    }
+}
+
+@Composable
+private fun SheetLabel(text: String) {
+    Text(
+        text.uppercase(),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.2.sp,
+        color = GlassTheme.TextHint,
+    )
+}
+
+@Composable
+private fun GlassCategoryGrid(categories: List<String>, selected: String, onSelect: (String) -> Unit) {
+    categories.chunked(4).forEach { row ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            row.forEach { cat ->
+                val isSel = selected == cat
+                val catColor = GlassTheme.categoryColor(cat)
+                val bg by animateColorAsState(
+                    if (isSel) catColor else GlassTheme.GlassBg, tween(180), label = "cat_$cat",
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(bg)
+                        .border(1.dp, if (isSel) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+                        .clickable { onSelect(cat) }
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        categoryIcon(cat), null,
+                        tint = if (isSel) Color.White else catColor,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        cat,
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        color = if (isSel) Color.White else GlassTheme.TextSecondary,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
+            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

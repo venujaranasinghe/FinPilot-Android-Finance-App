@@ -809,9 +809,9 @@ private fun AppSettingsCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("Dark Mode", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                Text("Coming soon", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Toggle dark / light theme", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            OrangeSwitch(checked = darkMode, onCheckedChange = onDarkMode, enabled = false)
+            OrangeSwitch(checked = darkMode, onCheckedChange = onDarkMode, enabled = true)
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))

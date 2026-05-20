@@ -3,11 +3,13 @@ package com.bpeople.finpilot.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bpeople.finpilot.data.model.Goal
+import com.bpeople.finpilot.data.model.ThemeMode
 import com.bpeople.finpilot.data.model.UserProfile
 import com.bpeople.finpilot.data.repository.AuthRepository
 import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.GoalRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
+import com.bpeople.finpilot.data.repository.SettingsRepository
 import com.bpeople.finpilot.data.repository.UserRepository
 import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -81,6 +83,7 @@ class ProfileViewModel @Inject constructor(
     private val incomeRepository: IncomeRepository,
     private val expenseRepository: ExpenseRepository,
     private val goalRepository: GoalRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val currentUser: StateFlow<FirebaseUser?> = authRepository.currentUser
@@ -93,6 +96,14 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { prefs ->
+                _uiState.value = _uiState.value.copy(
+                    darkModeEnabled = prefs.themeMode == ThemeMode.DARK
+                )
+            }
+        }
+
         viewModelScope.launch {
             combine(
                 incomeRepository.observeIncome(),
@@ -184,7 +195,11 @@ class ProfileViewModel @Inject constructor(
     fun setNotifyGoalMilestone(v: Boolean) { _uiState.value = _uiState.value.copy(notifyGoalMilestone = v) }
     fun setNotifyBudgetOverspend(v: Boolean) { _uiState.value = _uiState.value.copy(notifyBudgetOverspend = v) }
     fun setBudgetOverspendThreshold(v: String) { _uiState.value = _uiState.value.copy(budgetOverspendThreshold = v) }
-    fun setDarkMode(v: Boolean) { _uiState.value = _uiState.value.copy(darkModeEnabled = v) }
+    fun setDarkMode(v: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setThemeMode(if (v) ThemeMode.DARK else ThemeMode.LIGHT)
+        }
+    }
 
     // ── Auth ─────────────────────────────────────────────────────────────────
 

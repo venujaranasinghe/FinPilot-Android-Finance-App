@@ -18,6 +18,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +61,8 @@ import androidx.compose.material.icons.rounded.TrendingDown
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Work
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -91,6 +97,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -98,7 +105,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +121,7 @@ import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.GlassTheme
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -124,9 +134,9 @@ private val Orange = Color(0xFFFF6B00)
 private val OrangeLight = Color(0xFFFFF3E0)
 
 private fun sourceColor(source: String): Color = when {
-    source.equals("Salary", ignoreCase = true) -> Color(0xFFFF6B00)
+    source.equals("Salary", ignoreCase = true) -> GlassTheme.Orange
     source.equals("Freelance", ignoreCase = true) -> Color(0xFF2196F3)
-    source.equals("AdSense", ignoreCase = true) -> Color(0xFF4CAF50)
+    source.equals("AdSense", ignoreCase = true) -> Color(0xFF16A34A)
     source.equals("Crypto", ignoreCase = true) -> Color(0xFF9C27B0)
     else -> Color(0xFF6B7280)
 }
@@ -167,8 +177,8 @@ fun AddIncomeScreen(
     LaunchedEffect(state.isSubmitted) {
         if (!state.isSubmitted) return@LaunchedEffect
         viewModel.consumeSubmitted()
-        viewModel.onHideAddSheet()
         snackbarHostState.showSnackbar("Income saved!")
+        onIncomeAdded()
     }
 
     // Delete pending → show undo snackbar
@@ -192,18 +202,15 @@ fun AddIncomeScreen(
         viewModel.consumeError()
     }
 
-    IncomeListContent(
+    AddIncomeContent(
         state = state,
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
+        onNavigateToIncome = onNavigateToIncome,
         onNavigateToExpense = onNavigateToExpense,
         onNavigateToTransactions = onNavigateToTransactions,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
-        onShowAddSheet = viewModel::onShowAddSheet,
-        onHideAddSheet = viewModel::onHideAddSheet,
-        onToggleMonthlyView = viewModel::onToggleMonthlyView,
-        onDeleteEntry = viewModel::deleteIncome,
         onSourceChange = viewModel::onSourceChange,
         onAmountChange = viewModel::onAmountOriginalChange,
         onCurrencyChange = viewModel::onCurrencyChange,
@@ -222,18 +229,15 @@ fun AddIncomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IncomeListContent(
+fun AddIncomeContent(
     state: IncomeViewModel.IncomeUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
+    onNavigateToIncome: () -> Unit,
     onNavigateToExpense: () -> Unit,
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onShowAddSheet: () -> Unit,
-    onHideAddSheet: () -> Unit,
-    onToggleMonthlyView: () -> Unit,
-    onDeleteEntry: (IncomeEntry) -> Unit,
     onSourceChange: (String) -> Unit,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
@@ -246,141 +250,926 @@ fun IncomeListContent(
     onDismissRateConfirmation: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
-    // Rate confirmation dialog
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchange = state.currencyOriginal != "LKR"
+    var popupOffsetY by remember { mutableStateOf(0f) }
+    val dismissThresholdPx = with(density) { 120.dp.toPx() }
+    val recentEntries = remember(state.entries) {
+        state.entries.sortedByDescending { it.date?.seconds ?: 0L }.take(5)
+    }
+
     if (state.showRateConfirmation) {
-        val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
         AlertDialog(
             onDismissRequest = onDismissRateConfirmation,
-            title = { Text("Confirm exchange rate") },
+            containerColor = GlassTheme.BgMid,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text(
+                    "Confirm exchange rate",
+                    color = GlassTheme.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
             text = {
                 val updatedText = state.exchangeRateLastUpdatedMillis
                     ?.let { rateFormat.format(java.util.Date(it)) } ?: "unknown"
-                Text("Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?")
+                Text(
+                    "Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?",
+                    color = GlassTheme.TextSecondary,
+                )
             },
-            confirmButton = { Button(onClick = onConfirmExchangeRate) { Text("Confirm") } },
-            dismissButton = { TextButton(onClick = onDismissRateConfirmation) { Text("Cancel") } },
+            confirmButton = {
+                Button(
+                    onClick = onConfirmExchangeRate,
+                    colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
+                    shape = RoundedCornerShape(12.dp),
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRateConfirmation) {
+                    Text("Cancel", color = GlassTheme.TextSecondary)
+                }
+            },
         )
     }
 
-    // Bottom sheet for adding income
-    if (state.showAddSheet) {
-        ModalBottomSheet(
-            onDismissRequest = onHideAddSheet,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color.White,
-        ) {
-            AddIncomeFormSheet(
-                state = state,
-                onSourceChange = onSourceChange,
-                onAmountChange = onAmountChange,
-                onCurrencyChange = onCurrencyChange,
-                onDateChange = onDateChange,
-                onLabelChange = onLabelChange,
-                onIncomeTypeChange = onIncomeTypeChange,
-                onProjectRefChange = onProjectRefChange,
-                onRequestSubmit = onRequestSubmit,
-                onRefreshRates = onRefreshRates,
+    // ── Glassmorphic popup background ─────────────────────────────────────────
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(GlassTheme.BgStart, GlassTheme.BgMid, GlassTheme.BgEnd),
+                )
+            ),
+    ) {
+        // Background orb decorations
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(GlassTheme.Orange.copy(alpha = 0.16f), Color.Transparent),
+                    center = Offset(size.width * 0.85f, size.height * 0.04f),
+                    radius = 280.dp.toPx(),
+                ),
+                center = Offset(size.width * 0.85f, size.height * 0.04f),
+                radius = 280.dp.toPx(),
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(GlassTheme.OrbPurple, Color.Transparent),
+                    center = Offset(size.width * 0.15f, size.height * 0.18f),
+                    radius = 200.dp.toPx(),
+                ),
+                center = Offset(size.width * 0.15f, size.height * 0.18f),
+                radius = 200.dp.toPx(),
             )
         }
-    }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onShowAddSheet,
-                icon = {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add Income", modifier = Modifier.size(22.dp))
-                },
-                text = { Text("Add Income", fontWeight = FontWeight.Bold) },
-                containerColor = Orange,
-                contentColor = Color.White,
-            )
-        },
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.TRANSACTIONS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = {},
-                onNavigateToExpense = onNavigateToExpense,
-                onNavigateToTransactions = onNavigateToTransactions,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile,
-            )
-        },
-        containerColor = Color(0xFFF9FAFB),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-    ) { pv ->
-            val entries = state.entries
-            val grouped = entries.groupBy { it.source.trim().ifBlank { "Other" } }
+        // Snackbar at top
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp),
+        )
 
-            // Compute monthly totals per source
-            val currentMonthStart = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_MONTH, 1)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val monthlyEntries = entries.filter { it.date?.toDate()?.time ?: 0L >= currentMonthStart }
-            val displayTotal = if (state.showMonthlyView) monthlyEntries.sumOf { it.amountLKR }
-                               else entries.sumOf { it.amountLKR }
-            val monthlyBySource = monthlyEntries.groupBy { it.source.trim().ifBlank { "Other" } }
-                .mapValues { (_, v) -> v.sumOf { it.amountLKR } }
-            val totalBySource = grouped.mapValues { (_, v) -> v.sumOf { it.amountLKR } }
-
-            LazyColumn(
+        // ── Glass popup card ──────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.92f)
+                .align(Alignment.BottomCenter)
+                .graphicsLayer { translationY = popupOffsetY }
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta ->
+                        popupOffsetY = (popupOffsetY + delta).coerceAtLeast(0f)
+                    },
+                    onDragStopped = {
+                        if (popupOffsetY > dismissThresholdPx) {
+                            onNavigateToIncome()
+                        } else {
+                            popupOffsetY = 0f
+                        }
+                    },
+                )
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(GlassTheme.GlassSurface)
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(GlassTheme.GlassBorder, Color.Transparent)
+                    ),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                ),
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(pv),
-                contentPadding = PaddingValues(bottom = 88.dp),
+                    .verticalScroll(rememberScrollState()),
             ) {
-                // ── Section 1: Total Income Header ──────────────────────────
-                item {
-                    TotalIncomeHeaderCard(
-                        totalIncome = displayTotal,
-                        showMonthly = state.showMonthlyView,
-                        onToggleView = onToggleMonthlyView,
-                        sourceCount = if (state.showMonthlyView) monthlyBySource.size else grouped.size,
-                        entryCount = if (state.showMonthlyView) monthlyEntries.size else entries.size,
+                // ── Header section ────────────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    GlassTheme.Orange.copy(alpha = 0.10f),
+                                    Color.Transparent,
+                                )
+                            )
+                        )
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 12.dp, bottom = 24.dp),
+                ) {
+                    // Drag handle
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .width(40.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(GlassTheme.GlassBorder),
                     )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Title + close button row
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                "ADD INCOME",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 2.sp,
+                                color = GlassTheme.TextHint,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Record a new entry",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GlassTheme.TextPrimary,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                        // Close / back button
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(GlassTheme.GlassBg)
+                                .border(1.dp, GlassTheme.GlassBorder, CircleShape)
+                                .clickable { onNavigateToIncome() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = "Close",
+                                tint = GlassTheme.TextSecondary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // ── Amount card ───────────────────────────────────────────
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        GlassTheme.Orange.copy(alpha = 0.14f),
+                                        GlassTheme.GlassBg,
+                                    )
+                                )
+                            )
+                            .border(
+                                1.dp,
+                                GlassTheme.Orange.copy(alpha = 0.25f),
+                                RoundedCornerShape(20.dp),
+                            )
+                            .padding(16.dp),
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                "AMOUNT",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 1.5.sp,
+                                color = GlassTheme.TextHint,
+                                textAlign = TextAlign.Center,
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                // Currency dropdown pill
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(GlassTheme.OrangeDim)
+                                            .border(
+                                                1.dp,
+                                                Color(0x66FF6B00),
+                                                RoundedCornerShape(20.dp),
+                                            )
+                                            .clickable { expanded = true }
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Text(
+                                            state.currencyOriginal,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GlassTheme.OrangeLight,
+                                        )
+                                        Icon(
+                                            Icons.Rounded.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            tint = GlassTheme.OrangeLight,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false },
+                                        containerColor = GlassTheme.BgMid,
+                                    ) {
+                                        IncomeViewModel.CURRENCIES.forEach { cur ->
+                                            DropdownMenuItem(
+                                                text = { Text(cur, color = GlassTheme.TextPrimary) },
+                                                onClick = {
+                                                    onCurrencyChange(cur)
+                                                    expanded = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                                IncomeBasicAmountInput(
+                                    value = state.amountOriginal,
+                                    onValueChange = onAmountChange,
+                                )
+                            }
+                            // Exchange rate preview
+                            AnimatedVisibility(
+                                visible = showExchange,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically(),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(GlassTheme.OrangeDim)
+                                        .border(
+                                            1.dp,
+                                            Color(0x40FF6B00),
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GlassTheme.OrangeLight,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                    val updatedText = state.exchangeRateLastUpdatedMillis
+                                        ?.let { rateFormat.format(java.util.Date(it)) } ?: "unknown"
+                                    val staleSuffix = if (state.exchangeRateIsStale) " · stale" else ""
+                                    Text(
+                                        text = if (state.exchangeRateAvailable)
+                                            "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText$staleSuffix"
+                                        else "Rate unavailable",
+                                        fontSize = 11.sp,
+                                        color = GlassTheme.TextHint,
+                                    )
+                                    TextButton(
+                                        onClick = onRefreshRates,
+                                        enabled = !state.isLoading && !state.isRefreshingRates,
+                                    ) {
+                                        if (state.isRefreshingRates) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(12.dp),
+                                                strokeWidth = 1.5.dp,
+                                                color = GlassTheme.OrangeLight,
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                        }
+                                        Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.OrangeLight)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // ── Section 2: Stacked Bar ───────────────────────────────────
-                if (entries.isNotEmpty()) {
-                    item {
-                        IncomeStackedBarSection(
-                            bySource = if (state.showMonthlyView) monthlyBySource else totalBySource,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                HorizontalDivider(color = GlassTheme.GlassBorder, thickness = 0.5.dp)
+
+                // ── Scrollable form fields ────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 24.dp, bottom = 40.dp),
+                    verticalArrangement = Arrangement.spacedBy(22.dp),
+                ) {
+                    IncomeFormSection("Date") {
+                        IncomeDateRow(
+                            dateMillis = state.dateMillis,
+                            dateFormat = dateFormat,
+                            context = context,
+                            onDateChange = onDateChange,
                         )
                     }
-                }
 
-                // ── Section 3: Source Cards ──────────────────────────────────
-                if (entries.isEmpty() && !state.isLoading) {
-                    item {
-                        EmptyIncomeState(onAddClick = onShowAddSheet)
+                    IncomeFormSection("Source") {
+                        IncomeSourceSelector(
+                            selected = state.source,
+                            onSelected = onSourceChange,
+                        )
                     }
-                } else if (state.isLoading) {
-                    items(3) {
-                        ShimmerIncomeCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+
+                    IncomeFormSection("Income Type") {
+                        IncomeTypeSelector(
+                            selected = state.incomeType,
+                            onSelected = onIncomeTypeChange,
+                        )
                     }
-                } else {
-                    val sortedSources = grouped.entries.sortedByDescending { it.value.sumOf { e -> e.amountLKR } }
-                    sortedSources.forEach { (source, sourceEntries) ->
-                        item(key = "src_$source") {
-                            IncomeSourceGroupCard(
-                                source = source,
-                                entries = sourceEntries,
+
+                    IncomeFormSection("Details") {
+                        IncomeTextField(
+                            value = state.label,
+                            onValueChange = onLabelChange,
+                            placeholder = "Description or reference",
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = state.source == "Freelance",
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        IncomeFormSection("Link to Project") {
+                            IncomeProjectDropdown(
                                 projects = state.projects,
-                                onDeleteEntry = onDeleteEntry,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                selectedId = state.projectRef,
+                                onSelect = onProjectRefChange,
+                            )
+                        }
+                    }
+
+                    IncomeSaveButton(
+                        isLoading = state.isLoading,
+                        onClick = onRequestSubmit,
+                    )
+
+                    if (recentEntries.isNotEmpty()) {
+                        IncomeFormSection("Recent Income") {
+                            IncomeRecentHistory(entries = recentEntries)
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeRecentHistory(entries: List<IncomeEntry>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        entries.forEach { entry ->
+            IncomeRecentHistoryItem(entry = entry)
+        }
+    }
+}
+
+@Composable
+private fun IncomeRecentHistoryItem(entry: IncomeEntry) {
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val accent = sourceColor(entry.source)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(accent.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(sourceIcon(entry.source), contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = entry.label?.takeIf { it.isNotBlank() } ?: entry.source,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GlassTheme.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = entry.date?.toDate()?.let { dateFormat.format(it) } ?: "",
+                fontSize = 11.sp,
+                color = GlassTheme.TextHint,
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "+${entry.currencyOriginal} ${"%.2f".format(entry.amountOriginal)}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = GlassTheme.Success,
+            )
+            if (entry.currencyOriginal != "LKR") {
+                Text(
+                    text = "≈ ${formatLKR(entry.amountLKR)}",
+                    fontSize = 10.sp,
+                    color = GlassTheme.TextHint,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeAmountHeader(
+    state: IncomeViewModel.IncomeUiState,
+    showExchange: Boolean,
+    rateFormat: SimpleDateFormat,
+    onAmountChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
+    onRefreshRates: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawCircle(
+                    color = Color(0x1A10B981),
+                    radius = 200.dp.toPx(),
+                    center = Offset(size.width * 0.9f, -40.dp.toPx()),
+                )
+                drawCircle(
+                    color = Color(0x143B82F6),
+                    radius = 140.dp.toPx(),
+                    center = Offset(0f, size.height),
+                )
+            }
+            .padding(top = 52.dp, bottom = 36.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "NEW INCOME",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 2.sp,
+                color = GlassTheme.TextHint,
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(GlassTheme.Success.copy(alpha = 0.16f))
+                            .border(1.dp, GlassTheme.Success.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                            .clickable { expanded = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            state.currencyOriginal,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GlassTheme.Success,
+                        )
+                        Icon(
+                            Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = GlassTheme.Success,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        containerColor = GlassTheme.BgMid,
+                    ) {
+                        IncomeViewModel.CURRENCIES.forEach { cur ->
+                            DropdownMenuItem(
+                                text = { Text(cur, color = GlassTheme.TextPrimary) },
+                                onClick = { onCurrencyChange(cur); expanded = false },
                             )
                         }
                     }
                 }
+
+                Spacer(Modifier.width(12.dp))
+
+                IncomeBasicAmountInput(
+                    value = state.amountOriginal,
+                    onValueChange = onAmountChange,
+                )
             }
 
+            AnimatedVisibility(
+                visible = showExchange,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = GlassTheme.Success,
+                    )
+                    val updatedText = state.exchangeRateLastUpdatedMillis
+                        ?.let { rateFormat.format(java.util.Date(it)) } ?: "unknown"
+                    val staleSuffix = if (state.exchangeRateIsStale) " · stale" else ""
+                    Text(
+                        text = if (state.exchangeRateAvailable) {
+                            "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText$staleSuffix"
+                        } else "Rate unavailable",
+                        fontSize = 11.sp,
+                        color = GlassTheme.TextHint,
+                        textAlign = TextAlign.Center,
+                    )
+                    TextButton(
+                        onClick = onRefreshRates,
+                        enabled = !state.isLoading && !state.isRefreshingRates,
+                    ) {
+                        if (state.isRefreshingRates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 1.5.dp,
+                                color = GlassTheme.Success,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            "Refresh rates",
+                            fontSize = 12.sp,
+                            color = GlassTheme.Success,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeBasicAmountInput(value: String, onValueChange: (String) -> Unit) {
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        textStyle = TextStyle(
+            fontSize = 56.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = GlassTheme.TextPrimary,
+            textAlign = TextAlign.Start,
+            letterSpacing = (-2).sp,
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+        decorationBox = { innerField ->
+            Box {
+                if (value.isEmpty()) {
+                    Text(
+                        "0.00",
+                        fontSize = 56.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = GlassTheme.TextHint,
+                        letterSpacing = (-2).sp,
+                    )
+                }
+                innerField()
+            }
+        }
+    )
+}
+
+@Composable
+private fun IncomeFormSection(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            title.uppercase(),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            color = GlassTheme.TextHint,
+        )
+        content()
+    }
+}
+
+@Composable
+private fun IncomeDateRow(
+    dateMillis: Long,
+    dateFormat: SimpleDateFormat,
+    context: android.content.Context,
+    onDateChange: (Long) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+            .clickable {
+                val cal = Calendar.getInstance().also { it.timeInMillis = dateMillis }
+                DatePickerDialog(
+                    context,
+                    { _, y, m, d ->
+                        onDateChange(Calendar.getInstance().also { c ->
+                            c.set(y, m, d, 0, 0, 0)
+                            c.set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis)
+                    },
+                    cal.get(Calendar.YEAR),
+                    cal.get(Calendar.MONTH),
+                    cal.get(Calendar.DAY_OF_MONTH),
+                ).show()
+            }
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(GlassTheme.Success.copy(alpha = 0.16f))
+                .border(1.dp, GlassTheme.Success.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Rounded.CalendarToday,
+                contentDescription = null,
+                tint = GlassTheme.Success,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Selected date", fontSize = 10.sp, color = GlassTheme.TextHint)
+            Text(
+                dateFormat.format(java.util.Date(dateMillis)),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GlassTheme.TextPrimary,
+            )
+        }
+        Icon(
+            Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = GlassTheme.TextHint,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun IncomeSourceSelector(selected: String, onSelected: (String) -> Unit) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeViewModel.SOURCES.forEach { src ->
+            val accent = sourceColor(src)
+            IncomePill(
+                text = src,
+                icon = sourceIcon(src),
+                isSelected = selected == src,
+                accentColor = accent,
+                onClick = { onSelected(src) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun IncomeTypeSelector(selected: String, onSelected: (String) -> Unit) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeViewModel.INCOME_TYPES.forEach { type ->
+            IncomePill(
+                text = type,
+                icon = Icons.Rounded.Loop,
+                isSelected = selected == type,
+                accentColor = GlassTheme.Success,
+                onClick = { onSelected(type) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun IncomePill(
+    text: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    accentColor: Color,
+    onClick: () -> Unit,
+) {
+    val bg by animateColorAsState(
+        if (isSelected) accentColor else GlassTheme.GlassBg,
+        tween(220),
+        label = "pill_bg_$text",
+    )
+    val contentColor by animateColorAsState(
+        if (isSelected) Color.White else GlassTheme.TextSecondary,
+        tween(220),
+        label = "pill_fg_$text",
+    )
+    val borderColor by animateColorAsState(
+        if (isSelected) accentColor.copy(alpha = 0f) else GlassTheme.GlassBorder,
+        tween(220),
+        label = "pill_border_$text",
+    )
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(bg)
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = contentColor,
+        )
+    }
+}
+
+@Composable
+private fun IncomeTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
+        placeholder = {
+            Text(placeholder, fontSize = 13.sp, color = GlassTheme.TextHint)
+        },
+        textStyle = TextStyle(fontSize = 14.sp, color = GlassTheme.TextPrimary),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = GlassTheme.Success,
+            unfocusedBorderColor = GlassTheme.GlassBorder,
+            focusedContainerColor = GlassTheme.GlassSurface,
+            unfocusedContainerColor = GlassTheme.GlassBg,
+            cursorColor = GlassTheme.Success,
+        ),
+    )
+}
+
+@Composable
+private fun IncomeProjectDropdown(
+    projects: List<FreelanceProject>,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = projects.firstOrNull { it.id == selectedId }
+    val label = selected?.let { "${it.projectTitle} — ${it.clientName}" }
+        ?: if (projects.isEmpty()) "No projects" else "Select project"
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.GlassBg)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+                .clickable(enabled = projects.isNotEmpty()) { expanded = true }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icons.Rounded.Work, null, tint = GlassTheme.Success, modifier = Modifier.size(18.dp))
+                Text(
+                    label,
+                    fontSize = 14.sp,
+                    color = if (selected != null) GlassTheme.TextPrimary else GlassTheme.TextHint,
+                )
+            }
+            Icon(Icons.Rounded.ArrowDropDown, null, tint = GlassTheme.TextHint)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = GlassTheme.BgMid,
+        ) {
+            DropdownMenuItem(text = { Text("None", color = GlassTheme.TextPrimary) }, onClick = { onSelect(""); expanded = false })
+            projects.forEach { p ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(p.projectTitle, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = GlassTheme.TextPrimary)
+                            Text(p.clientName, fontSize = 12.sp, color = GlassTheme.TextHint)
+                        }
+                    },
+                    onClick = { onSelect(p.id); expanded = false },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeSaveButton(isLoading: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = !isLoading,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = GlassTheme.Success,
+            contentColor = Color.White,
+            disabledContainerColor = GlassTheme.Success.copy(alpha = 0.4f),
+        ),
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                color = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        } else {
+            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Save Income", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+        }
     }
 }
 
@@ -1308,72 +2097,3 @@ private fun ProjectDropdown(
     }
 }
 
-// ── Preview ───────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, name = "Income List – with data")
-@Composable
-private fun IncomeListPreview() {
-    FinPilotTheme {
-        IncomeListContent(
-            state = IncomeViewModel.IncomeUiState(
-                entries = listOf(
-                    IncomeEntry(id = "1", source = "Salary", amountOriginal = 88000.0, currencyOriginal = "LKR", amountLKR = 88000.0, type = "RECURRING"),
-                    IncomeEntry(id = "2", source = "Freelance", amountOriginal = 250.0, currencyOriginal = "USD", amountLKR = 77500.0, label = "Web project"),
-                    IncomeEntry(id = "3", source = "AdSense", amountOriginal = 35.0, currencyOriginal = "USD", amountLKR = 10850.0),
-                    IncomeEntry(id = "4", source = "Crypto", amountOriginal = 100.0, currencyOriginal = "USD", amountLKR = 31000.0),
-                ),
-                filteredEntries = emptyList(),
-            ),
-            snackbarHostState = SnackbarHostState(),
-            onNavigateToDashboard = {},
-            onNavigateToExpense = {},
-            onNavigateToGoals = {},
-            onNavigateToProfile = {},
-            onShowAddSheet = {},
-            onHideAddSheet = {},
-            onToggleMonthlyView = {},
-            onDeleteEntry = {},
-            onSourceChange = {},
-            onAmountChange = {},
-            onCurrencyChange = {},
-            onDateChange = {},
-            onLabelChange = {},
-            onIncomeTypeChange = {},
-            onProjectRefChange = {},
-            onRequestSubmit = {},
-            onConfirmExchangeRate = {},
-            onDismissRateConfirmation = {},
-            onRefreshRates = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Income List – empty")
-@Composable
-private fun IncomeEmptyPreview() {
-    FinPilotTheme {
-        IncomeListContent(
-            state = IncomeViewModel.IncomeUiState(),
-            snackbarHostState = SnackbarHostState(),
-            onNavigateToDashboard = {},
-            onNavigateToExpense = {},
-            onNavigateToGoals = {},
-            onNavigateToProfile = {},
-            onShowAddSheet = {},
-            onHideAddSheet = {},
-            onToggleMonthlyView = {},
-            onDeleteEntry = {},
-            onSourceChange = {},
-            onAmountChange = {},
-            onCurrencyChange = {},
-            onDateChange = {},
-            onLabelChange = {},
-            onIncomeTypeChange = {},
-            onProjectRefChange = {},
-            onRequestSubmit = {},
-            onConfirmExchangeRate = {},
-            onDismissRateConfirmation = {},
-            onRefreshRates = {},
-        )
-    }
-}
