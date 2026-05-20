@@ -71,6 +71,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -260,7 +261,7 @@ private fun ShimmerBox(modifier: Modifier = Modifier, height: Dp = 80.dp, corner
         modifier = modifier
             .height(height)
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Color(0xFFE5E7EB))
+            .background(MaterialTheme.colorScheme.outlineVariant)
             .shimmerEffect()
     )
 }
@@ -308,7 +309,7 @@ fun TransactionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             FinPilotBottomNavBar(
@@ -371,7 +372,7 @@ fun TransactionScreen(
         ModalBottomSheet(
             onDismissRequest = viewModel::clearEditTransaction,
             sheetState = sheetState,
-            containerColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surface,
         ) {
             TransactionEditSheet(
                 item = item,
@@ -663,7 +664,7 @@ private fun SummaryCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
     ) {
         Column(
@@ -699,14 +700,14 @@ private fun SummaryCard(
                 text = formatLKR(amount),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = periodLabel,
                 fontSize = 11.sp,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -733,7 +734,7 @@ private fun NetSavingsBanner(netSavings: Double, modifier: Modifier = Modifier) 
                     text = "Net savings this month",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1F2937),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -773,7 +774,7 @@ private fun BarChartSection(barData: List<MonthlyBarData>, selectedPeriod: Perio
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
@@ -791,7 +792,7 @@ private fun BarChartSection(barData: List<MonthlyBarData>, selectedPeriod: Perio
                     text = "Income vs Expenses",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F2937),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "6 months",
@@ -833,7 +834,7 @@ private fun LegendDot(color: Color, label: String) {
                 .clip(CircleShape)
                 .background(color),
         )
-        Text(text = label, fontSize = 11.sp, color = Color(0xFF6B7280))
+        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -863,6 +864,7 @@ private fun GroupedBarChart(
         Triple(bar, aIncome, aExpense)
     }
 
+    val mutedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
@@ -915,7 +917,7 @@ private fun GroupedBarChart(
                 // X-axis label
                 val labelX = groupStart + groupWidth / 2f
                 val labelY = size.height - 4.dp.toPx()
-                val labelColor = if (isSelected) Color(0xFFFF6B00) else Color(0xFF9CA3AF)
+                val labelColor = if (isSelected) Color(0xFFFF6B00) else mutedLabelColor
                 val measured = textMeasurer.measure(
                     text = bar.month,
                     style = TextStyle(fontSize = 10.sp, color = labelColor),
@@ -937,13 +939,13 @@ private fun GroupedBarChart(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF1F2937))
+                    .background(MaterialTheme.colorScheme.inverseSurface)
                     .padding(horizontal = 10.dp, vertical = 5.dp),
             ) {
                 Text(
                     text = "${formatLKR(bar.income)} in · ${formatLKR(bar.expenses)} exp",
                     fontSize = 10.sp,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
                 )
             }
         }
@@ -1003,7 +1005,7 @@ private fun DonutChartCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
@@ -1017,7 +1019,7 @@ private fun DonutChartCard(
                 text = title,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1F2937),
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )
 
@@ -1026,10 +1028,10 @@ private fun DonutChartCard(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF3F4F6)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No data", fontSize = 10.sp, color = Color(0xFF9CA3AF))
+                    Text("No data", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 DonutChart(
@@ -1134,7 +1136,7 @@ private fun DonutChart(
                 text = formatLKR(totalAmount),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1162,7 +1164,7 @@ private fun MiniCategoryBarRow(
         Text(
             text = label,
             fontSize = 9.sp,
-            color = Color(0xFF6B7280),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(48.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1172,7 +1174,7 @@ private fun MiniCategoryBarRow(
                 .weight(1f)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFFF3F4F6)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Box(
                 modifier = Modifier
@@ -1185,7 +1187,7 @@ private fun MiniCategoryBarRow(
         Text(
             text = "${(fraction * 100).toInt()}%",
             fontSize = 9.sp,
-            color = Color(0xFF9CA3AF),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -1201,7 +1203,7 @@ private fun RecentTransactionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         Row(
             modifier = Modifier
@@ -1214,7 +1216,7 @@ private fun RecentTransactionsHeader(
                 text = "Recent transactions",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "See all",
@@ -1261,7 +1263,7 @@ private fun RecentTransactionsHeader(
                 }
             }
         }
-        HorizontalDivider(color = Color(0xFFF3F4F6), thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
     }
 }
 
@@ -1270,7 +1272,7 @@ private fun DateGroupHeader(label: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF9FAFB))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Row(
@@ -1280,14 +1282,14 @@ private fun DateGroupHeader(label: String) {
             Icon(
                 imageVector = Icons.Rounded.CalendarToday,
                 contentDescription = null,
-                tint = Color(0xFF9CA3AF),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(12.dp),
             )
             Text(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -1361,7 +1363,7 @@ private fun TransactionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .combinedClickable(
                 onClick = {},
                 onLongClick = onLongPress,
@@ -1395,7 +1397,7 @@ private fun TransactionRow(
                 text = transaction.displayName,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF1F2937),
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1410,7 +1412,7 @@ private fun TransactionRow(
                 if (transaction.paymentMethod.isNotBlank()) {
                     TransactionChip(
                         label = transaction.paymentMethod.replaceFirstChar { it.titlecase() },
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (transaction.isRecurring) {
@@ -1437,20 +1439,20 @@ private fun TransactionRow(
                 Text(
                     text = "${transaction.currency} ${transaction.amount}",
                     fontSize = 10.sp,
-                    color = Color(0xFF9CA3AF),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(
                     text = formatTime(transaction.timestampMillis),
                     fontSize = 10.sp,
-                    color = Color(0xFF9CA3AF),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
     HorizontalDivider(
         modifier = Modifier.padding(start = 66.dp, end = 16.dp),
-        color = Color(0xFFF3F4F6),
+        color = MaterialTheme.colorScheme.outlineVariant,
         thickness = 0.5.dp,
     )
 }
@@ -1501,12 +1503,12 @@ private fun TransactionEmptyState() {
             text = "No transactions yet",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1F2937),
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text = "Add your first income or expense\nto start tracking your finances.",
             fontSize = 13.sp,
-            color = Color(0xFF6B7280),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Box(
@@ -1536,7 +1538,7 @@ private fun SearchOverlay(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .statusBarsPadding(),
         contentAlignment = Alignment.Center,
@@ -1557,7 +1559,7 @@ private fun SearchOverlay(
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = "Close search",
-                        tint = Color(0xFF6B7280),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },
@@ -1566,8 +1568,8 @@ private fun SearchOverlay(
                 .clip(RoundedCornerShape(50)),
             singleLine = true,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFF3F4F6),
-                unfocusedContainerColor = Color(0xFFF3F4F6),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),
@@ -1598,7 +1600,7 @@ private fun TransactionEditSheet(
                 .width(40.dp)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFFE5E7EB))
+                .background(MaterialTheme.colorScheme.outlineVariant)
                 .align(Alignment.CenterHorizontally),
         )
 
@@ -1625,18 +1627,18 @@ private fun TransactionEditSheet(
                     text = item.displayName,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F2937),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = if (isIncome) "Income · ${item.source.replaceFirstChar { it.titlecase() }}"
                     else "Expense · ${item.source.replaceFirstChar { it.titlecase() }}",
                     fontSize = 12.sp,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
-        HorizontalDivider(color = Color(0xFFF3F4F6))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // Amount
         EditDetailRow(label = "Amount", value = formatLKR(item.amountInLKR))
@@ -1662,7 +1664,7 @@ private fun TransactionEditSheet(
             EditDetailRow(label = "Recurring", value = "Yes ↻")
         }
 
-        HorizontalDivider(color = Color(0xFFF3F4F6))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         Box(
             modifier = Modifier
@@ -1690,12 +1692,12 @@ private fun EditDetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
     ) {
-        Text(text = label, fontSize = 13.sp, color = Color(0xFF6B7280))
+        Text(text = label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             text = value,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = Color(0xFF1F2937),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
         )

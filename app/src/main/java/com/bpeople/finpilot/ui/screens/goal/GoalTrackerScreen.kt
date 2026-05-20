@@ -770,13 +770,14 @@ private fun GroupedSavingsBarChart(
                 Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFE5E7EB)))
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant))
                 Text("Required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         if (savingsHistory.isNotEmpty()) {
             val maxVal = maxOf(savingsHistory.maxOfOrNull { it.amount } ?: 0.0, monthlyRequired, 1.0)
+            val barTrackColor = MaterialTheme.colorScheme.outline
 
             Canvas(modifier = Modifier.fillMaxWidth().height(130.dp)) {
                 val totalW = size.width
@@ -790,7 +791,7 @@ private fun GroupedSavingsBarChart(
 
                     val reqH = (monthlyRequired / maxVal * totalH * barAnim).toFloat().coerceAtLeast(0f)
                     drawRoundRect(
-                        color = Color(0xFFE5E7EB),
+                        color = barTrackColor,
                         topLeft = Offset(groupLeft, totalH - reqH),
                         size = Size(barW, reqH),
                         cornerRadius = CornerRadius(3.dp.toPx()),

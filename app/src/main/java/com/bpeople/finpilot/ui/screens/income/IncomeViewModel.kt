@@ -51,6 +51,7 @@ class IncomeViewModel @Inject constructor(
         val exchangeRateIsStale: Boolean = false,
         val exchangeRateAvailable: Boolean = true,
         val exchangeRateConfirmed: Boolean = true,
+        val exchangeRateManualOverride: Boolean = false,
         val showRateConfirmation: Boolean = false,
         val isRefreshingRates: Boolean = false,
         val dateMillis: Long = System.currentTimeMillis(),
@@ -106,11 +107,17 @@ class IncomeViewModel @Inject constructor(
                     val rate = exchangeRatesRepository.rateToLkr(snapshot, current.currencyOriginal)
                     val rateAvailable = current.currencyOriginal == "LKR" || rate != null
                     val resolvedRate = rate ?: 1.0
+                    val shouldUseRepoRate = current.currencyOriginal != "LKR" && !current.exchangeRateManualOverride
+                    val exchangeRateValue = when {
+                        current.currencyOriginal == "LKR" -> "1.0"
+                        shouldUseRepoRate && rate != null -> formatRate(resolvedRate)
+                        else -> current.exchangeRate
+                    }
                     val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
                     val confirmed = if (current.currencyOriginal == "LKR") true
                     else if (rateChanged) false else current.exchangeRateConfirmed
                     val updated = current.copy(
-                        exchangeRate = formatRate(resolvedRate),
+                        exchangeRate = exchangeRateValue,
                         exchangeRateLastUpdatedMillis = snapshot.lastUpdatedMillis.takeIf { it > 0 },
                         exchangeRateIsStale = snapshot.isStale,
                         exchangeRateAvailable = rateAvailable,
@@ -124,9 +131,13 @@ class IncomeViewModel @Inject constructor(
 
     fun onSourceChange(value: String) {
         _incomeState.update { current ->
+            val isSalary = value == "Salary"
             val updated = current.copy(
                 source = value,
                 projectRef = if (value != "Freelance") "" else current.projectRef,
+                currencyOriginal = if (isSalary) "LKR" else current.currencyOriginal,
+                exchangeRate = if (isSalary) "1.0" else current.exchangeRate,
+                exchangeRateManualOverride = if (isSalary) false else current.exchangeRateManualOverride,
                 errorMessage = null,
             )
             updated.copy(amountLkrPreview = calculateAmountLkr(updated))
@@ -147,9 +158,26 @@ class IncomeViewModel @Inject constructor(
             val rateAvailable = value == "LKR" || rate != null
             val updated = current.copy(
                 currencyOriginal = value,
-                exchangeRate = formatRate(rate ?: 1.0),
+                exchangeRate = when {
+                    value == "LKR" -> "1.0"
+                    rate != null -> formatRate(rate)
+                    else -> ""
+                },
                 exchangeRateAvailable = rateAvailable,
                 exchangeRateConfirmed = value == "LKR",
+                exchangeRateManualOverride = false,
+                errorMessage = null,
+            )
+            updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+        }
+    }
+
+    fun onExchangeRateChange(value: String) {
+        val filtered = value.filter { it.isDigit() || it == '.' }
+        _incomeState.update { current ->
+            val updated = current.copy(
+                exchangeRate = filtered,
+                exchangeRateManualOverride = true,
                 errorMessage = null,
             )
             updated.copy(amountLkrPreview = calculateAmountLkr(updated))
@@ -252,17 +280,24 @@ class IncomeViewModel @Inject constructor(
             return
         }
 
-        val resolvedRate = state.exchangeRate.toDoubleOrNull() ?: 1.0
-        val amountLkr = calculateAmountLkr(state)
+        val effectiveCurrency = if (state.source == "Salary") "LKR" else state.currencyOriginal
+        val resolvedRate = if (effectiveCurrency == "LKR") 1.0 else state.exchangeRate.toDoubleOrNull()
+
+        if (effectiveCurrency != "LKR" && (resolvedRate == null || resolvedRate <= 0.0)) {
+            _incomeState.update { it.copy(errorMessage = "Enter a valid exchange rate") }
+            return
+        }
+
+        val amountLkr = amountOriginal * (resolvedRate ?: 1.0)
         val typeKey = INCOME_TYPE_KEYS[state.incomeType] ?: "ONE_OFF"
 
         val entry = IncomeEntry(
             id = UUID.randomUUID().toString(),
             source = state.source,
             amountOriginal = amountOriginal,
-            currencyOriginal = state.currencyOriginal,
+            currencyOriginal = effectiveCurrency,
             amountLKR = amountLkr,
-            exchangeRate = resolvedRate,
+            exchangeRate = resolvedRate ?: 1.0,
             date = Timestamp(Date(state.dateMillis)),
             label = state.label.ifBlank { null },
             type = typeKey,
@@ -285,6 +320,7 @@ class IncomeViewModel @Inject constructor(
                         exchangeRateIsStale = it.exchangeRateIsStale,
                         exchangeRateAvailable = true,
                         exchangeRateConfirmed = true,
+                        exchangeRateManualOverride = false,
                         showRateConfirmation = false,
                         label = "",
                         projectRef = "",
@@ -317,6 +353,7 @@ class IncomeViewModel @Inject constructor(
                 exchangeRate = "1.0",
                 amountLkrPreview = 0.0,
                 exchangeRateConfirmed = true,
+                exchangeRateManualOverride = false,
                 showRateConfirmation = false,
                 label = "",
                 projectRef = "",
@@ -360,7 +397,7 @@ class IncomeViewModel @Inject constructor(
 
     private fun calculateAmountLkr(state: IncomeUiState): Double {
         val amountOriginal = state.amountOriginal.toDoubleOrNull() ?: return 0.0
-        val rate = state.exchangeRate.toDoubleOrNull() ?: 1.0
+        val rate = if (state.currencyOriginal == "LKR") 1.0 else state.exchangeRate.toDoubleOrNull() ?: return 0.0
         return amountOriginal * rate
     }
 
@@ -399,8 +436,8 @@ class IncomeViewModel @Inject constructor(
 
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
-        val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
-        val INCOME_TYPES = listOf("One-off", "Recurring", "Variable")
+        val CURRENCIES = listOf("LKR", "USD", "USDT", "ETH")
+        val INCOME_TYPES = listOf("Recurring", "One-off", "Variable")
         val INCOME_TYPE_KEYS = mapOf(
             "One-off" to "ONE_OFF",
             "Recurring" to "RECURRING",

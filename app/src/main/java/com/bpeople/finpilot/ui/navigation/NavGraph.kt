@@ -19,12 +19,12 @@ import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
-import com.bpeople.finpilot.ui.screens.expense.AddExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
 import com.bpeople.finpilot.ui.screens.income.AddIncomeScreen
+import com.bpeople.finpilot.ui.screens.income.IncomeScreen
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
 import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
 import com.bpeople.finpilot.ui.screens.profile.ProfileViewModel
@@ -139,7 +139,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
                 onNavigateToIncome = {
-                    navController.navigate(NavRoutes.AddIncome.route)
+                    navController.navigate(NavRoutes.Income.route)
                 },
                 onNavigateToGoals = {
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
@@ -156,6 +156,31 @@ fun FinPilotNavGraph(
             )
         }
 
+        composable(NavRoutes.Income.route) {
+            val incomeViewModel: IncomeViewModel = hiltViewModel()
+            IncomeScreen(
+                viewModel = incomeViewModel,
+                onNavigateToDashboard = {
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
+                onNavigateToAddIncome = {
+                    navController.navigate(NavRoutes.AddIncome.route)
+                },
+            )
+        }
+
         composable(NavRoutes.AddIncome.route) {
             val incomeViewModel: IncomeViewModel = hiltViewModel()
             AddIncomeScreen(
@@ -163,7 +188,9 @@ fun FinPilotNavGraph(
                 onNavigateToDashboard = {
                     navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
                 },
-                onNavigateToIncome = { /* Currently on Income */ },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.Income.route)
+                },
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
                 },
@@ -177,7 +204,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Profile.route)
                 },
                 onIncomeAdded = {
-                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                    navController.popBackStack()
                 },
             )
         }
@@ -190,7 +217,7 @@ fun FinPilotNavGraph(
                     navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
                 },
                 onNavigateToIncome = {
-                    navController.navigate(NavRoutes.AddIncome.route)
+                    navController.navigate(NavRoutes.Income.route)
                 },
                 onNavigateToTransactions = {
                     navController.navigate(NavRoutes.Transactions.route)
@@ -226,7 +253,7 @@ fun FinPilotNavGraph(
                     }
                 },
                 onNavigateToIncome = {
-                    navController.navigate(NavRoutes.AddIncome.route)
+                    navController.navigate(NavRoutes.Income.route)
                 },
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
@@ -270,7 +297,7 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Dashboard.route)
                 },
                 onNavigateToIncome = {
-                    navController.navigate(NavRoutes.AddIncome.route)
+                    navController.navigate(NavRoutes.Income.route)
                 },
                 onNavigateToExpense = {
                     navController.navigate(NavRoutes.AddExpense.route)
