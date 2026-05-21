@@ -97,4 +97,5 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation("co.yml:ycharts:2.1.0")
+    implementation(libs.backdrop)
 }
