@@ -71,6 +71,7 @@ class IncomeViewModel @Inject constructor(
         val showAddSheet: Boolean = false,
         val pendingDeleteEntry: IncomeEntry? = null,
         val showMonthlyView: Boolean = true,
+        val historyPageIndex: Int = 0,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -96,7 +97,9 @@ class IncomeViewModel @Inject constructor(
                     flow.collect { entries ->
                         _incomeState.update { current ->
                             val updated = current.copy(entries = entries)
-                            updated.copy(filteredEntries = filterHistoryEntries(updated, entries))
+                            val filtered = filterHistoryEntries(updated, entries)
+                            val withFiltered = updated.copy(filteredEntries = filtered)
+                            withFiltered.copy(historyPageIndex = clampHistoryPageIndex(withFiltered))
                         }
                     }
                 }
@@ -214,14 +217,14 @@ class IncomeViewModel @Inject constructor(
 
     fun onHistoryDateRangeChange(value: HistoryDateRange) {
         _incomeState.update { current ->
-            val updated = current.copy(historyDateRange = value)
+            val updated = current.copy(historyDateRange = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
     }
 
     fun onHistorySourceFilterChange(value: String?) {
         _incomeState.update { current ->
-            val updated = current.copy(historySourceFilter = value)
+            val updated = current.copy(historySourceFilter = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
         refreshHistory()
@@ -229,7 +232,7 @@ class IncomeViewModel @Inject constructor(
 
     fun onHistoryIncomeTypeFilterChange(value: String?) {
         _incomeState.update { current ->
-            val updated = current.copy(historyIncomeTypeFilter = value)
+            val updated = current.copy(historyIncomeTypeFilter = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
     }
@@ -240,10 +243,26 @@ class IncomeViewModel @Inject constructor(
                 historyDateRange = HistoryDateRange.ALL_TIME,
                 historySourceFilter = null,
                 historyIncomeTypeFilter = null,
+                historyPageIndex = 0,
             )
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
         refreshHistory()
+    }
+
+    fun goToPreviousHistoryPage() {
+        _incomeState.update { current ->
+            val newIndex = (current.historyPageIndex - 1).coerceAtLeast(0)
+            current.copy(historyPageIndex = newIndex)
+        }
+    }
+
+    fun goToNextHistoryPage() {
+        _incomeState.update { current ->
+            val maxIndex = maxHistoryPageIndex(current)
+            val newIndex = (current.historyPageIndex + 1).coerceAtMost(maxIndex)
+            current.copy(historyPageIndex = newIndex)
+        }
     }
 
     fun consumeSubmitted() {
@@ -431,6 +450,15 @@ class IncomeViewModel @Inject constructor(
         _incomeState.update { it.copy(errorMessage = null) }
     }
 
+    private fun refreshHistory() {
+        historyRefreshTrigger.update { it + 1 }
+        _incomeState.update { current ->
+            val filtered = filterHistoryEntries(current, current.entries)
+            val withFiltered = current.copy(filteredEntries = filtered)
+            withFiltered.copy(historyPageIndex = clampHistoryPageIndex(withFiltered))
+        }
+    }
+
     private fun calculateAmountLkr(state: IncomeUiState): Double {
         val amountOriginal = state.amountOriginal.toDoubleOrNull() ?: return 0.0
         val rate = if (state.currencyOriginal == "LKR") 1.0 else state.exchangeRate.toDoubleOrNull() ?: return 0.0
@@ -470,11 +498,16 @@ class IncomeViewModel @Inject constructor(
 
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)
 
-    private fun refreshHistory() {
-        historyRefreshTrigger.update { it + 1 }
+    private fun maxHistoryPageIndex(state: IncomeUiState): Int {
+        val total = state.filteredEntries.size
+        return if (total == 0) 0 else (total - 1) / HISTORY_PAGE_SIZE
     }
 
+    private fun clampHistoryPageIndex(state: IncomeUiState): Int =
+        state.historyPageIndex.coerceIn(0, maxHistoryPageIndex(state))
+
     companion object {
+        const val HISTORY_PAGE_SIZE = 10
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
         val CURRENCIES = listOf("LKR", "USD", "USDT", "ETH")
         val INCOME_TYPES = listOf("Recurring", "One-off", "Variable")

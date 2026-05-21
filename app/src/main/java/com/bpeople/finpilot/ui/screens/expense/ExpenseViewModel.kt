@@ -75,6 +75,7 @@ class ExpenseViewModel @Inject constructor(
         val selectedChartCategory: String? = null,
         val showTrendChart: Boolean = false,
         val isSubmitted: Boolean = false,
+        val historyPageIndex: Int = 0,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -103,7 +104,9 @@ class ExpenseViewModel @Inject constructor(
                     flow.collect { entries ->
                         _expenseState.update { current ->
                             val updated = current.copy(entries = entries)
-                            updated.copy(filteredEntries = filterHistoryEntries(updated, entries))
+                            val filtered = filterHistoryEntries(updated, entries)
+                            val withFiltered = updated.copy(filteredEntries = filtered)
+                            withFiltered.copy(historyPageIndex = clampHistoryPageIndex(withFiltered))
                         }
                     }
                 }
@@ -164,21 +167,21 @@ class ExpenseViewModel @Inject constructor(
 
     fun onHistoryDateRangeChange(value: HistoryDateRange) {
         _expenseState.update { current ->
-            val updated = current.copy(historyDateRange = value)
+            val updated = current.copy(historyDateRange = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
     }
 
     fun onHistoryCategoryFilterChange(value: String?) {
         _expenseState.update { current ->
-            val updated = current.copy(historyCategoryFilter = value)
+            val updated = current.copy(historyCategoryFilter = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
     }
 
     fun onHistoryPaymentMethodFilterChange(value: String?) {
         _expenseState.update { current ->
-            val updated = current.copy(historyPaymentMethodFilter = value)
+            val updated = current.copy(historyPaymentMethodFilter = value, historyPageIndex = 0)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
     }
@@ -189,8 +192,24 @@ class ExpenseViewModel @Inject constructor(
                 historyDateRange = HistoryDateRange.ALL_TIME,
                 historyCategoryFilter = null,
                 historyPaymentMethodFilter = null,
+                historyPageIndex = 0,
             )
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
+        }
+    }
+
+    fun goToPreviousHistoryPage() {
+        _expenseState.update { current ->
+            val newIndex = (current.historyPageIndex - 1).coerceAtLeast(0)
+            current.copy(historyPageIndex = newIndex)
+        }
+    }
+
+    fun goToNextHistoryPage() {
+        _expenseState.update { current ->
+            val maxIndex = maxHistoryPageIndex(current)
+            val newIndex = (current.historyPageIndex + 1).coerceAtMost(maxIndex)
+            current.copy(historyPageIndex = newIndex)
         }
     }
 
@@ -370,7 +389,16 @@ class ExpenseViewModel @Inject constructor(
 
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)
 
+    private fun maxHistoryPageIndex(state: ExpenseUiState): Int {
+        val total = state.filteredEntries.size
+        return if (total == 0) 0 else (total - 1) / HISTORY_PAGE_SIZE
+    }
+
+    private fun clampHistoryPageIndex(state: ExpenseUiState): Int =
+        state.historyPageIndex.coerceIn(0, maxHistoryPageIndex(state))
+
     companion object {
+        const val HISTORY_PAGE_SIZE = 10
         val CATEGORIES = listOf("Food", "Transport", "Housing", "Subscriptions", "Entertainment", "Health", "Other")
         val PAYMENT_METHODS = listOf("Card", "Cash", "Bank Transfer", "Auto-Debit")
         val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
@@ -453,7 +481,15 @@ class ExpenseViewModel @Inject constructor(
 
     // ── UI filters ────────────────────────────────────────────────────────────
     fun onCategoryFilterChange(category: String) {
-        _expenseState.update { it.copy(selectedCategoryFilter = category, selectedChartCategory = null) }
+        val normalized = category.takeIf { it.isNotBlank() && !it.equals("All", ignoreCase = true) }
+        _expenseState.update {
+            it.copy(
+                selectedCategoryFilter = category,
+                selectedChartCategory = null,
+                historyCategoryFilter = normalized,
+                historyPageIndex = 0,
+            )
+        }
         refreshHistory()
     }
 
@@ -463,6 +499,8 @@ class ExpenseViewModel @Inject constructor(
             current.copy(
                 selectedChartCategory = newFilter,
                 selectedCategoryFilter = newFilter ?: "All",
+                historyCategoryFilter = newFilter,
+                historyPageIndex = 0,
             )
         }
         refreshHistory()

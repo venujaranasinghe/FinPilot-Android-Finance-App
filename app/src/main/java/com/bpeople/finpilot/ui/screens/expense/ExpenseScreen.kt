@@ -12,8 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.paging.LoadState
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
@@ -117,7 +115,6 @@ fun ExpenseScreen(
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
-    val pagedHistory = viewModel.pagedHistory.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.isSubmitted) {
@@ -147,7 +144,6 @@ fun ExpenseScreen(
 
     ExpenseListContent(
         state = state,
-        pagedHistory = pagedHistory,
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToIncome = onNavigateToIncome,
@@ -172,6 +168,8 @@ fun ExpenseScreen(
         onRecurringChange = viewModel::onRecurringChange,
         onRequestSubmit = viewModel::requestSubmit,
         onRefreshRates = viewModel::refreshExchangeRates,
+        onPreviousPage = viewModel::goToPreviousHistoryPage,
+        onNextPage = viewModel::goToNextHistoryPage,
     )
 }
 
@@ -181,7 +179,6 @@ fun ExpenseScreen(
 @Composable
 fun ExpenseListContent(
     state: ExpenseViewModel.ExpenseUiState,
-    pagedHistory: androidx.paging.compose.LazyPagingItems<ExpenseEntry>,
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit,
@@ -206,6 +203,8 @@ fun ExpenseListContent(
     onRecurringChange: (Boolean) -> Unit,
     onRequestSubmit: () -> Unit,
     onRefreshRates: () -> Unit,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
 ) {
     // Popup dialog for adding expense
     if (state.showAddSheet) {
@@ -257,7 +256,13 @@ fun ExpenseListContent(
             .distinctBy { it.category + it.note + it.subCategory }
     }
 
-    val isHistoryLoading = pagedHistory.loadState.refresh is LoadState.Loading
+    val pageSize = ExpenseViewModel.HISTORY_PAGE_SIZE
+    val totalItems = state.filteredEntries.size
+    val pageCount = maxOf(1, (totalItems + pageSize - 1) / pageSize)
+    val pageIndex = state.historyPageIndex.coerceIn(0, pageCount - 1)
+    val pageEntries = remember(state.filteredEntries, pageIndex) {
+        state.filteredEntries.drop(pageIndex * pageSize).take(pageSize)
+    }
 
     val trendData = remember(state.entries) { computeMonthlyTrend(state.entries) }
 
@@ -378,18 +383,8 @@ fun ExpenseListContent(
                     }
                 }
 
-                // ── Shimmer loading ───────────────────────────────────────────
-                if (isHistoryLoading) {
-                    items(5) {
-                        GlassShimmerCard(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                        )
-                    }
-                    return@LazyColumn
-                }
-
                 // ── Empty state ───────────────────────────────────────────────
-                if (pagedHistory.itemCount == 0) {
+                if (pageEntries.isEmpty()) {
                     item {
                         GlassEmptyState(
                             category = state.selectedCategoryFilter,
@@ -401,10 +396,9 @@ fun ExpenseListContent(
 
                 // ── Date-grouped list ─────────────────────────────────────────
                 items(
-                    count = pagedHistory.itemCount,
-                    key = { index -> pagedHistory[index]?.id ?: "expense_placeholder_$index" },
-                ) { index ->
-                    val entry = pagedHistory[index] ?: return@items
+                    items = pageEntries,
+                    key = { entry -> entry.id },
+                ) { entry ->
                     GlassSwipeableRow(
                         entry = entry,
                         onDelete = { onDeleteEntry(entry) },
@@ -413,10 +407,14 @@ fun ExpenseListContent(
                     )
                 }
 
-                if (pagedHistory.loadState.append is LoadState.Loading) {
-                    items(2) {
-                        GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                    }
+                item {
+                    GlassPaginationControls(
+                        pageIndex = pageIndex,
+                        pageCount = pageCount,
+                        onPrevious = onPreviousPage,
+                        onNext = onNextPage,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    )
                 }
 
                 // ── Monthly trend ─────────────────────────────────────────────
@@ -441,6 +439,46 @@ fun ExpenseListContent(
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
             )
+        }
+    }
+}
+
+@Composable
+private fun GlassPaginationControls(
+    pageIndex: Int,
+    pageCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Page ${pageIndex + 1} of $pageCount",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = GlassTheme.TextSecondary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onPrevious, enabled = pageIndex > 0) {
+                Text("Prev", color = GlassTheme.TextSecondary)
+            }
+            Button(
+                onClick = onNext,
+                enabled = pageIndex < pageCount - 1,
+                colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+            ) {
+                Text("Next", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
