@@ -6,6 +6,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val exchangeRatesAppId = providers.gradleProperty("EXCHANGE_RATES_APP_ID").orNull ?: ""
+
 android {
     namespace = "com.bpeople.finpilot"
     compileSdk = 36
@@ -17,6 +19,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "EXCHANGE_RATES_APP_ID", "\"$exchangeRatesAppId\"")
     }
 
     buildTypes {
@@ -34,6 +37,13 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
     }
 }
 
@@ -63,6 +73,18 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation("com.google.code.gson:gson:2.10.1")
+    // Room (local caching for Firestore-backed models)
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    // Unit test support for Room + Flow (Robolectric)
+    testImplementation("androidx.room:room-testing:2.8.4")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,4 +92,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.google.play.services.auth)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.okhttp)
+    implementation("co.yml:ycharts:2.1.0")
 }

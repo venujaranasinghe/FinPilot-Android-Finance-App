@@ -55,7 +55,6 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         started = true
         delay(2800L)
-        // Check Firebase auth state and navigate accordingly
         if (viewModel.isLoggedIn) {
             onNavigateToDashboard()
         } else {
@@ -63,6 +62,17 @@ fun SplashScreen(
         }
     }
 
+    SplashContent(
+        alpha = alpha,
+        scale = scale,
+    )
+}
+
+@Composable
+internal fun SplashContent(
+    alpha: Float,
+    scale: Float,
+) {
     AuthBackground {
         Column(
             modifier = Modifier
@@ -111,11 +121,9 @@ fun SplashScreen(
 @Composable
 private fun SplashPreview() {
     FinPilotTheme {
-        @Suppress("ViewModelConstructorInComposable")
-        SplashScreen(
-            viewModel = AuthViewModel(),
-            onNavigateToLogin = {},
-            onNavigateToDashboard = {}
+        SplashContent(
+            alpha = 1f,
+            scale = 1f,
         )
     }
 }
