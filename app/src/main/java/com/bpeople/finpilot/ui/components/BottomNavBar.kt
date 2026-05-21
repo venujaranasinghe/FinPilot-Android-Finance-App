@@ -1,8 +1,5 @@
 package com.bpeople.finpilot.ui.components
 
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -16,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,25 +34,32 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.kashif_e.backdrop.drawBackdrop
+import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kashif_e.backdrop.effects.blur
+import com.kashif_e.backdrop.effects.colorControls
+import com.kashif_e.backdrop.effects.opacity
+import com.kashif_e.backdrop.highlight.Highlight
+import com.kashif_e.backdrop.shadow.InnerShadow
+import com.kashif_e.backdrop.shadow.Shadow
 import kotlin.math.absoluteValue
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 
-private val OrangePrimary = Color(0xFFF97316)
-private val OrangeGlow    = Color(0xFFFB923C)
-private val GlassWhite    = Color(0xFFFFFFFF)
-private val GlassBorder   = Color(0x4DFFFFFF)   // 30 % white
-private val GlassScrim    = Color(0x14000000)   // 8 % black
-private val InactiveIcon  = Color(0x73FFFFFF)   // 45 % white
+private val OrangePrimary = GlassTheme.Orange
+private val OrangeGlow    = GlassTheme.OrangeLight
+private val GlassWhite    = GlassTheme.GlassSurface
+private val GlassBorder   = GlassTheme.GlassBorderLight
+private val InactiveIcon  = GlassTheme.TextSecondary
 
 // ─── Nav model ───────────────────────────────────────────────────────────────
 
@@ -113,6 +118,9 @@ fun FinPilotBottomNavBar(
     // Velocity tracker for fling detection
     val velocityTracker = remember { VelocityTracker() }
 
+    val backdrop = rememberLayerBackdrop()
+    val blurRadiusPx = with(LocalDensity.current) { 16.dp.toPx() }
+
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
         when (navItems.getOrNull(index)?.tab) {
@@ -130,44 +138,52 @@ fun FinPilotBottomNavBar(
             .navigationBarsPadding()
             .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
     ) {
-        // ── Layer 0: subtle scrim ──────────────────────────────────────────
+        // ── Backdrop layer (captures gradient for sampling) ────────────────
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .clip(RoundedCornerShape(32.dp))
-                .background(GlassScrim),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            GlassTheme.BgStart.copy(alpha = 0.86f),
+                            GlassTheme.BgMid.copy(alpha = 0.90f),
+                            GlassTheme.BgEnd.copy(alpha = 0.92f),
+                        ),
+                    ),
+                )
+                .layerBackdrop(backdrop),
         )
 
-        // ── Layer 1: blur shell (API 31+) ──────────────────────────────────
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(32.dp))
-                    .graphicsLayer {
-                        renderEffect = RenderEffect.createBlurEffect(
-                            30f,
-                            30f,
-                            Shader.TileMode.CLAMP,
-                        ).asComposeRenderEffect()
-                        alpha = 0.92f
-                    }
-                    .background(GlassWhite.copy(alpha = 0.12f)),
-            )
-        }
+        // ── Glass shell ───────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RoundedCornerShape(32.dp) },
+                    effects = {
+                        blur(blurRadiusPx)
+                        colorControls(
+                            brightness = 0.05f,
+                            contrast = 1.08f,
+                            saturation = 1.05f,
+                        )
+                        opacity(0.90f)
+                    },
+                    highlight = { Highlight.Ambient },
+                    shadow = { Shadow(radius = 8.dp) },
+                    innerShadow = { InnerShadow(radius = 4.dp) },
+                )
+                .border(1.dp, GlassBorder, RoundedCornerShape(32.dp)),
+        )
 
-        // ── Layer 2: translucent card + border ─────────────────────────────
-        val containerColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            GlassWhite.copy(alpha = 0.10f)
-        else
-            GlassWhite.copy(alpha = 0.92f)
-
+        // ── Foreground content ────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(containerColor)
-                .border(1.dp, GlassBorder, RoundedCornerShape(32.dp))
+                .background(GlassWhite.copy(alpha = 0.04f))
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
@@ -212,7 +228,7 @@ fun FinPilotBottomNavBar(
                     )
                 },
         ) {
-            // ── Icons row ────────────────────────────────────────────────────
+            // ── Icons row ────────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -235,14 +251,14 @@ fun FinPilotBottomNavBar(
             }
         }
 
-        // ── Layer 3: shimmer highlight ─────────────────────────────────────
+        // ── Highlight shimmer ────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .clip(RoundedCornerShape(32.dp))
                 .background(
                     Brush.verticalGradient(
-                        0f    to GlassWhite.copy(alpha = 0.20f),
+                        0f    to GlassWhite.copy(alpha = 0.18f),
                         0.45f to GlassWhite.copy(alpha = 0.04f),
                         1f    to Color.Transparent,
                     ),
