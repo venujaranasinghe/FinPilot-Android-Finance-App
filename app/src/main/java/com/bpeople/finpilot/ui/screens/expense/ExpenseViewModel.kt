@@ -69,6 +69,8 @@ class ExpenseViewModel @Inject constructor(
         val selectedChartCategory: String? = null,
         val showTrendChart: Boolean = false,
         val isSubmitted: Boolean = false,
+        val isLoadingMore: Boolean = false,
+        val hasMore: Boolean = true,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -125,6 +127,26 @@ class ExpenseViewModel @Inject constructor(
                 }
             }
         }
+
+        expenseRepository.observeIsLoading()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+            .let { flow ->
+                viewModelScope.launch {
+                    flow.collect { loading ->
+                        _expenseState.update { it.copy(isLoadingMore = loading) }
+                    }
+                }
+            }
+
+        expenseRepository.observeHasMore()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+            .let { flow ->
+                viewModelScope.launch {
+                    flow.collect { hasMore ->
+                        _expenseState.update { it.copy(hasMore = hasMore) }
+                    }
+                }
+            }
     }
 
     fun onAmountChange(value: String) {
@@ -448,5 +470,11 @@ class ExpenseViewModel @Inject constructor(
 
     fun dismissWarningBanner() {
         _expenseState.update { it.copy(warningBannerDismissed = true) }
+    }
+
+    fun loadNextPage() {
+        viewModelScope.launch {
+            expenseRepository.loadNextPage()
+        }
     }
 }

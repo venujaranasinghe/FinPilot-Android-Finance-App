@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -67,6 +68,7 @@ import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -96,6 +98,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -122,6 +125,7 @@ import com.bpeople.finpilot.data.model.Period
 import com.bpeople.finpilot.data.model.TransactionItem
 import com.bpeople.finpilot.data.model.TransactionType
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
+import com.bpeople.finpilot.ui.components.GlassTheme
 import com.bpeople.finpilot.ui.components.NavTab
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -134,6 +138,8 @@ import kotlin.math.sin
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.CornerRadius
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 // ── Theme constants ────────────────────────────────────────────────────────────
 
@@ -290,6 +296,8 @@ fun TransactionScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val editingTransaction by viewModel.editingTransaction.collectAsState()
     val pendingDelete by viewModel.pendingDelete.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val hasMore by viewModel.hasMore.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -309,7 +317,7 @@ fun TransactionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             FinPilotBottomNavBar(
@@ -324,8 +332,40 @@ fun TransactionScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(GlassTheme.BgStart, GlassTheme.BgMid, GlassTheme.BgEnd)
+                    )
+                )
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            GlassTheme.Orange.copy(alpha = 0.14f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(size.width * 0.88f, size.height * 0.10f),
+                        radius = 260.dp.toPx(),
+                    ),
+                    center = Offset(size.width * 0.88f, size.height * 0.10f),
+                    radius = 260.dp.toPx(),
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            GlassTheme.OrbPurple.copy(alpha = 0.45f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(size.width * 0.15f, size.height * 0.72f),
+                        radius = 220.dp.toPx(),
+                    ),
+                    center = Offset(size.width * 0.15f, size.height * 0.72f),
+                    radius = 220.dp.toPx(),
+                )
+            }
+
             // Search overlay
             AnimatedVisibility(
                 visible = isSearchActive,
@@ -361,6 +401,9 @@ fun TransactionScreen(
                     onDeleteTransaction = viewModel::markForDelete,
                     onEditTransaction = viewModel::startEditTransaction,
                     onSeeAll = onSeeAllTransactions,
+                    isLoadingMore = isLoadingMore,
+                    hasMore = hasMore,
+                    onLoadNextPage = viewModel::loadNextPage,
                 )
             }
         }
@@ -372,7 +415,8 @@ fun TransactionScreen(
         ModalBottomSheet(
             onDismissRequest = viewModel::clearEditTransaction,
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = GlassTheme.BgMid,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         ) {
             TransactionEditSheet(
                 item = item,
@@ -401,6 +445,9 @@ private fun TransactionContent(
     onDeleteTransaction: (TransactionItem) -> Unit,
     onEditTransaction: (TransactionItem) -> Unit,
     onSeeAll: () -> Unit,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadNextPage: () -> Unit,
 ) {
     val groupedTransactions by remember(transactions) {
         derivedStateOf {
@@ -410,8 +457,30 @@ private fun TransactionContent(
                 .toList()
         }
     }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, hasMore, isLoadingMore, transactions.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems == 0) {
+                false
+            } else {
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                lastVisibleIndex >= totalItems - 4
+            }
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                if (hasMore && !isLoadingMore) {
+                    onLoadNextPage()
+                }
+            }
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
@@ -481,6 +550,37 @@ private fun TransactionContent(
                     )
                 }
             }
+
+            if (isLoadingMore) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            color = GlassTheme.Orange,
+                            strokeWidth = 2.5.dp,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+            }
+
+            if (!hasMore && transactions.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "No more transactions",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        color = GlassTheme.TextHint,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }
@@ -514,17 +614,34 @@ private fun OrangeHeaderWithCards(
     val periodLabel = formatPeriodLabel(selectedPeriod)
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        // Orange background
+        // Hero glass gradient with soft glow
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(190.dp)
+                .height(210.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFF6B00), OrangePrimary),
+                        colors = listOf(
+                            GlassTheme.BgStart,
+                            GlassTheme.BgMid,
+                            GlassTheme.BgEnd,
+                        ),
                     ),
                 ),
-        )
+        ) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawCircle(
+                    color = GlassTheme.OrbOrange,
+                    radius = 220.dp.toPx(),
+                    center = Offset(size.width * 0.9f, -40.dp.toPx()),
+                )
+                drawCircle(
+                    color = GlassTheme.OrbPurple,
+                    radius = 150.dp.toPx(),
+                    center = Offset(size.width * 0.1f, size.height * 0.7f),
+                )
+            }
+        }
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Spacer(modifier = Modifier.statusBarsPadding())
@@ -541,21 +658,21 @@ private fun OrangeHeaderWithCards(
                     text = "Transactions",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = GlassTheme.TextPrimary,
                 )
                 Row {
                     IconButton(onClick = onSearchClick) {
                         Icon(
                             imageVector = Icons.Rounded.Search,
                             contentDescription = "Search",
-                            tint = Color.White,
+                            tint = GlassTheme.TextPrimary,
                         )
                     }
                     IconButton(onClick = {}) {
                         Icon(
                             imageVector = Icons.Rounded.FilterList,
                             contentDescription = "Filter",
-                            tint = Color.White,
+                            tint = GlassTheme.TextPrimary,
                         )
                     }
                 }
@@ -619,19 +736,20 @@ private fun PeriodTabPill(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.18f))
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(50))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         periods.forEach { (period, label) ->
             val isActive = period == selectedPeriod
             val bgColor by animateColorAsState(
-                targetValue = if (isActive) Color.White else Color.Transparent,
+                targetValue = if (isActive) GlassTheme.Orange else Color.Transparent,
                 animationSpec = tween(200),
                 label = "tab_bg_$label",
             )
             val textColor by animateColorAsState(
-                targetValue = if (isActive) OrangePrimary else Color.White,
+                targetValue = if (isActive) Color.White else GlassTheme.TextSecondary,
                 animationSpec = tween(200),
                 label = "tab_text_$label",
             )
@@ -661,55 +779,52 @@ private fun SummaryCard(
     iconTint: Color,
     bgColor: Color,
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorderLight, RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(bgColor),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(bgColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = labelColor,
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Text(
-                text = formatLKR(amount),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = periodLabel,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = labelColor,
             )
         }
+        Text(
+            text = formatLKR(amount),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = GlassTheme.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = periodLabel,
+            fontSize = 11.sp,
+            color = GlassTheme.TextHint,
+        )
     }
 }
 
@@ -719,9 +834,9 @@ private fun NetSavingsBanner(netSavings: Double, modifier: Modifier = Modifier) 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(OrangeSurface)
-            .border(1.dp, OrangeBorder, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(
@@ -734,7 +849,7 @@ private fun NetSavingsBanner(netSavings: Double, modifier: Modifier = Modifier) 
                     text = "Net savings this month",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = GlassTheme.TextPrimary,
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -758,7 +873,7 @@ private fun NetSavingsBanner(netSavings: Double, modifier: Modifier = Modifier) 
                 text = (if (netSavings >= 0) "+" else "") + formatLKR(netSavings),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isPositive) OrangePrimaryDeep else ExpenseColor,
+                color = if (isPositive) GlassTheme.Orange else ExpenseColor,
             )
         }
     }
@@ -773,9 +888,10 @@ private fun BarChartSection(barData: List<MonthlyBarData>, selectedPeriod: Perio
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassTheme.GlassBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorderLight),
     ) {
         Column(
             modifier = Modifier
@@ -792,7 +908,7 @@ private fun BarChartSection(barData: List<MonthlyBarData>, selectedPeriod: Perio
                     text = "Income vs Expenses",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = GlassTheme.TextPrimary,
                 )
                 Text(
                     text = "6 months",
@@ -834,7 +950,7 @@ private fun LegendDot(color: Color, label: String) {
                 .clip(CircleShape)
                 .background(color),
         )
-        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = label, fontSize = 11.sp, color = GlassTheme.TextHint)
     }
 }
 
@@ -864,7 +980,7 @@ private fun GroupedBarChart(
         Triple(bar, aIncome, aExpense)
     }
 
-    val mutedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val mutedLabelColor = GlassTheme.TextHint
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
@@ -939,13 +1055,13 @@ private fun GroupedBarChart(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.inverseSurface)
+                    .background(GlassTheme.TextPrimary.copy(alpha = 0.9f))
                     .padding(horizontal = 10.dp, vertical = 5.dp),
             ) {
                 Text(
                     text = "${formatLKR(bar.income)} in · ${formatLKR(bar.expenses)} exp",
                     fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                    color = Color.White,
                 )
             }
         }
@@ -1004,9 +1120,10 @@ private fun DonutChartCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassTheme.GlassBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorderLight),
     ) {
         Column(
             modifier = Modifier
@@ -1019,7 +1136,7 @@ private fun DonutChartCard(
                 text = title,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = GlassTheme.TextSecondary,
                 textAlign = TextAlign.Center,
             )
 
@@ -1028,10 +1145,10 @@ private fun DonutChartCard(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(GlassTheme.GlassSurface),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("No data", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No data", fontSize = 10.sp, color = GlassTheme.TextHint)
                 }
             } else {
                 DonutChart(
@@ -1136,7 +1253,7 @@ private fun DonutChart(
                 text = formatLKR(totalAmount),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = GlassTheme.TextPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1164,7 +1281,7 @@ private fun MiniCategoryBarRow(
         Text(
             text = label,
             fontSize = 9.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = GlassTheme.TextHint,
             modifier = Modifier.width(48.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1174,7 +1291,7 @@ private fun MiniCategoryBarRow(
                 .weight(1f)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(GlassTheme.GlassBorder),
         ) {
             Box(
                 modifier = Modifier
@@ -1187,7 +1304,7 @@ private fun MiniCategoryBarRow(
         Text(
             text = "${(fraction * 100).toInt()}%",
             fontSize = 9.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = GlassTheme.TextHint,
         )
     }
 }
@@ -1203,7 +1320,7 @@ private fun RecentTransactionsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(GlassTheme.BgMid.copy(alpha = 0.88f)),
     ) {
         Row(
             modifier = Modifier
@@ -1216,7 +1333,7 @@ private fun RecentTransactionsHeader(
                 text = "Recent transactions",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = GlassTheme.TextPrimary,
             )
             Text(
                 text = "See all",
@@ -1238,8 +1355,8 @@ private fun RecentTransactionsHeader(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(OrangeSurface)
-                        .border(1.dp, OrangeBorder, RoundedCornerShape(50))
+                        .background(GlassTheme.OrangeDim)
+                        .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(50))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Row(
@@ -1249,12 +1366,12 @@ private fun RecentTransactionsHeader(
                         Text(
                             text = selectedCategoryFilter?.replaceFirstChar { it.titlecase() } ?: "",
                             fontSize = 12.sp,
-                            color = OrangePrimaryDeep,
+                            color = GlassTheme.Orange,
                         )
                         Icon(
                             imageVector = Icons.Rounded.Close,
                             contentDescription = "Clear filter",
-                            tint = OrangePrimaryDeep,
+                            tint = GlassTheme.Orange,
                             modifier = Modifier
                                 .size(14.dp)
                                 .clickable(onClick = onClearFilter),
@@ -1263,7 +1380,7 @@ private fun RecentTransactionsHeader(
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+        HorizontalDivider(color = GlassTheme.GlassBorder, thickness = 1.dp)
     }
 }
 
@@ -1272,7 +1389,11 @@ private fun DateGroupHeader(label: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(
+                Brush.verticalGradient(
+                    listOf(GlassTheme.BgStart, Color.Transparent),
+                )
+            )
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Row(
@@ -1282,14 +1403,14 @@ private fun DateGroupHeader(label: String) {
             Icon(
                 imageVector = Icons.Rounded.CalendarToday,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = GlassTheme.TextHint,
                 modifier = Modifier.size(12.dp),
             )
             Text(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = GlassTheme.TextHint,
             )
         }
     }
@@ -1321,7 +1442,8 @@ private fun SwipeToDismissTransactionRow(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(ExpenseColor.copy(alpha = 0.1f + progress * 0.6f))
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(ExpenseColor.copy(alpha = 0.12f + progress * 0.5f))
                     .padding(end = 24.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
@@ -1363,7 +1485,9 @@ private fun TransactionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(18.dp))
+            .background(GlassTheme.GlassBg)
+            .border(1.dp, GlassTheme.GlassBorderLight, RoundedCornerShape(18.dp))
             .combinedClickable(
                 onClick = {},
                 onLongClick = onLongPress,
@@ -1397,7 +1521,7 @@ private fun TransactionRow(
                 text = transaction.displayName,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = GlassTheme.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1412,7 +1536,7 @@ private fun TransactionRow(
                 if (transaction.paymentMethod.isNotBlank()) {
                     TransactionChip(
                         label = transaction.paymentMethod.replaceFirstChar { it.titlecase() },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = GlassTheme.TextSecondary,
                     )
                 }
                 if (transaction.isRecurring) {
@@ -1439,30 +1563,27 @@ private fun TransactionRow(
                 Text(
                     text = "${transaction.currency} ${transaction.amount}",
                     fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = GlassTheme.TextHint,
                 )
             } else {
                 Text(
                     text = formatTime(transaction.timestampMillis),
                     fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = GlassTheme.TextHint,
                 )
             }
         }
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 66.dp, end = 16.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 0.5.dp,
-    )
+    Spacer(modifier = Modifier.height(6.dp))
 }
 
 @Composable
 private fun TransactionChip(label: String, color: Color) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.10f))
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.12f))
+            .border(0.5.dp, color.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
             .padding(horizontal = 5.dp, vertical = 2.dp),
     ) {
         Text(
@@ -1489,7 +1610,8 @@ private fun TransactionEmptyState() {
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape)
-                .background(OrangeSurface),
+                .background(GlassTheme.OrangeDim)
+                .border(1.dp, GlassTheme.GlassBorder, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -1503,12 +1625,12 @@ private fun TransactionEmptyState() {
             text = "No transactions yet",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = GlassTheme.TextPrimary,
         )
         Text(
             text = "Add your first income or expense\nto start tracking your finances.",
             fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = GlassTheme.TextHint,
             textAlign = TextAlign.Center,
         )
         Box(
@@ -1538,7 +1660,7 @@ private fun SearchOverlay(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(GlassTheme.BgMid.copy(alpha = 0.96f))
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .statusBarsPadding(),
         contentAlignment = Alignment.Center,
@@ -1559,7 +1681,7 @@ private fun SearchOverlay(
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = "Close search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = GlassTheme.TextHint,
                     )
                 }
             },
@@ -1568,8 +1690,8 @@ private fun SearchOverlay(
                 .clip(RoundedCornerShape(50)),
             singleLine = true,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedContainerColor = GlassTheme.GlassSurface,
+                unfocusedContainerColor = GlassTheme.GlassSurface,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),
@@ -1600,7 +1722,7 @@ private fun TransactionEditSheet(
                 .width(40.dp)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.outlineVariant)
+                .background(GlassTheme.GlassBorder)
                 .align(Alignment.CenterHorizontally),
         )
 
@@ -1627,18 +1749,18 @@ private fun TransactionEditSheet(
                     text = item.displayName,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = GlassTheme.TextPrimary,
                 )
                 Text(
                     text = if (isIncome) "Income · ${item.source.replaceFirstChar { it.titlecase() }}"
                     else "Expense · ${item.source.replaceFirstChar { it.titlecase() }}",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = GlassTheme.TextSecondary,
                 )
             }
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = GlassTheme.GlassBorder)
 
         // Amount
         EditDetailRow(label = "Amount", value = formatLKR(item.amountInLKR))
@@ -1664,13 +1786,14 @@ private fun TransactionEditSheet(
             EditDetailRow(label = "Recurring", value = "Yes ↻")
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = GlassTheme.GlassBorder)
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(OrangeSurface)
+                .background(GlassTheme.OrangeDim)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(12.dp))
                 .clickable(onClick = onDismiss)
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
@@ -1692,12 +1815,12 @@ private fun EditDetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
     ) {
-        Text(text = label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = label, fontSize = 13.sp, color = GlassTheme.TextSecondary)
         Text(
             text = value,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = GlassTheme.TextPrimary,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
         )

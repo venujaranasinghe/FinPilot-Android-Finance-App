@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,8 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CurrencyExchange
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -37,10 +33,7 @@ import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Storage
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -79,7 +72,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -88,29 +80,12 @@ import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.Locale
-import kotlin.math.abs
 
 // ─── Palette helpers ─────────────────────────────────────────────────────────
 
 private val OrangeMain = Color(0xFFFF6B00)
 private val IncomeGreen = Color(0xFF10B981)
 private val ExpenseRed = Color(0xFFEF4444)
-private val AmberScore = Color(0xFFF59E0B)
-private val GreenScore = Color(0xFF22C55E)
-
-private fun healthScoreColor(score: Int): Color = when {
-    score < 40 -> ExpenseRed
-    score < 70 -> AmberScore
-    else -> GreenScore
-}
-
-private fun formatLkr(amount: Double): String {
-    val fmt = NumberFormat.getNumberInstance(Locale.US)
-    fmt.maximumFractionDigits = 0
-    return "LKR ${fmt.format(amount)}"
-}
 
 // ─── Root screen ─────────────────────────────────────────────────────────────
 
@@ -199,7 +174,6 @@ fun ProfileScreen(
                 ProfileHeader(
                     name = displayName,
                     email = email,
-                    healthScore = uiState.healthScore,
                     onEditName = { showEditNameDialog = true }
                 )
 
@@ -210,20 +184,7 @@ fun ProfileScreen(
                         .padding(top = 24.dp, bottom = 36.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    // 2 — FINANCIAL SNAPSHOT
-                    SectionLabel("Financial Snapshot")
-                    FinancialSnapshotGrid(
-                        thisMonthIncome = uiState.thisMonthIncome,
-                        thisMonthExpenses = uiState.thisMonthExpenses,
-                        goalProgress = uiState.goalProgressPercent,
-                        incomeVsLast = uiState.incomeVsLastMonth,
-                        expenseVsLast = uiState.expenseVsLastMonth,
-                        onTapIncome = onNavigateToIncome,
-                        onTapExpense = onNavigateToExpense,
-                        onTapGoal = onNavigateToGoals,
-                    )
-
-                    // 3 — CURRENCY SETTINGS
+                    // 2 — CURRENCY SETTINGS
                     SectionLabel("Currency Settings")
                     CurrencySettingsCard(
                         usdEnabled = uiState.usdEnabled,
@@ -235,7 +196,7 @@ fun ProfileScreen(
                         onAutoConvertToggle = onSetAutoConvert,
                     )
 
-                    // 4 — INCOME SOURCES
+                    // 3 — INCOME SOURCES
                     SectionLabel("Income Sources")
                     IncomeSourcesCard(
                         sources = uiState.incomeSources,
@@ -243,7 +204,7 @@ fun ProfileScreen(
                         onAddNew = { showAddSourceSheet = true }
                     )
 
-                    // 5 — NOTIFICATION PREFERENCES
+                    // 4 — NOTIFICATION PREFERENCES
                     SectionLabel("Notifications")
                     NotificationPreferencesCard(
                         salaryReminder = uiState.notifySalaryReminder,
@@ -258,7 +219,7 @@ fun ProfileScreen(
                         onThresholdChange = onBudgetThreshold,
                     )
 
-                    // 6 — APP SETTINGS
+                    // 5 — APP SETTINGS
                     SectionLabel("App Settings")
                     AppSettingsCard(
                         darkMode = uiState.darkModeEnabled,
@@ -268,11 +229,7 @@ fun ProfileScreen(
                         onClearCache = onClearCache,
                     )
 
-                    // 7 — ACHIEVEMENTS
-                    SectionLabel("Achievements")
-                    AchievementsRow(achievements = uiState.achievements)
-
-                    // 8 — DANGER ZONE
+                    // 6 — DANGER ZONE
                     SectionLabel("Account")
                     DangerZoneCard(
                         onSignOut = onLogout,
@@ -301,7 +258,6 @@ fun ProfileScreen(
 private fun ProfileHeader(
     name: String?,
     email: String?,
-    healthScore: Int,
     onEditName: () -> Unit,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -404,170 +360,6 @@ private fun ProfileHeader(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            HealthScoreBadge(score = healthScore)
-        }
-    }
-}
-
-@Composable
-private fun HealthScoreBadge(score: Int) {
-    val color = healthScoreColor(score)
-    Surface(
-        shape = RoundedCornerShape(50.dp),
-        color = Color.White.copy(alpha = 0.15f),
-        border = BorderStroke(1.5.dp, color.copy(alpha = 0.8f)),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = "Score: $score / 100",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
-    }
-}
-
-// ─── 2. Financial Snapshot 2×2 Grid ──────────────────────────────────────────
-
-@Composable
-private fun FinancialSnapshotGrid(
-    thisMonthIncome: Double,
-    thisMonthExpenses: Double,
-    goalProgress: Float,
-    incomeVsLast: Double,
-    expenseVsLast: Double,
-    onTapIncome: () -> Unit,
-    onTapExpense: () -> Unit,
-    onTapGoal: () -> Unit,
-) {
-    val net = thisMonthIncome - thisMonthExpenses
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SnapshotCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.TrendingUp,
-                iconTint = IncomeGreen,
-                label = "This Month's Income",
-                value = formatLkr(thisMonthIncome),
-                trend = incomeVsLast,
-                trendPositiveIsGood = true,
-                onClick = onTapIncome,
-            )
-            SnapshotCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.TrendingDown,
-                iconTint = ExpenseRed,
-                label = "This Month's Expenses",
-                value = formatLkr(thisMonthExpenses),
-                trend = expenseVsLast,
-                trendPositiveIsGood = false,
-                onClick = onTapExpense,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SnapshotCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.Star,
-                iconTint = OrangeMain,
-                label = "Goal Progress",
-                value = "${(goalProgress * 100).toInt()}%",
-                trend = null,
-                trendPositiveIsGood = true,
-                onClick = onTapGoal,
-            )
-            SnapshotCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Rounded.CurrencyExchange,
-                iconTint = if (net >= 0) IncomeGreen else ExpenseRed,
-                label = "Net Position",
-                value = formatLkr(net),
-                trend = null,
-                trendPositiveIsGood = true,
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Composable
-private fun SnapshotCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    iconTint: Color,
-    label: String,
-    value: String,
-    trend: Double?,
-    trendPositiveIsGood: Boolean,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(OrangeMain.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                lineHeight = 14.sp,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (trend != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                val isGood = if (trendPositiveIsGood) trend >= 0 else trend <= 0
-                val trendColor = if (isGood) IncomeGreen else ExpenseRed
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (trend >= 0) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown,
-                        contentDescription = null,
-                        tint = trendColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text = formatLkr(abs(trend)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = trendColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
         }
     }
@@ -877,70 +669,6 @@ private fun SettingsActionRow(
             Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    }
-}
-
-// ─── 7. Achievements ──────────────────────────────────────────────────────────
-
-@Composable
-private fun AchievementsRow(achievements: List<Achievement>) {
-    val displayList = achievements.ifEmpty {
-        listOf(
-            Achievement("", "Locked", "", "🔒", false),
-            Achievement("", "Locked", "", "🔒", false),
-            Achievement("", "Locked", "", "🔒", false),
-            Achievement("", "Locked", "", "🔒", false),
-        )
-    }
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(displayList) { achievement ->
-            AchievementBadge(achievement)
-        }
-    }
-}
-
-@Composable
-private fun AchievementBadge(achievement: Achievement) {
-    val alpha = if (achievement.unlocked) 1f else 0.4f
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(
-                    if (achievement.unlocked) OrangeMain.copy(alpha = 0.15f)
-                    else MaterialTheme.colorScheme.surfaceVariant
-                )
-                .border(
-                    width = 2.dp,
-                    color = if (achievement.unlocked) OrangeMain.copy(alpha = 0.6f)
-                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = achievement.icon.ifBlank { "🔒" },
-                fontSize = 26.sp,
-                color = Color.Unspecified.copy(alpha = alpha)
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = achievement.label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (achievement.unlocked) FontWeight.SemiBold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            lineHeight = 13.sp,
-        )
     }
 }
 

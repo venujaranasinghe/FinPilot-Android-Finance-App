@@ -6,6 +6,8 @@ import com.bpeople.finpilot.data.model.MonthlyBarData
 import com.bpeople.finpilot.data.model.Period
 import com.bpeople.finpilot.data.model.TransactionItem
 import com.bpeople.finpilot.data.model.TransactionType
+import com.bpeople.finpilot.data.repository.IncomeRepository
+import com.bpeople.finpilot.data.repository.ExpenseRepository
 import com.bpeople.finpilot.data.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -25,6 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val incomeRepository: IncomeRepository,
+    private val expenseRepository: ExpenseRepository,
 ) : ViewModel() {
 
     private val _selectedPeriod = MutableStateFlow(Period.MONTH)
@@ -47,6 +51,22 @@ class TransactionViewModel @Inject constructor(
 
     private val _pendingDelete = MutableStateFlow<TransactionItem?>(null)
     val pendingDelete: StateFlow<TransactionItem?> = _pendingDelete.asStateFlow()
+
+    val isLoadingMore: StateFlow<Boolean> = combine(
+        incomeRepository.observeIsLoading(),
+        expenseRepository.observeIsLoading()
+    ) { incLoading, expLoading ->
+        incLoading || expLoading
+    }
+    .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val hasMore: StateFlow<Boolean> = combine(
+        incomeRepository.observeHasMore(),
+        expenseRepository.observeHasMore()
+    ) { incHasMore, expHasMore ->
+        incHasMore || expHasMore
+    }
+    .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     private val allTransactions: StateFlow<List<TransactionItem>> =
         transactionRepository.observeTransactions()
@@ -158,6 +178,13 @@ class TransactionViewModel @Inject constructor(
         viewModelScope.launch {
             transactionRepository.deleteTransaction(item)
             _pendingDelete.value = null
+        }
+    }
+
+    fun loadNextPage() {
+        viewModelScope.launch {
+            launch { incomeRepository.loadNextPage() }
+            launch { expenseRepository.loadNextPage() }
         }
     }
 

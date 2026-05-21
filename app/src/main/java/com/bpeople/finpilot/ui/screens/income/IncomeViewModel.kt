@@ -65,6 +65,8 @@ class IncomeViewModel @Inject constructor(
         val showAddSheet: Boolean = false,
         val pendingDeleteEntry: IncomeEntry? = null,
         val showMonthlyView: Boolean = true,
+        val isLoadingMore: Boolean = false,
+        val hasMore: Boolean = true,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -127,6 +129,26 @@ class IncomeViewModel @Inject constructor(
                 }
             }
         }
+
+        incomeRepository.observeIsLoading()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+            .let { flow ->
+                viewModelScope.launch {
+                    flow.collect { loading ->
+                        _incomeState.update { it.copy(isLoadingMore = loading) }
+                    }
+                }
+            }
+
+        incomeRepository.observeHasMore()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+            .let { flow ->
+                viewModelScope.launch {
+                    flow.collect { hasMore ->
+                        _incomeState.update { it.copy(hasMore = hasMore) }
+                    }
+                }
+            }
     }
 
     fun onSourceChange(value: String) {
@@ -433,6 +455,12 @@ class IncomeViewModel @Inject constructor(
     }
 
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)
+
+    fun loadNextPage() {
+        viewModelScope.launch {
+            incomeRepository.loadNextPage()
+        }
+    }
 
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")

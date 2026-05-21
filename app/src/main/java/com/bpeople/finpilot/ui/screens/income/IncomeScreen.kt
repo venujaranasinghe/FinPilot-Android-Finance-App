@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -57,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +81,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlin.math.roundToInt
 
 private fun formatLKRFull(amount: Double) = "LKR %,.0f".format(amount)
@@ -199,6 +204,27 @@ fun IncomeScreen(
             .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
             .entries.toList()
     }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, state.hasMore, state.isLoadingMore, state.isLoading, displayEntries.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems == 0) {
+                false
+            } else {
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                lastVisibleIndex >= totalItems - 4
+            }
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                if (state.hasMore && !state.isLoadingMore && !state.isLoading) {
+                    viewModel.loadNextPage()
+                }
+            }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -252,6 +278,7 @@ fun IncomeScreen(
             }
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(pv),
@@ -319,6 +346,37 @@ fun IncomeScreen(
                         trendData = trendData,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
+                }
+
+                if (state.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                color = GlassTheme.Orange,
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (!state.hasMore && displayEntries.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "No more income entries",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            color = GlassTheme.TextHint,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
 

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -33,6 +35,8 @@ import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.GlassTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlin.math.roundToInt
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,6 +169,7 @@ fun ExpenseScreen(
         onRecurringChange = viewModel::onRecurringChange,
         onRequestSubmit = viewModel::requestSubmit,
         onRefreshRates = viewModel::refreshExchangeRates,
+        onLoadNextPage = viewModel::loadNextPage,
     )
 }
 
@@ -198,6 +203,7 @@ fun ExpenseListContent(
     onRecurringChange: (Boolean) -> Unit,
     onRequestSubmit: () -> Unit,
     onRefreshRates: () -> Unit,
+    onLoadNextPage: () -> Unit,
 ) {
     // Add expense bottom sheet
     if (state.showAddSheet) {
@@ -254,6 +260,27 @@ fun ExpenseListContent(
             .sortedByDescending { it.date?.seconds ?: 0L }
             .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
             .entries.toList()
+    }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, state.hasMore, state.isLoadingMore, state.isLoading, displayEntries.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems == 0) {
+                false
+            } else {
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                lastVisibleIndex >= totalItems - 4
+            }
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                if (state.hasMore && !state.isLoadingMore && !state.isLoading) {
+                    onLoadNextPage()
+                }
+            }
     }
 
     val trendData = remember(state.entries) { computeMonthlyTrend(state.entries) }
@@ -314,6 +341,7 @@ fun ExpenseListContent(
             }
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(pv),
@@ -419,6 +447,37 @@ fun ExpenseListContent(
                         onToggle = onToggleTrendChart,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
+                }
+
+                if (state.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                color = GlassTheme.Orange,
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (!state.hasMore && displayEntries.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "No more expense entries",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            color = GlassTheme.TextHint,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
 

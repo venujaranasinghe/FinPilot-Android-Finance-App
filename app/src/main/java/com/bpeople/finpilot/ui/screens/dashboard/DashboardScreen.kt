@@ -485,11 +485,6 @@ private fun DashboardHeader(userName: String) {
         hour < 17 -> "Good afternoon"
         else -> "Good evening"
     }
-    val initials = userName.split(" ")
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .take(2)
-        .joinToString("")
-        .ifBlank { "U" }
 
     val isDark = isSystemInDarkTheme()
     val glassFill = if (isDark) GlassBlue.copy(alpha = 0.12f) else GlassBlue.copy(alpha = 0.08f)
@@ -510,9 +505,15 @@ private fun DashboardHeader(userName: String) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "$greeting, ${userName.ifBlank { "there" }} 👋",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = greeting,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${userName.ifBlank { "there" }} 👋",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
@@ -522,64 +523,38 @@ private fun DashboardHeader(userName: String) {
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Notification bell — glass circle
-                Box {
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isDark) GlassBlue.copy(alpha = 0.18f)
-                                else GlassBlue.copy(alpha = 0.12f)
-                            )
-                            .border(
-                                0.8.dp,
-                                if (isDark) GlassBlueDeep.copy(alpha = 0.32f)
-                                else GlassBlueDeep.copy(alpha = 0.25f),
-                                CircleShape,
-                            ),
-                    ) {
-                        Icon(
-                            Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    // Unread dot
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(Color(0xFFEF4444), CircleShape)
-                            .align(Alignment.TopEnd),
-                    )
-                }
-
-                // Avatar — gradient circle
-                Box(
+            // Notification bell — glass circle
+            Box {
+                IconButton(
+                    onClick = {},
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(
-                            brush = Brush.linearGradient(
-                                listOf(GlassBlueDeep, GlassBlue, GlassBlueSoft),
-                            ),
+                            if (isDark) GlassBlue.copy(alpha = 0.18f)
+                            else GlassBlue.copy(alpha = 0.12f)
                         )
-                        .border(1.2.dp, Color.White.copy(alpha = 0.35f), CircleShape),
-                    contentAlignment = Alignment.Center,
+                        .border(
+                            0.8.dp,
+                            if (isDark) GlassBlueDeep.copy(alpha = 0.32f)
+                            else GlassBlueDeep.copy(alpha = 0.25f),
+                            CircleShape,
+                        ),
                 ) {
-                    Text(
-                        text = initials,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
+                // Unread dot
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(Color(0xFFEF4444), CircleShape)
+                        .align(Alignment.TopEnd),
+                )
             }
         }
 
