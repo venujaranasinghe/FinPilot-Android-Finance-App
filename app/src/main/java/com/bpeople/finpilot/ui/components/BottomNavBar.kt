@@ -235,7 +235,7 @@ fun FinPilotBottomNavBar(
                             contrast = 1.12f,
                             saturation = 1.0f,
                         )
-                        opacity(0.1f) // beautifully balanced frosted glass transparency
+                                                opacity(0.15f) // higher opacity for clearer backdrop // beautifully balanced frosted glass transparency
                     },
                     highlight = { Highlight.Ambient },
                     shadow = { Shadow(radius = 6.dp) },
@@ -243,7 +243,7 @@ fun FinPilotBottomNavBar(
                 )
                 .border(
                     width = 1.dp,
-                    color = Color(0x3DFFFFFF), // elegant translucent white border highlight
+                                        color = Color(0x5DFFFFFF), // stronger translucent border, // elegant translucent white border highlight
                     shape = RoundedCornerShape(32.dp),
                 ),
         )
@@ -257,7 +257,7 @@ fun FinPilotBottomNavBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(GlassWhite.copy(alpha = 0.4f))
+                                .background(GlassWhite.copy(alpha = 0.6f)) // increased opacity for clearer glass
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
@@ -384,7 +384,7 @@ fun FinPilotBottomNavBar(
                             // Beautiful sine-power interpolation creating an organic water bubble swell profile
                             val smoothFraction = kotlin.math.sin(fraction * Math.PI / 2).toFloat()
                             val bubbleProfile = smoothFraction.pow(2.2f)
-                            1f + 0.48f * bubbleProfile
+                                                        1f + 0.6f * bubbleProfile // increased zoom multiplier
                         } else {
                             1f
                         }
