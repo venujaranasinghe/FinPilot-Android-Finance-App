@@ -64,6 +64,7 @@ import com.kashif_e.backdrop.shadow.InnerShadow
 import com.kashif_e.backdrop.shadow.Shadow
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 // ─── Palette ────────────────────────────────────────────────────────────────
@@ -125,14 +126,66 @@ fun FinPilotBottomNavBar(
     // Internal swipe-driven index (starts synced with prop)
     var swipeIndex by remember(activeIndex) { mutableIntStateOf(activeIndex) }
 
-    // Raw drag accumulator (px) used for real-time pill tracking
+    // Coordinates of navigation item centers relative to their parent row
+    val tabCenters = remember { mutableStateListOf(0f, 0f, 0f, 0f) }
+
+    // Sliding pill horizontal position
+    val sliderX = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var dragStartSliderX by remember { mutableFloatStateOf(0f) }
     var dragAccumPx by remember { mutableFloatStateOf(0f) }
 
     // Velocity tracker for fling detection
     val velocityTracker = remember { VelocityTracker() }
 
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+
     val backdrop = rememberLayerBackdrop()
     val blurRadiusPx = with(LocalDensity.current) { 20.dp.toPx() }
+
+    // Track whether we've initialized the slider's position
+    var hasInitializedPosition by remember { mutableStateOf(false) }
+
+    // Sync slider position when tabCenters are measured or activeIndex changes
+    LaunchedEffect(activeIndex, tabCenters.toList()) {
+        val target = tabCenters.getOrNull(activeIndex) ?: 0f
+        if (target != 0f) {
+            if (!hasInitializedPosition) {
+                sliderX.snapTo(target)
+                hasInitializedPosition = true
+            } else {
+                sliderX.animateTo(
+                    targetValue = target,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
+        }
+    }
+
+    // Dynamic closest index calculations based on sliderX to trigger haptics
+    val closestIndex = remember(sliderX.value, tabCenters.toList()) {
+        if (tabCenters.isEmpty() || tabCenters.all { it == 0f }) {
+            swipeIndex
+        } else {
+            tabCenters.indices.minByOrNull { i ->
+                (tabCenters[i] - sliderX.value).absoluteValue
+            } ?: swipeIndex
+        }
+    }
+
+    var lastHapticIndex by remember { mutableIntStateOf(activeIndex) }
+
+    // Subtle tactile ticks as the slider crosses midpoints during dragging
+    LaunchedEffect(closestIndex) {
+        if (isDragging && closestIndex != lastHapticIndex) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            lastHapticIndex = closestIndex
+        }
+    }
 
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
@@ -196,6 +249,10 @@ fun FinPilotBottomNavBar(
         )
 
         // ── Foreground content ────────────────────────────────────────────
+        val pillWidth = 54.dp
+        val pillHeight = 48.dp
+        val pillWidthPx = with(LocalDensity.current) { pillWidth.toPx() }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -204,6 +261,8 @@ fun FinPilotBottomNavBar(
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
+                            isDragging = true
+                            dragStartSliderX = sliderX.value
                             dragAccumPx = 0f
                             velocityTracker.resetTracking()
                         },
@@ -214,37 +273,96 @@ fun FinPilotBottomNavBar(
                                 change.uptimeMillis,
                                 change.position,
                             )
+                            val targetX = (dragStartSliderX + dragAccumPx).coerceIn(
+                                tabCenters.firstOrNull() ?: 0f,
+                                tabCenters.lastOrNull() ?: 0f
+                            )
+                            coroutineScope.launch {
+                                sliderX.snapTo(targetX)
+                            }
                         },
                         onDragEnd = {
-                            val tabWidthPx = size.width.toFloat() / navItems.size
+                            isDragging = false
                             val velocity = velocityTracker.calculateVelocity().x
-
-                            val newIndex = when {
-                                // Fast fling rightward
+                            val finalIndex = when {
                                 velocity > FLING_VELOCITY_THRESHOLD ->
                                     (swipeIndex + 1).coerceIn(0, navItems.lastIndex)
-                                // Fast fling leftward
                                 velocity < -FLING_VELOCITY_THRESHOLD ->
                                     (swipeIndex - 1).coerceIn(0, navItems.lastIndex)
-                                // Drag exceeded one slot width
-                                dragAccumPx.absoluteValue >= tabWidthPx -> {
-                                    val steps = (dragAccumPx / tabWidthPx).toInt()
-                                    (swipeIndex + steps).coerceIn(0, navItems.lastIndex)
+                                else -> {
+                                    tabCenters.indices.minByOrNull { i ->
+                                        (tabCenters[i] - sliderX.value).absoluteValue
+                                    } ?: swipeIndex
                                 }
-                                // Not enough drag — stay
-                                else -> swipeIndex
                             }
-
-                            swipeIndex = newIndex
-                            dragAccumPx = 0f
-                            navigateTo(newIndex)
+                            swipeIndex = finalIndex
+                            navigateTo(finalIndex)
+                            coroutineScope.launch {
+                                sliderX.animateTo(
+                                    targetValue = tabCenters.getOrNull(finalIndex) ?: 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                            }
                         },
                         onDragCancel = {
-                            dragAccumPx = 0f
+                            isDragging = false
+                            coroutineScope.launch {
+                                sliderX.animateTo(
+                                    targetValue = tabCenters.getOrNull(swipeIndex) ?: 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                            }
                         },
                     )
                 },
         ) {
+            // ── Glass Slider Pill (Background - aligned with exact horizontal padding) ──
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(horizontal = 8.dp)
+            ) {
+                if (hasInitializedPosition) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .offset {
+                                IntOffset(
+                                    x = (sliderX.value - pillWidthPx / 2f).roundToInt(),
+                                    y = 0
+                                )
+                            }
+                            .size(width = pillWidth, height = pillHeight)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0x22FFFFFF), // ultra-clear premium glass top sheen
+                                        Color(0x12FF6B00), // extremely subtle glass orange glow at bottom
+                                    )
+                                )
+                            )
+                            .border(
+                                width = 1.2.dp, // thicker premium glass bezel outline
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xE6FFFFFF), // extremely bright top reflection highlight (90% white)
+                                        Color(0x2BFFFFFF), // highly translucent liquid body (17% white)
+                                        Color(0x4DFF6B00), // warm glowing refracted orange bottom outline
+                                    )
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                    )
+                }
+            }
+
             // ── Icons row ────────────────────────────────────────────────
             Row(
                 modifier = Modifier
@@ -256,12 +374,49 @@ fun FinPilotBottomNavBar(
                 navItems.forEachIndexed { index, item ->
                     val isActive = index == swipeIndex
 
+                    // Proximity-based magnification zoom glass scale
+                    val center = tabCenters.getOrNull(index) ?: 0f
+                    val scaleFactor = if (center != 0f) {
+                        val distance = (center - sliderX.value).absoluteValue
+                        val maxDistance = with(LocalDensity.current) { 70.dp.toPx() }
+                        if (distance < maxDistance) {
+                            val fraction = 1f - (distance / maxDistance)
+                            // Beautiful sine-power interpolation creating an organic water bubble swell profile
+                            val smoothFraction = kotlin.math.sin(fraction * Math.PI / 2).toFloat()
+                            val bubbleProfile = smoothFraction.pow(2.2f)
+                            1f + 0.48f * bubbleProfile
+                        } else {
+                            1f
+                        }
+                    } else {
+                        if (isActive) 1.48f else 1f
+                    }
+
                     GlassNavBarItem(
                         item     = item,
                         isActive = isActive,
+                        scale    = scaleFactor,
+                        modifier = Modifier
+                            .onGloballyPositioned { coords ->
+                                val width = coords.size.width
+                                val left = coords.positionInParent().x
+                                val centerVal = left + width / 2f
+                                if (index < tabCenters.size) {
+                                    tabCenters[index] = centerVal
+                                }
+                            },
                         onClick  = {
                             swipeIndex = index
                             navigateTo(index)
+                            coroutineScope.launch {
+                                sliderX.animateTo(
+                                    targetValue = tabCenters.getOrNull(index) ?: 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                            }
                         },
                     )
                 }
@@ -290,6 +445,8 @@ fun FinPilotBottomNavBar(
 private fun GlassNavBarItem(
     item:     NavItem,
     isActive: Boolean,
+    scale:    Float,
+    modifier: Modifier = Modifier,
     onClick:  () -> Unit,
 ) {
     val iconTint by animateColorAsState(
@@ -297,22 +454,21 @@ private fun GlassNavBarItem(
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label         = "tint_${item.tab}",
     )
-    val scale by animateFloatAsState(
-        targetValue   = if (isActive) 1.15f else 1f,
+    val smoothScale by animateFloatAsState(
+        targetValue   = scale,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness    = Spring.StiffnessMedium,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness    = Spring.StiffnessHigh,
         ),
         label = "scale_${item.tab}",
     )
-    Column(
-        modifier = Modifier
-            .scale(scale)
+    Box(
+        modifier = modifier
+            .scale(smoothScale)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector        = item.icon,
@@ -320,16 +476,6 @@ private fun GlassNavBarItem(
             tint               = iconTint,
             modifier           = Modifier
                 .size(24.dp),
-        )
-
-        // ── Dot indicator ────────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isActive) OrangePrimary else Color.Transparent,
-                ),
         )
     }
 }
