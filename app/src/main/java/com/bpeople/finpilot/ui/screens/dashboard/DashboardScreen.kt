@@ -276,6 +276,7 @@ fun DashboardScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     var balanceVisible by remember { mutableStateOf(true) }
@@ -363,7 +364,10 @@ fun DashboardScreen(
                 ) {
                     // ── Section 1: Header ────────────────────────────────────
                     item {
-                        DashboardHeader(userName = userName)
+                        DashboardHeader(
+                            userName = userName,
+                            onNavigateToNotifications = onNavigateToNotifications,
+                        )
                     }
 
                     // ── Section 2: Hero Balance Card ─────────────────────────
@@ -478,7 +482,10 @@ fun DashboardScreen(
 // ── Section 1: Dashboard Header ───────────────────────────────────────────────
 
 @Composable
-private fun DashboardHeader(userName: String) {
+private fun DashboardHeader(
+    userName: String,
+    onNavigateToNotifications: () -> Unit = {},
+) {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
         hour < 12 -> "Good morning"
@@ -526,7 +533,7 @@ private fun DashboardHeader(userName: String) {
             // Notification bell — glass circle
             Box {
                 IconButton(
-                    onClick = {},
+                    onClick = onNavigateToNotifications,
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
