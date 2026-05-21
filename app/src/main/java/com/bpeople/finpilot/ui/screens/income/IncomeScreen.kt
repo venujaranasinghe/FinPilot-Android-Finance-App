@@ -60,6 +60,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -169,6 +171,7 @@ fun IncomeScreen(
     onNavigateToProfile: () -> Unit,
 ) {
     val state by viewModel.incomeState.collectAsState()
+    val pagedHistory = viewModel.pagedHistory.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.pendingDeleteEntry) {
@@ -227,13 +230,7 @@ fun IncomeScreen(
     var selectedSourceFilter by rememberSaveable { mutableStateOf(state.historySourceFilter ?: "All") }
     val trendData = remember(state.entries) { computeIncomeMonthlyTrend(state.entries) }
 
-    val pageSize = IncomeViewModel.HISTORY_PAGE_SIZE
-    val totalItems = state.filteredEntries.size
-    val pageCount = maxOf(1, (totalItems + pageSize - 1) / pageSize)
-    val pageIndex = state.historyPageIndex.coerceIn(0, pageCount - 1)
-    val pageEntries = remember(state.filteredEntries, pageIndex) {
-        state.filteredEntries.drop(pageIndex * pageSize).take(pageSize)
-    }
+    val isHistoryLoading = pagedHistory.loadState.refresh is LoadState.Loading
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -322,7 +319,14 @@ fun IncomeScreen(
                     )
                 }
 
-                if (pageEntries.isEmpty()) {
+                if (isHistoryLoading) {
+                    items(4) {
+                        GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
+                    return@LazyColumn
+                }
+
+                if (pagedHistory.itemCount == 0) {
                     item {
                         GlassEmptyIncomeState(
                             onAddClick = viewModel::onShowAddSheet,
@@ -333,9 +337,10 @@ fun IncomeScreen(
                 }
 
                 items(
-                    items = pageEntries,
-                    key = { entry -> entry.id },
-                ) { entry ->
+                    count = pagedHistory.itemCount,
+                    key = { index -> pagedHistory[index]?.id ?: "income_placeholder_$index" },
+                ) { index ->
+                    val entry = pagedHistory[index] ?: return@items
                     GlassSwipeableIncomeRow(
                         entry = entry,
                         onDelete = { viewModel.deleteIncome(entry) },
@@ -343,13 +348,16 @@ fun IncomeScreen(
                     )
                 }
 
+                if (pagedHistory.loadState.append is LoadState.Loading) {
+                    items(2) {
+                        GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
+                }
+
                 item {
-                    GlassPaginationControls(
-                        pageIndex = pageIndex,
-                        pageCount = pageCount,
-                        onPrevious = viewModel::goToPreviousHistoryPage,
-                        onNext = viewModel::goToNextHistoryPage,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    GlassIncomeMonthlyTrend(
+                        trendData = trendData,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -364,46 +372,6 @@ fun IncomeScreen(
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
             )
-        }
-    }
-}
-
-@Composable
-private fun GlassPaginationControls(
-    pageIndex: Int,
-    pageCount: Int,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(GlassTheme.GlassSurface)
-            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            "Page ${pageIndex + 1} of $pageCount",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = GlassTheme.TextSecondary,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onPrevious, enabled = pageIndex > 0) {
-                Text("Prev", color = GlassTheme.TextSecondary)
-            }
-            Button(
-                onClick = onNext,
-                enabled = pageIndex < pageCount - 1,
-                colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                Text("Next", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
         }
     }
 }
@@ -1176,3 +1144,5 @@ private fun IncomeAddDialog(
         }
     }
 }
+
+
