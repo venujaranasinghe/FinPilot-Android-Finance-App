@@ -2,6 +2,8 @@ package com.bpeople.finpilot.ui.screens.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.data.repository.ExpenseRepository
@@ -17,6 +19,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -75,6 +81,19 @@ class ExpenseViewModel @Inject constructor(
 
     private val _expenseState = MutableStateFlow(ExpenseUiState())
     val expenseState: StateFlow<ExpenseUiState> = _expenseState.asStateFlow()
+    private val historyRefreshTrigger = MutableStateFlow(0)
+
+    val pagedHistory: kotlinx.coroutines.flow.Flow<PagingData<ExpenseEntry>> = combine(
+        _expenseState
+            .map { it.selectedCategoryFilter }
+            .distinctUntilChanged(),
+        historyRefreshTrigger,
+    ) { categoryFilter, _ -> categoryFilter }
+        .flatMapLatest { categoryFilter ->
+            val normalized = categoryFilter.takeIf { it.isNotBlank() && !it.equals("All", ignoreCase = true) }
+            expenseRepository.observeExpensesPaged(normalized)
+        }
+        .cachedIn(viewModelScope)
 
     init {
         expenseRepository.observeExpenses()
@@ -290,6 +309,7 @@ class ExpenseViewModel @Inject constructor(
                         showAddSheet = false,
                     )
                 }
+                refreshHistory()
             }.onFailure { throwable ->
                 _expenseState.update {
                     it.copy(
@@ -388,6 +408,7 @@ class ExpenseViewModel @Inject constructor(
         _expenseState.update { it.copy(pendingDeleteEntry = entry) }
         viewModelScope.launch {
             runCatching { expenseRepository.deleteExpense(entry.id) }
+                .onSuccess { refreshHistory() }
                 .onFailure { error ->
                     _expenseState.update {
                         it.copy(
@@ -404,6 +425,7 @@ class ExpenseViewModel @Inject constructor(
         _expenseState.update { it.copy(pendingDeleteEntry = null) }
         viewModelScope.launch {
             runCatching { expenseRepository.addExpense(entry) }
+                .onSuccess { refreshHistory() }
         }
     }
 
@@ -423,6 +445,8 @@ class ExpenseViewModel @Inject constructor(
                 )
             }.onFailure { error ->
                 _expenseState.update { it.copy(errorMessage = error.message ?: "Failed to duplicate") }
+            }.onSuccess {
+                refreshHistory()
             }
         }
     }
@@ -430,6 +454,7 @@ class ExpenseViewModel @Inject constructor(
     // ── UI filters ────────────────────────────────────────────────────────────
     fun onCategoryFilterChange(category: String) {
         _expenseState.update { it.copy(selectedCategoryFilter = category, selectedChartCategory = null) }
+        refreshHistory()
     }
 
     fun onChartCategorySelect(category: String?) {
@@ -440,6 +465,7 @@ class ExpenseViewModel @Inject constructor(
                 selectedCategoryFilter = newFilter ?: "All",
             )
         }
+        refreshHistory()
     }
 
     fun onToggleTrendChart() {
@@ -448,5 +474,9 @@ class ExpenseViewModel @Inject constructor(
 
     fun dismissWarningBanner() {
         _expenseState.update { it.copy(warningBannerDismissed = true) }
+    }
+
+    private fun refreshHistory() {
+        historyRefreshTrigger.update { it + 1 }
     }
 }

@@ -1,5 +1,6 @@
 package com.bpeople.finpilot.ui.screens.income
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -27,10 +28,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.AttachMoney
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Code
@@ -40,6 +43,9 @@ import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -48,7 +54,14 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,11 +78,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.GlassTheme
@@ -151,9 +169,9 @@ fun IncomeScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToAddIncome: () -> Unit,
 ) {
     val state by viewModel.incomeState.collectAsState()
+    val pagedHistory = viewModel.pagedHistory.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.pendingDeleteEntry) {
@@ -173,6 +191,29 @@ fun IncomeScreen(
         snackbarHostState.showSnackbar(msg)
         viewModel.consumeError()
     }
+    LaunchedEffect(state.isSubmitted) {
+        if (!state.isSubmitted) return@LaunchedEffect
+        snackbarHostState.showSnackbar("Income saved!")
+        viewModel.consumeSubmitted()
+    }
+
+    if (state.showAddSheet) {
+        IncomeAddDialog(
+            state = state,
+            onDismiss = viewModel::onHideAddSheet,
+            onSourceChange = viewModel::onSourceChange,
+            onAmountChange = viewModel::onAmountOriginalChange,
+            onCurrencyChange = viewModel::onCurrencyChange,
+            onDateChange = viewModel::onDateChange,
+            onLabelChange = viewModel::onLabelChange,
+            onIncomeTypeChange = viewModel::onIncomeTypeChange,
+            onProjectRefChange = viewModel::onProjectRefChange,
+            onRequestSubmit = viewModel::requestSubmit,
+            onRefreshRates = viewModel::refreshExchangeRates,
+            onConfirmExchangeRate = viewModel::confirmExchangeRate,
+            onDismissRateConfirmation = viewModel::dismissRateConfirmation,
+        )
+    }
 
     val monthStart = remember { currentMonthStartMillis() }
     val monthEntries = remember(state.entries) {
@@ -186,25 +227,16 @@ fun IncomeScreen(
             .mapValues { (_, list) -> list.sumOf { it.amountLKR } }
             .entries.sortedByDescending { it.value }
     }
-    var selectedSourceFilter by rememberSaveable { mutableStateOf("All") }
-    val displayEntries = remember(state.entries, selectedSourceFilter) {
-        if (selectedSourceFilter == "All") state.entries
-        else state.entries.filter { it.source.equals(selectedSourceFilter, ignoreCase = true) }
-    }
+    var selectedSourceFilter by rememberSaveable { mutableStateOf(state.historySourceFilter ?: "All") }
     val trendData = remember(state.entries) { computeIncomeMonthlyTrend(state.entries) }
 
-    val groupedByDate = remember(displayEntries) {
-        displayEntries
-            .sortedByDescending { it.date?.seconds ?: 0L }
-            .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
-            .entries.toList()
-    }
+    val isHistoryLoading = pagedHistory.loadState.refresh is LoadState.Loading
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = onNavigateToAddIncome,
+                onClick = viewModel::onShowAddSheet,
                 icon = { androidx.compose.material3.Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp)) },
                 text = { Text("Add Income", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) },
                 containerColor = GlassTheme.Orange,
@@ -279,38 +311,46 @@ fun IncomeScreen(
                     GlassIncomeSourceFilterBar(
                         sources = listOf("All") + IncomeViewModel.SOURCES,
                         selected = selectedSourceFilter,
-                        onSelect = { selectedSourceFilter = it },
+                        onSelect = {
+                            selectedSourceFilter = it
+                            viewModel.onHistorySourceFilterChange(it.takeUnless { source -> source == "All" })
+                        },
                         modifier = Modifier.padding(vertical = 4.dp),
                     )
                 }
 
-                if (state.isLoading) {
+                if (isHistoryLoading) {
                     items(4) {
                         GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                     return@LazyColumn
                 }
 
-                if (displayEntries.isEmpty()) {
+                if (pagedHistory.itemCount == 0) {
                     item {
                         GlassEmptyIncomeState(
-                            onAddClick = onNavigateToAddIncome,
+                            onAddClick = viewModel::onShowAddSheet,
                             selectedSourceFilter = selectedSourceFilter,
                         )
                     }
                     return@LazyColumn
                 }
 
-                groupedByDate.forEach { (label, entries) ->
-                    stickyHeader(key = "header_$label") {
-                        GlassDateHeader(label = label)
-                    }
-                    items(entries, key = { it.id }) { entry ->
-                        GlassSwipeableIncomeRow(
-                            entry = entry,
-                            onDelete = { viewModel.deleteIncome(entry) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
-                        )
+                items(
+                    count = pagedHistory.itemCount,
+                    key = { index -> pagedHistory[index]?.id ?: "income_placeholder_$index" },
+                ) { index ->
+                    val entry = pagedHistory[index] ?: return@items
+                    GlassSwipeableIncomeRow(
+                        entry = entry,
+                        onDelete = { viewModel.deleteIncome(entry) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
+                    )
+                }
+
+                if (pagedHistory.loadState.append is LoadState.Loading) {
+                    items(2) {
+                        GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                 }
 
@@ -735,6 +775,370 @@ private fun GlassIncomeMonthlyTrend(
                             ),
                     )
                     Text(point.label, fontSize = 10.sp, color = GlassTheme.TextHint)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeAddDialog(
+    state: IncomeViewModel.IncomeUiState,
+    onDismiss: () -> Unit,
+    onSourceChange: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
+    onDateChange: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
+    onIncomeTypeChange: (String) -> Unit,
+    onProjectRefChange: (String) -> Unit,
+    onRequestSubmit: () -> Unit,
+    onRefreshRates: () -> Unit,
+    onConfirmExchangeRate: () -> Unit,
+    onDismissRateConfirmation: () -> Unit,
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchange = state.currencyOriginal != "LKR"
+
+    if (state.showRateConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onDismissRateConfirmation,
+            containerColor = GlassTheme.BgMid,
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(
+                    "Confirm exchange rate",
+                    color = GlassTheme.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                val updatedText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                Text(
+                    "Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?",
+                    color = GlassTheme.TextSecondary,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirmExchangeRate,
+                    colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRateConfirmation) {
+                    Text("Cancel", color = GlassTheme.TextSecondary)
+                }
+            },
+        )
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp),
+            shape = RoundedCornerShape(22.dp),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = GlassTheme.BgMid),
+        ) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Add Income",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTheme.TextPrimary,
+                )
+
+                var sourceExpanded by remember { mutableStateOf(false) }
+                var sourceMenuWidthPx by remember { mutableStateOf(0) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = state.source,
+                        onValueChange = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { sourceMenuWidthPx = it.size.width },
+                        label = { Text("Source") },
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = GlassTheme.TextPrimary,
+                            disabledBorderColor = GlassTheme.GlassBorder,
+                            disabledContainerColor = GlassTheme.GlassBg,
+                            disabledLabelColor = GlassTheme.TextHint,
+                            disabledTrailingIconColor = GlassTheme.TextHint,
+                        ),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { sourceExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = sourceExpanded,
+                        onDismissRequest = { sourceExpanded = false },
+                        modifier = Modifier.width(with(density) { sourceMenuWidthPx.toDp() }),
+                        shape = RoundedCornerShape(14.dp),
+                        containerColor = GlassTheme.BgMid,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
+                    ) {
+                        IncomeViewModel.SOURCES.forEach { source ->
+                            DropdownMenuItem(
+                                text = { Text(source, color = GlassTheme.TextPrimary) },
+                                onClick = {
+                                    onSourceChange(source)
+                                    sourceExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = state.amountOriginal,
+                    onValueChange = onAmountChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Amount") },
+                    leadingIcon = {
+                        var currencyExpanded by remember { mutableStateOf(false) }
+                        var currencyChipWidthPx by remember { mutableStateOf(0) }
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(GlassTheme.GlassBg)
+                                    .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(10.dp))
+                                    .clickable { currencyExpanded = true }
+                                    .onGloballyPositioned { currencyChipWidthPx = it.size.width }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    state.currencyOriginal,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GlassTheme.TextPrimary,
+                                    fontSize = 13.sp,
+                                )
+                                Icon(
+                                    Icons.Rounded.ArrowDropDown,
+                                    null,
+                                    tint = GlassTheme.TextHint,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = currencyExpanded,
+                                onDismissRequest = { currencyExpanded = false },
+                                modifier = Modifier.width(with(density) { currencyChipWidthPx.toDp() }),
+                                shape = RoundedCornerShape(14.dp),
+                                containerColor = GlassTheme.BgMid,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
+                            ) {
+                                IncomeViewModel.CURRENCIES.forEach { currency ->
+                                    DropdownMenuItem(
+                                        text = { Text(currency, color = GlassTheme.TextPrimary) },
+                                        onClick = {
+                                            onCurrencyChange(currency)
+                                            currencyExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GlassTheme.Orange,
+                        unfocusedBorderColor = GlassTheme.GlassBorder,
+                        focusedContainerColor = GlassTheme.GlassSurface,
+                        unfocusedContainerColor = GlassTheme.GlassBg,
+                        cursorColor = GlassTheme.Orange,
+                    ),
+                )
+
+                if (showExchange) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(GlassTheme.OrangeDim)
+                            .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(12.dp))
+                            .padding(10.dp),
+                    ) {
+                        androidx.compose.foundation.layout.Column(
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Text(
+                                "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                                color = GlassTheme.OrangeLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                            )
+                            val updatedText = state.exchangeRateLastUpdatedMillis
+                                ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                            Text(
+                                "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText" +
+                                    if (state.exchangeRateIsStale) " · stale" else "",
+                                color = GlassTheme.TextSecondary,
+                                fontSize = 11.sp,
+                            )
+                            TextButton(
+                                onClick = onRefreshRates,
+                                enabled = !state.isRefreshingRates,
+                                contentPadding = PaddingValues(0.dp),
+                            ) {
+                                Text("Refresh rates", color = GlassTheme.OrangeLight)
+                            }
+                        }
+                    }
+                }
+
+                var typeExpanded by remember { mutableStateOf(false) }
+                var typeMenuWidthPx by remember { mutableStateOf(0) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = state.incomeType,
+                        onValueChange = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { typeMenuWidthPx = it.size.width },
+                        label = { Text("Income type") },
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = GlassTheme.TextPrimary,
+                            disabledBorderColor = GlassTheme.GlassBorder,
+                            disabledContainerColor = GlassTheme.GlassBg,
+                            disabledLabelColor = GlassTheme.TextHint,
+                            disabledTrailingIconColor = GlassTheme.TextHint,
+                        ),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { typeExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false },
+                        modifier = Modifier.width(with(density) { typeMenuWidthPx.toDp() }),
+                        shape = RoundedCornerShape(14.dp),
+                        containerColor = GlassTheme.BgMid,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
+                    ) {
+                        IncomeViewModel.INCOME_TYPES.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type, color = GlassTheme.TextPrimary) },
+                                onClick = {
+                                    onIncomeTypeChange(type)
+                                    typeExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = state.label,
+                    onValueChange = onLabelChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Label (optional)") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GlassTheme.Orange,
+                        unfocusedBorderColor = GlassTheme.GlassBorder,
+                        focusedContainerColor = GlassTheme.GlassSurface,
+                        unfocusedContainerColor = GlassTheme.GlassBg,
+                        cursorColor = GlassTheme.Orange,
+                    ),
+                )
+
+                if (state.source == "Freelance") {
+                    OutlinedTextField(
+                        value = state.projectRef,
+                        onValueChange = onProjectRefChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Project reference (optional)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GlassTheme.Orange,
+                            unfocusedBorderColor = GlassTheme.GlassBorder,
+                            focusedContainerColor = GlassTheme.GlassSurface,
+                            unfocusedContainerColor = GlassTheme.GlassBg,
+                            cursorColor = GlassTheme.Orange,
+                        ),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GlassTheme.GlassBg)
+                        .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(12.dp))
+                        .clickable {
+                            val cal = Calendar.getInstance().also { it.timeInMillis = state.dateMillis }
+                            DatePickerDialog(context, { _, y, m, d ->
+                                onDateChange(
+                                    Calendar.getInstance().also { picked ->
+                                        picked.set(y, m, d, 0, 0, 0)
+                                        picked.set(Calendar.MILLISECOND, 0)
+                                    }.timeInMillis
+                                )
+                            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                        }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Rounded.CalendarToday, null, tint = GlassTheme.OrangeLight, modifier = Modifier.size(18.dp))
+                    Text(
+                        dateFormat.format(Date(state.dateMillis)),
+                        color = GlassTheme.TextPrimary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+
+                state.errorMessage?.let {
+                    Text(it, color = GlassTheme.Danger, fontSize = 12.sp)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Cancel", color = GlassTheme.TextSecondary)
+                    }
+                    Button(
+                        onClick = onRequestSubmit,
+                        enabled = !state.isLoading,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
+                    ) {
+                        Text(if (state.isLoading) "Saving..." else "Save")
+                    }
                 }
             }
         }
