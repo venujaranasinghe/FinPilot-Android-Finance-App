@@ -1,6 +1,7 @@
 package com.bpeople.finpilot.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -26,10 +28,14 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,9 +44,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.kashif_e.backdrop.drawBackdrop
 import com.kashif_e.backdrop.backdrops.layerBackdrop
@@ -51,7 +62,9 @@ import com.kashif_e.backdrop.effects.opacity
 import com.kashif_e.backdrop.highlight.Highlight
 import com.kashif_e.backdrop.shadow.InnerShadow
 import com.kashif_e.backdrop.shadow.Shadow
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 
@@ -119,7 +132,7 @@ fun FinPilotBottomNavBar(
     val velocityTracker = remember { VelocityTracker() }
 
     val backdrop = rememberLayerBackdrop()
-    val blurRadiusPx = with(LocalDensity.current) { 16.dp.toPx() }
+    val blurRadiusPx = with(LocalDensity.current) { 20.dp.toPx() }
 
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
@@ -146,9 +159,9 @@ fun FinPilotBottomNavBar(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            GlassTheme.BgStart.copy(alpha = 0.86f),
-                            GlassTheme.BgMid.copy(alpha = 0.90f),
-                            GlassTheme.BgEnd.copy(alpha = 0.92f),
+                            GlassTheme.BgStart.copy(alpha = 0.08f),
+                            GlassTheme.BgMid.copy(alpha = 0.12f),
+                            GlassTheme.BgEnd.copy(alpha = 0.15f),
                         ),
                     ),
                 )
@@ -163,19 +176,23 @@ fun FinPilotBottomNavBar(
                     backdrop = backdrop,
                     shape = { RoundedCornerShape(32.dp) },
                     effects = {
-                        blur(blurRadiusPx)
+                        blur(blurRadiusPx) // crisp frosted blur
                         colorControls(
-                            brightness = 0.05f,
-                            contrast = 1.08f,
-                            saturation = 1.05f,
+                            brightness = 0.06f,
+                            contrast = 1.12f,
+                            saturation = 1.0f,
                         )
-                        opacity(0.90f)
+                        opacity(0.1f) // beautifully balanced frosted glass transparency
                     },
                     highlight = { Highlight.Ambient },
-                    shadow = { Shadow(radius = 8.dp) },
-                    innerShadow = { InnerShadow(radius = 4.dp) },
+                    shadow = { Shadow(radius = 6.dp) },
+                    innerShadow = { InnerShadow(radius = 3.dp) },
                 )
-                .border(1.dp, GlassBorder, RoundedCornerShape(32.dp)),
+                .border(
+                    width = 1.dp,
+                    color = Color(0x3DFFFFFF), // elegant translucent white border highlight
+                    shape = RoundedCornerShape(32.dp),
+                ),
         )
 
         // ── Foreground content ────────────────────────────────────────────
@@ -183,7 +200,7 @@ fun FinPilotBottomNavBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(GlassWhite.copy(alpha = 0.04f))
+                .background(GlassWhite.copy(alpha = 0.4f))
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
