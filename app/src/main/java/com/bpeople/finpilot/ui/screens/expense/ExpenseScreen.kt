@@ -12,8 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.paging.LoadState
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
@@ -23,15 +21,12 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
-import androidx.compose.ui.window.Dialog
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
@@ -117,7 +112,6 @@ fun ExpenseScreen(
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
-    val pagedHistory = viewModel.pagedHistory.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.isSubmitted) {
@@ -147,7 +141,6 @@ fun ExpenseScreen(
 
     ExpenseListContent(
         state = state,
-        pagedHistory = pagedHistory,
         snackbarHostState = snackbarHostState,
         onNavigateToDashboard = onNavigateToDashboard,
         onNavigateToIncome = onNavigateToIncome,
@@ -181,7 +174,6 @@ fun ExpenseScreen(
 @Composable
 fun ExpenseListContent(
     state: ExpenseViewModel.ExpenseUiState,
-    pagedHistory: androidx.paging.compose.LazyPagingItems<ExpenseEntry>,
     snackbarHostState: SnackbarHostState,
     onNavigateToDashboard: () -> Unit,
     onNavigateToIncome: () -> Unit,
@@ -207,32 +199,27 @@ fun ExpenseListContent(
     onRequestSubmit: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
-    // Popup dialog for adding expense
+    // Add expense bottom sheet
     if (state.showAddSheet) {
-        Dialog(
+        ModalBottomSheet(
             onDismissRequest = onHideAddSheet,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = GlassTheme.BgMid,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = GlassTheme.BgMid),
-            ) {
-                GlassAddExpenseSheet(
-                    state = state,
-                    onAmountChange = onAmountChange,
-                    onCurrencyChange = onCurrencyChange,
-                    onCategoryChange = onCategoryChange,
-                    onPaymentMethodChange = onPaymentMethodChange,
-                    onDateChange = onDateChange,
-                    onNoteChange = onNoteChange,
-                    onSubCategoryChange = onSubCategoryChange,
-                    onRecurringChange = onRecurringChange,
-                    onRequestSubmit = onRequestSubmit,
-                    onRefreshRates = onRefreshRates,
-                )
-            }
+            GlassAddExpenseSheet(
+                state = state,
+                onAmountChange = onAmountChange,
+                onCurrencyChange = onCurrencyChange,
+                onCategoryChange = onCategoryChange,
+                onPaymentMethodChange = onPaymentMethodChange,
+                onDateChange = onDateChange,
+                onNoteChange = onNoteChange,
+                onSubCategoryChange = onSubCategoryChange,
+                onRecurringChange = onRecurringChange,
+                onRequestSubmit = onRequestSubmit,
+                onRefreshRates = onRefreshRates,
+            )
         }
     }
 
@@ -257,7 +244,17 @@ fun ExpenseListContent(
             .distinctBy { it.category + it.note + it.subCategory }
     }
 
-    val isHistoryLoading = pagedHistory.loadState.refresh is LoadState.Loading
+    val displayEntries = remember(state.entries, state.selectedCategoryFilter) {
+        if (state.selectedCategoryFilter == "All") state.entries
+        else state.entries.filter { it.category.equals(state.selectedCategoryFilter, ignoreCase = true) }
+    }
+
+    val groupedByDate = remember(displayEntries) {
+        displayEntries
+            .sortedByDescending { it.date?.seconds ?: 0L }
+            .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
+            .entries.toList()
+    }
 
     val trendData = remember(state.entries) { computeMonthlyTrend(state.entries) }
 
@@ -379,7 +376,7 @@ fun ExpenseListContent(
                 }
 
                 // ── Shimmer loading ───────────────────────────────────────────
-                if (isHistoryLoading) {
+                if (state.isLoading) {
                     items(5) {
                         GlassShimmerCard(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -389,7 +386,7 @@ fun ExpenseListContent(
                 }
 
                 // ── Empty state ───────────────────────────────────────────────
-                if (pagedHistory.itemCount == 0) {
+                if (displayEntries.isEmpty()) {
                     item {
                         GlassEmptyState(
                             category = state.selectedCategoryFilter,
@@ -400,22 +397,17 @@ fun ExpenseListContent(
                 }
 
                 // ── Date-grouped list ─────────────────────────────────────────
-                items(
-                    count = pagedHistory.itemCount,
-                    key = { index -> pagedHistory[index]?.id ?: "expense_placeholder_$index" },
-                ) { index ->
-                    val entry = pagedHistory[index] ?: return@items
-                    GlassSwipeableRow(
-                        entry = entry,
-                        onDelete = { onDeleteEntry(entry) },
-                        onDuplicate = { onDuplicateEntry(entry) },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
-                    )
-                }
-
-                if (pagedHistory.loadState.append is LoadState.Loading) {
-                    items(2) {
-                        GlassShimmerCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                groupedByDate.forEach { (label, entries) ->
+                    stickyHeader(key = "header_$label") {
+                        GlassDateHeader(label = label)
+                    }
+                    items(entries, key = { it.id }) { entry ->
+                        GlassSwipeableRow(
+                            entry = entry,
+                            onDelete = { onDeleteEntry(entry) },
+                            onDuplicate = { onDuplicateEntry(entry) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
+                        )
                     }
                 }
 
@@ -1213,7 +1205,16 @@ private fun GlassEmptyState(category: String, onAddClick: () -> Unit) {
     }
 }
 
-// ── Add Expense popup ────────────────────────────────────────────────────────
+// ── Add Expense bottom sheet ──────────────────────────────────────────────────
+
+private data class QuickPreset(val label: String, val emoji: String, val category: String, val merchant: String)
+
+private val quickPresets = listOf(
+    QuickPreset("PickMe", "🛵", "Transport", "PickMe"),
+    QuickPreset("UberEats", "🍔", "Food", "UberEats"),
+    QuickPreset("Gym", "💪", "Health", "Gym"),
+    QuickPreset("Keells", "🛒", "Food", "Keells"),
+)
 
 @Composable
 private fun GlassAddExpenseSheet(
@@ -1230,7 +1231,6 @@ private fun GlassAddExpenseSheet(
     onRefreshRates: () -> Unit,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
     val showExchange = state.currency != "LKR"
@@ -1239,16 +1239,51 @@ private fun GlassAddExpenseSheet(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp)
-            .padding(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
+        // Drag handle
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 8.dp)
+                .width(40.dp).height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(GlassTheme.GlassBorder),
+        )
+
         Text(
             "Add Expense",
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = GlassTheme.TextPrimary,
         )
+
+        // Quick presets
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetLabel("Quick Add")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                quickPresets.forEach { p ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(GlassTheme.OrangeDim)
+                            .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(14.dp))
+                            .clickable { onCategoryChange(p.category); onSubCategoryChange(p.merchant) }
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(p.emoji, fontSize = 14.sp)
+                        Text(p.label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GlassTheme.OrangeLight)
+                    }
+                }
+            }
+        }
 
         // Amount
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1273,15 +1308,12 @@ private fun GlassAddExpenseSheet(
                 },
                 leadingIcon = {
                     var expanded by remember { mutableStateOf(false) }
-                    var currencyMenuWidthPx by remember { mutableStateOf(0) }
                     Box {
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(GlassTheme.GlassBg)
-                                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(10.dp))
+                                .background(GlassTheme.OrangeDim)
                                 .clickable { expanded = true }
-                                .onGloballyPositioned { currencyMenuWidthPx = it.size.width }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -1291,12 +1323,7 @@ private fun GlassAddExpenseSheet(
                         DropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false },
-                            modifier = Modifier.width(with(density) { currencyMenuWidthPx.toDp() }),
-                            shape = RoundedCornerShape(14.dp),
                             containerColor = GlassTheme.BgMid,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
                         ) {
                             ExpenseViewModel.CURRENCIES.forEach { cur ->
                                 DropdownMenuItem(
@@ -1357,62 +1384,14 @@ private fun GlassAddExpenseSheet(
             }
         }
 
-        // Category dropdown
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Category grid
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SheetLabel("Category")
-            var categoryExpanded by remember { mutableStateOf(false) }
-            var categoryMenuWidthPx by remember { mutableStateOf(0) }
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = state.category,
-                    onValueChange = {},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { categoryMenuWidthPx = it.size.width },
-                    label = { Text("Category") },
-                    readOnly = true,
-                    enabled = false,
-                    trailingIcon = {
-                        Icon(
-                            Icons.Rounded.ArrowDropDown,
-                            contentDescription = null,
-                            tint = GlassTheme.TextHint,
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = GlassTheme.TextPrimary,
-                        disabledBorderColor = GlassTheme.GlassBorder,
-                        disabledContainerColor = GlassTheme.GlassBg,
-                        disabledLabelColor = GlassTheme.TextHint,
-                        disabledTrailingIconColor = GlassTheme.TextHint,
-                    ),
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { categoryExpanded = true }
-                )
-                DropdownMenu(
-                    expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false },
-                    modifier = Modifier.width(with(density) { categoryMenuWidthPx.toDp() }),
-                    shape = RoundedCornerShape(14.dp),
-                    containerColor = GlassTheme.BgMid,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
-                ) {
-                    ExpenseViewModel.CATEGORIES.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category, color = GlassTheme.TextPrimary) },
-                            onClick = {
-                                onCategoryChange(category)
-                                categoryExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
+            GlassCategoryGrid(
+                categories = ExpenseViewModel.CATEGORIES,
+                selected = state.category,
+                onSelect = onCategoryChange,
+            )
         }
 
         // Merchant
@@ -1457,59 +1436,31 @@ private fun GlassAddExpenseSheet(
             )
         }
 
-        // Payment method dropdown
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Payment methods
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SheetLabel("Payment Method")
-            var paymentExpanded by remember { mutableStateOf(false) }
-            var paymentMenuWidthPx by remember { mutableStateOf(0) }
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = state.paymentMethod,
-                    onValueChange = {},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { paymentMenuWidthPx = it.size.width },
-                    label = { Text("Payment Method") },
-                    readOnly = true,
-                    enabled = false,
-                    trailingIcon = {
-                        Icon(
-                            Icons.Rounded.ArrowDropDown,
-                            contentDescription = null,
-                            tint = GlassTheme.TextHint,
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = GlassTheme.TextPrimary,
-                        disabledBorderColor = GlassTheme.GlassBorder,
-                        disabledContainerColor = GlassTheme.GlassBg,
-                        disabledLabelColor = GlassTheme.TextHint,
-                        disabledTrailingIconColor = GlassTheme.TextHint,
-                    ),
-                )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { paymentExpanded = true }
-                )
-                DropdownMenu(
-                    expanded = paymentExpanded,
-                    onDismissRequest = { paymentExpanded = false },
-                    modifier = Modifier.width(with(density) { paymentMenuWidthPx.toDp() }),
-                    shape = RoundedCornerShape(14.dp),
-                    containerColor = GlassTheme.BgMid,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassTheme.GlassBorder),
-                ) {
-                    ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
-                        DropdownMenuItem(
-                            text = { Text(method, color = GlassTheme.TextPrimary) },
-                            onClick = {
-                                onPaymentMethodChange(method)
-                                paymentExpanded = false
-                            },
-                        )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
+                    val isSel = state.paymentMethod == method
+                    val bg by animateColorAsState(
+                        if (isSel) GlassTheme.Orange else GlassTheme.GlassBg, tween(150), label = "pm_$method",
+                    )
+                    val tc by animateColorAsState(
+                        if (isSel) Color.White else GlassTheme.TextSecondary, tween(150), label = "pmt_$method",
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(bg)
+                            .border(1.dp, if (isSel) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+                            .clickable { onPaymentMethodChange(method) }
+                            .padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(paymentMethodIcon(method), null, tint = if (isSel) Color.White else GlassTheme.OrangeLight, modifier = Modifier.size(16.dp))
+                        Text(method, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = tc, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -1569,88 +1520,43 @@ private fun SheetLabel(text: String) {
 }
 
 @Composable
-private fun GlassRecurringRow(
-    isRecurring: Boolean,
-    onRecurringChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(GlassTheme.GlassBg)
-            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+private fun GlassCategoryGrid(categories: List<String>, selected: String, onSelect: (String) -> Unit) {
+    categories.chunked(4).forEach { row ->
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Autorenew,
-                contentDescription = null,
-                tint = GlassTheme.OrangeLight,
-                modifier = Modifier.size(18.dp),
-            )
-            Column {
-                Text(
-                    text = "Recurring expense",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GlassTheme.TextPrimary,
+            row.forEach { cat ->
+                val isSel = selected == cat
+                val catColor = GlassTheme.categoryColor(cat)
+                val bg by animateColorAsState(
+                    if (isSel) catColor else GlassTheme.GlassBg, tween(180), label = "cat_$cat",
                 )
-                Text(
-                    text = "Track fixed monthly costs",
-                    fontSize = 11.sp,
-                    color = GlassTheme.TextHint,
-                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(bg)
+                        .border(1.dp, if (isSel) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
+                        .clickable { onSelect(cat) }
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        categoryIcon(cat), null,
+                        tint = if (isSel) Color.White else catColor,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        cat,
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        color = if (isSel) Color.White else GlassTheme.TextSecondary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
-        }
-
-        Switch(
-            checked = isRecurring,
-            onCheckedChange = onRecurringChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = GlassTheme.Orange,
-                uncheckedThumbColor = GlassTheme.TextHint,
-                uncheckedTrackColor = GlassTheme.GlassBorder,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun GlassSaveButton(
-    isLoading: Boolean,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        enabled = !isLoading,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = GlassTheme.Orange,
-            disabledContainerColor = GlassTheme.Orange.copy(alpha = 0.6f),
-        ),
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = Color.White,
-            )
-        } else {
-            Text(
-                text = "Save Expense",
-                color = Color.White,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 15.sp,
-            )
+            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

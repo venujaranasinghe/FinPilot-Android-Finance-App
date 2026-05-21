@@ -2,8 +2,6 @@ package com.bpeople.finpilot.ui.screens.income
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.data.repository.ExchangeRatesRepository
@@ -19,10 +17,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -77,16 +71,6 @@ class IncomeViewModel @Inject constructor(
 
     private val _incomeState = MutableStateFlow(IncomeUiState())
     val incomeState: StateFlow<IncomeUiState> = _incomeState.asStateFlow()
-    private val historyRefreshTrigger = MutableStateFlow(0)
-
-    val pagedHistory: kotlinx.coroutines.flow.Flow<PagingData<IncomeEntry>> = combine(
-        _incomeState
-            .map { it.historySourceFilter }
-            .distinctUntilChanged(),
-        historyRefreshTrigger,
-    ) { sourceFilter, _ -> sourceFilter }
-        .flatMapLatest { sourceFilter -> incomeRepository.observeIncomePaged(sourceFilter) }
-        .cachedIn(viewModelScope)
 
     init {
         incomeRepository.observeIncome()
@@ -147,9 +131,13 @@ class IncomeViewModel @Inject constructor(
 
     fun onSourceChange(value: String) {
         _incomeState.update { current ->
+            val isSalary = value == "Salary"
             val updated = current.copy(
                 source = value,
                 projectRef = if (value != "Freelance") "" else current.projectRef,
+                currencyOriginal = if (isSalary) "LKR" else current.currencyOriginal,
+                exchangeRate = if (isSalary) "1.0" else current.exchangeRate,
+                exchangeRateManualOverride = if (isSalary) false else current.exchangeRateManualOverride,
                 errorMessage = null,
             )
             updated.copy(amountLkrPreview = calculateAmountLkr(updated))
@@ -224,7 +212,6 @@ class IncomeViewModel @Inject constructor(
             val updated = current.copy(historySourceFilter = value)
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
-        refreshHistory()
     }
 
     fun onHistoryIncomeTypeFilterChange(value: String?) {
@@ -243,7 +230,6 @@ class IncomeViewModel @Inject constructor(
             )
             updated.copy(filteredEntries = filterHistoryEntries(updated, updated.entries))
         }
-        refreshHistory()
     }
 
     fun consumeSubmitted() {
@@ -294,7 +280,7 @@ class IncomeViewModel @Inject constructor(
             return
         }
 
-        val effectiveCurrency = state.currencyOriginal
+        val effectiveCurrency = if (state.source == "Salary") "LKR" else state.currencyOriginal
         val resolvedRate = if (effectiveCurrency == "LKR") 1.0 else state.exchangeRate.toDoubleOrNull()
 
         if (effectiveCurrency != "LKR" && (resolvedRate == null || resolvedRate <= 0.0)) {
@@ -338,13 +324,11 @@ class IncomeViewModel @Inject constructor(
                         showRateConfirmation = false,
                         label = "",
                         projectRef = "",
-                        showAddSheet = false,
                         isLoading = false,
                         errorMessage = null,
                         isSubmitted = true,
                     )
                 }
-                refreshHistory()
             }.onFailure { throwable ->
                 _incomeState.update {
                     it.copy(
@@ -357,23 +341,7 @@ class IncomeViewModel @Inject constructor(
     }
 
     fun onShowAddSheet() {
-        _incomeState.update {
-            it.copy(
-                showAddSheet = true,
-                amountOriginal = "",
-                currencyOriginal = "LKR",
-                exchangeRate = "1.0",
-                amountLkrPreview = 0.0,
-                exchangeRateConfirmed = true,
-                exchangeRateManualOverride = false,
-                showRateConfirmation = false,
-                dateMillis = System.currentTimeMillis(),
-                label = "",
-                projectRef = "",
-                errorMessage = null,
-                isSubmitted = false,
-            )
-        }
+        _incomeState.update { it.copy(showAddSheet = true) }
     }
 
     fun onHideAddSheet() {
@@ -402,7 +370,6 @@ class IncomeViewModel @Inject constructor(
         _incomeState.update { it.copy(pendingDeleteEntry = entry) }
         viewModelScope.launch {
             runCatching { incomeRepository.deleteIncome(entry.id) }
-                .onSuccess { refreshHistory() }
                 .onFailure { t ->
                     _incomeState.update {
                         it.copy(
@@ -417,10 +384,7 @@ class IncomeViewModel @Inject constructor(
     fun undoDelete() {
         val entry = _incomeState.value.pendingDeleteEntry ?: return
         _incomeState.update { it.copy(pendingDeleteEntry = null) }
-        viewModelScope.launch {
-            runCatching { incomeRepository.addIncome(entry) }
-                .onSuccess { refreshHistory() }
-        }
+        viewModelScope.launch { runCatching { incomeRepository.addIncome(entry) } }
     }
 
     fun consumePendingDelete() {
@@ -469,10 +433,6 @@ class IncomeViewModel @Inject constructor(
     }
 
     private fun formatRate(rate: Double): String = String.format("%.4f", rate)
-
-    private fun refreshHistory() {
-        historyRefreshTrigger.update { it + 1 }
-    }
 
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
