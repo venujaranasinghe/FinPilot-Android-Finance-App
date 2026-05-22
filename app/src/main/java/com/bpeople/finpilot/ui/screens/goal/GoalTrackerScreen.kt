@@ -10,7 +10,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,24 +25,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,7 +55,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -64,36 +69,82 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.theme.DarkBackground
+import com.bpeople.finpilot.ui.theme.DarkBorder
+import com.bpeople.finpilot.ui.theme.DarkGlassBg
+import com.bpeople.finpilot.ui.theme.DarkGlassBorderLight
+import com.bpeople.finpilot.ui.theme.DarkSurface
+import com.bpeople.finpilot.ui.theme.DarkSurfaceVariant
+import com.bpeople.finpilot.ui.theme.DarkTextHint
+import com.bpeople.finpilot.ui.theme.DarkTextPrimary
+import com.bpeople.finpilot.ui.theme.DarkTextSecondary
+import com.bpeople.finpilot.ui.theme.GoalOrangeAccent
+import com.bpeople.finpilot.ui.theme.GoalStatusGreen
+import com.bpeople.finpilot.ui.theme.GoalStatusAmber
+import com.bpeople.finpilot.ui.theme.GoalStatusRed
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.Random
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private val OrangeAccent = Color(0xFFFF6B00)
-private val OrangeSoft = Color(0xFFFF8F3C)
+// ── Theme-aware color providers ────────────────────────────────────────────────
+@Composable
+private fun surfaceColor(): Color = if (isSystemInDarkTheme()) DarkSurface else Color.White
+
+@Composable
+private fun surfaceVariantColor(): Color = if (isSystemInDarkTheme()) DarkSurfaceVariant else Color(0xFFF9FAFB)
+
+@Composable
+private fun backgroundColor(): Color = if (isSystemInDarkTheme()) DarkBackground else Color(0xFFF9FAFB)
+
+@Composable
+private fun borderColor(): Color = if (isSystemInDarkTheme()) DarkBorder else Color(0xFFE5E7EB)
+
+@Composable
+private fun glassBgColor(): Color = if (isSystemInDarkTheme()) DarkGlassBg else Color.White
+
+@Composable
+private fun glassBorderLightColor(): Color = if (isSystemInDarkTheme()) DarkGlassBorderLight else Color(0xFFE5E7EB).copy(alpha = 0.5f)
+
+@Composable
+private fun textPrimaryColor(): Color = if (isSystemInDarkTheme()) DarkTextPrimary else Color(0xFF1F2937)
+
+@Composable
+private fun textSecondaryColor(): Color = if (isSystemInDarkTheme()) DarkTextSecondary else Color(0xFF4B5563)
+
+@Composable
+private fun textHintColor(): Color = if (isSystemInDarkTheme()) DarkTextHint else Color(0xFF6B7280)
+
+@Composable
+private fun heroBgColor(): Color = Color(0xFF1F2937)
+
+// ── Formatter ─────────────────────────────────────────────────────────────────
+private fun formatLKR(amount: Double): String = when {
+    amount >= 1_000_000 -> "LKR %.1fM".format(amount / 1_000_000)
+    amount >= 1_000 -> "LKR %.0fK".format(amount / 1_000)
+    else -> "LKR %.0f".format(amount)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,7 +197,8 @@ fun GoalTrackerScreen(
         ModalBottomSheet(
             onDismissRequest = { showSheet = false },
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = glassBgColor(),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         ) {
             CreateEditGoalBottomSheet(
                 isEditing = isEditing,
@@ -188,6 +240,7 @@ fun GoalTrackerScreenContent(
     val allGoals = goalState.allGoals
     val activeGoal = goalState.activeGoal
     var animationTrigger by remember { mutableStateOf(false) }
+    val bgColor = backgroundColor()
 
     val pagerState = rememberPagerState(
         initialPage = goalState.selectedGoalIndex.coerceAtMost((allGoals.size - 1).coerceAtLeast(0)),
@@ -211,186 +264,90 @@ fun GoalTrackerScreenContent(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = bgColor,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (activeGoal != null) {
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding),
+                    contentPadding = PaddingValues(bottom = 110.dp),
                 ) {
-                    // ── Gradient header ──────────────────────────────────
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        OrangeAccent,
-                                        OrangeSoft.copy(alpha = 0.85f),
-                                        MaterialTheme.colorScheme.background,
-                                    ),
-                                ),
-                            )
-                            .padding(top = 44.dp, bottom = 20.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "My Goals",
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    IconButton(
-                                        onClick = onOpenCreate,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(Color.White.copy(alpha = 0.2f), CircleShape),
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(22.dp))
-                                    }
-                                    IconButton(
-                                        onClick = { activeGoal.let { onOpenEdit(it) } },
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(Color.White.copy(alpha = 0.15f), CircleShape),
-                                    ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 40.dp),
-                                pageSpacing = 16.dp,
-                            ) { page ->
-                                val goal = allGoals.getOrNull(page) ?: return@HorizontalPager
-                                val targetProgress = if (goal.targetAmount > 0.0) {
-                                    (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
-                                } else 0f
-
-                                val progressAnimatable = remember(page) { Animatable(0f) }
-                                LaunchedEffect(page == pagerState.currentPage, animationTrigger) {
-                                    if (animationTrigger && page == pagerState.currentPage) {
-                                        progressAnimatable.snapTo(0f)
-                                        progressAnimatable.animateTo(
-                                            targetValue = targetProgress,
-                                            animationSpec = tween(1500, easing = FastOutSlowInEasing),
-                                        )
-                                    }
-                                }
-                                val pageScale by animateFloatAsState(
-                                    targetValue = if (page == pagerState.currentPage) 1f else 0.88f,
-                                    animationSpec = tween(300),
-                                    label = "scale",
-                                )
-
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().scale(pageScale),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    EnhancedGoalCard(
-                                        goal = goal,
-                                        progress = progressAnimatable.value,
-                                        targetProgress = targetProgress,
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            if (allGoals.size > 1) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    repeat(allGoals.size) { index ->
-                                        val selected = index == pagerState.currentPage
-                                        val dotWidth by animateFloatAsState(
-                                            targetValue = if (selected) 20f else 8f,
-                                            animationSpec = tween(300),
-                                            label = "dot",
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .width(dotWidth.dp)
-                                                .height(8.dp)
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(
-                                                    if (selected) Color.White
-                                                    else Color.White.copy(alpha = 0.4f),
-                                                ),
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                        }
+                    // ── Header Section ──────────────────────────────────
+                    item {
+                        GoalsHeader(
+                            activeGoal = activeGoal,
+                            onOpenCreate = onOpenCreate,
+                            onOpenEdit = onOpenEdit,
+                        )
                     }
 
-                    // ── White surface details ────────────────────────────
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 8.dp,
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 20.dp)
-                                .padding(top = 24.dp, bottom = 100.dp)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(20.dp),
-                        ) {
-                            GoalStatusBadge(goal = activeGoal, monthlyRequired = goalState.monthlyRequired)
+                    // Hero Card with Pager
+                    item {
+                        GoalHeroCard(
+                            allGoals = allGoals,
+                            activeGoal = activeGoal,
+                            pagerState = pagerState,
+                            animationTrigger = animationTrigger,
+                        )
+                    }
 
-                            TimelineIntelligenceCard(
-                                goal = activeGoal,
-                                monthlyRequired = goalState.monthlyRequired,
-                                savingsHistory = savingsHistory,
-                            )
+                    // Goal Status
+                    item {
+                        GoalStatusCard(
+                            goal = activeGoal,
+                            monthlyRequired = goalState.monthlyRequired,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
 
-                            GroupedSavingsBarChart(
-                                savingsHistory = savingsHistory,
-                                monthlyRequired = goalState.monthlyRequired,
-                                animationTrigger = animationTrigger,
-                            )
+                    // Timeline Intelligence
+                    item {
+                        TimelineCard(
+                            goal = activeGoal,
+                            monthlyRequired = goalState.monthlyRequired,
+                            savingsHistory = savingsHistory,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
 
-                            SavingsStreakCard(savingsHistory = savingsHistory)
+                    // Savings Chart
+                    item {
+                        SavingsChartCard(
+                            savingsHistory = savingsHistory,
+                            monthlyRequired = goalState.monthlyRequired,
+                            animationTrigger = animationTrigger,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
 
-                            SmartSuggestionCard(
-                                goal = activeGoal,
-                                monthlyRequired = goalState.monthlyRequired,
-                                onNavigateToExpense = onNavigateToExpense,
-                            )
+                    // Savings Streak
+                    item {
+                        StreakCard(
+                            savingsHistory = savingsHistory,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
 
-                            LogSavingsSection(
-                                onLogSavings = onLogSavings,
-                                onWithdrawSavings = onWithdrawSavings,
-                                goal = activeGoal,
-                            )
+                    // Smart Suggestion
+                    item {
+                        SmartTipCard(
+                            goal = activeGoal,
+                            monthlyRequired = goalState.monthlyRequired,
+                            onNavigateToExpense = onNavigateToExpense,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
 
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
+                    // Action Button
+                    item {
+                        LogSavingsButton(
+                            onLogSavings = onLogSavings,
+                            onWithdrawSavings = onWithdrawSavings,
+                            goal = activeGoal,
+                        )
                     }
                 }
             } else {
@@ -417,237 +374,370 @@ fun GoalTrackerScreenContent(
     }
 }
 
-// ── Enhanced goal card with milestone ring + laptop illustration ─────────────
+// ── Goals Header ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun EnhancedGoalCard(
-    goal: Goal,
-    progress: Float,
-    targetProgress: Float,
+private fun GoalsHeader(
+    activeGoal: Goal,
+    onOpenCreate: () -> Unit,
+    onOpenEdit: (Goal) -> Unit,
 ) {
-    var showConfetti by remember { mutableStateOf(false) }
-    val celebratedMilestones = remember { mutableSetOf<Int>() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor())
+            .statusBarsPadding(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
 
-    LaunchedEffect(targetProgress) {
-        val p = (targetProgress * 100).toInt()
-        val newMilestone = listOf(25, 50, 75, 100).firstOrNull { it <= p && it !in celebratedMilestones }
-        if (newMilestone != null) {
-            celebratedMilestones.add(newMilestone)
-            showConfetti = true
+                Text(
+                    text = "My Goals",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = textPrimaryColor(),
+                    letterSpacing = (-0.5).sp,
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onOpenCreate,
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Goal",
+                        tint = textPrimaryColor(),
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                IconButton(
+                    onClick = { onOpenEdit(activeGoal) },
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit Goal",
+                        tint = textPrimaryColor(),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
         }
     }
-
-    Box(contentAlignment = Alignment.Center) {
-        MilestoneRing(progress = progress, modifier = Modifier.size(210.dp))
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Canvas(modifier = Modifier.size(76.dp)) { drawLaptopIllustration() }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "${(progress * 100).roundToInt()}%",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
-            Text(
-                text = "saved",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.75f),
-            )
-        }
-
-        if (showConfetti) {
-            ConfettiOverlay(
-                modifier = Modifier.size(210.dp),
-                onDone = { showConfetti = false },
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(12.dp))
-    Text(
-        text = goal.title,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-    )
-    Text(
-        text = "LKR ${String.format("%,d", goal.currentAmount.toInt())} / LKR ${String.format("%,d", goal.targetAmount.toInt())}",
-        fontSize = 13.sp,
-        color = Color.White.copy(alpha = 0.75f),
-        modifier = Modifier.padding(top = 4.dp),
-    )
 }
 
+// ── Hero Goal Card ────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MilestoneRing(progress: Float, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val strokeWidth = 14.dp.toPx()
-        val ringRadius = size.minDimension / 2f - strokeWidth / 2f
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val startAngle = -90f
-
-        drawArc(
-            color = Color.White.copy(alpha = 0.25f),
-            startAngle = startAngle,
-            sweepAngle = 360f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-            topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
-            size = Size(ringRadius * 2, ringRadius * 2),
-        )
-
-        val sweep = progress * 360f
-        if (sweep > 0f) {
-            drawArc(
-                brush = Brush.sweepGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.7f), Color.White, Color.White.copy(alpha = 0.7f)),
-                    center = center,
-                ),
-                startAngle = startAngle,
-                sweepAngle = sweep,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
-                size = Size(ringRadius * 2, ringRadius * 2),
-            )
-        }
-
-        listOf(25, 50, 75, 100).forEach { milestone ->
-            val milestoneProgress = milestone / 100f
-            val angle = Math.toRadians((startAngle + milestoneProgress * 360f).toDouble())
-            val dotX = center.x + ringRadius * cos(angle).toFloat()
-            val dotY = center.y + ringRadius * sin(angle).toFloat()
-            val reached = progress >= milestoneProgress
-            drawCircle(
-                color = if (reached) OrangeAccent else Color.White.copy(alpha = 0.45f),
-                radius = 6.dp.toPx(),
-                center = Offset(dotX, dotY),
-            )
-            if (reached) {
+private fun GoalHeroCard(
+    allGoals: List<Goal>,
+    activeGoal: Goal,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    animationTrigger: Boolean,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = heroBgColor()),
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Background circles
+            Canvas(modifier = Modifier.matchParentSize()) {
                 drawCircle(
-                    color = Color.White,
-                    radius = 3.dp.toPx(),
-                    center = Offset(dotX, dotY),
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = 130.dp.toPx(),
+                    center = Offset(size.width * 0.90f, size.height * 0.12f),
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.03f),
+                    radius = 80.dp.toPx(),
+                    center = Offset(size.width * 0.80f, size.height * 0.65f),
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (allGoals.isNotEmpty()) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                        pageSpacing = 0.dp,
+                    ) { page ->
+                        val goal = allGoals.getOrNull(page) ?: return@HorizontalPager
+                        val targetProgress = if (goal.targetAmount > 0.0) {
+                            (goal.currentAmount / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
+                        } else 0f
+
+                        val progressAnimatable = remember(page) { Animatable(0f) }
+                        LaunchedEffect(page == pagerState.currentPage, animationTrigger) {
+                            if (animationTrigger && page == pagerState.currentPage) {
+                                progressAnimatable.snapTo(0f)
+                                progressAnimatable.animateTo(
+                                    targetValue = targetProgress,
+                                    animationSpec = tween(1500, easing = FastOutSlowInEasing),
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            // Progress Ring
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(180.dp)) {
+                                Canvas(modifier = Modifier.size(180.dp)) {
+                                    val strokeWidth = 14.dp.toPx()
+                                    val ringRadius = size.minDimension / 2f - strokeWidth / 2f
+                                    val center = Offset(size.width / 2f, size.height / 2f)
+                                    val startAngle = -90f
+
+                                    drawArc(
+                                        color = Color.White.copy(alpha = 0.2f),
+                                        startAngle = startAngle,
+                                        sweepAngle = 360f,
+                                        useCenter = false,
+                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                        topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
+                                        size = Size(ringRadius * 2, ringRadius * 2),
+                                    )
+
+                                    val sweep = progressAnimatable.value * 360f
+                                    if (sweep > 0f) {
+                                        drawArc(
+                                            color = Color.White,
+                                            startAngle = startAngle,
+                                            sweepAngle = sweep,
+                                            useCenter = false,
+                                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                            topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
+                                            size = Size(ringRadius * 2, ringRadius * 2),
+                                        )
+                                    }
+
+                                    listOf(25, 50, 75, 100).forEach { milestone ->
+                                        val milestoneProgress = milestone / 100f
+                                        val angle = Math.toRadians((startAngle + milestoneProgress * 360f).toDouble())
+                                        val dotX = center.x + ringRadius * cos(angle).toFloat()
+                                        val dotY = center.y + ringRadius * sin(angle).toFloat()
+                                        val reached = progressAnimatable.value >= milestoneProgress
+                                        drawCircle(
+                                            color = if (reached) GoalOrangeAccent else Color.White.copy(alpha = 0.4f),
+                                            radius = 5.dp.toPx(),
+                                            center = Offset(dotX, dotY),
+                                        )
+                                        if (reached) {
+                                            drawCircle(
+                                                color = Color.White,
+                                                radius = 2.5.dp.toPx(),
+                                                center = Offset(dotX, dotY),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${(progressAnimatable.value * 100).roundToInt()}%",
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                    )
+                                    Text(
+                                        text = "saved",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.75f),
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Goal Info
+                            Text(
+                                text = goal.title,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = "LKR ${String.format("%,d", goal.currentAmount.toInt())} / LKR ${String.format("%,d", goal.targetAmount.toInt())}",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.75f),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+
+                            // Mini stats
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                            ) {
+                                val remaining = (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0)
+                                val monthlyNeeded = goal.monthlyRequired
+                                val deadline = goal.deadline
+                                val monthsLeft = if (deadline != null) {
+                                    val now = Calendar.getInstance()
+                                    val dl = Calendar.getInstance().apply { time = deadline.toDate() }
+                                    ((dl.get(Calendar.YEAR) - now.get(Calendar.YEAR)) * 12 +
+                                            dl.get(Calendar.MONTH) - now.get(Calendar.MONTH)).coerceAtLeast(0)
+                                } else 0
+
+                                MiniStat(label = "Remaining", value = formatLKR(remaining))
+                                MiniStat(label = "Monthly", value = formatLKR(monthlyNeeded) + "/mo")
+                                MiniStat(label = "Deadline", value = if (monthsLeft > 0) "$monthsLeft mo" else "None")
+                            }
+                        }
+                    }
+
+                    // Dots indicator
+                    if (allGoals.size > 1) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            repeat(allGoals.size) { index ->
+                                val selected = index == pagerState.currentPage
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (selected) 8.dp else 6.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (selected) Color.White
+                                            else Color.White.copy(alpha = 0.4f),
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Mini Stat for Hero Card ───────────────────────────────────────────────────
+
+@Composable
+private fun MiniStat(label: String, value: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = Color.White.copy(alpha = 0.6f),
+        )
+    }
+}
+
+// ── Goal Status Card ──────────────────────────────────────────────────────────
+
+@Composable
+private fun GoalStatusCard(
+    goal: Goal,
+    monthlyRequired: Double,
+    modifier: Modifier = Modifier,
+) {
+    val status = determineGoalStatus(
+        currentAmount = goal.currentAmount,
+        targetAmount = goal.targetAmount,
+        monthlyRequired = monthlyRequired,
+        deadline = goal.deadline?.toDate(),
+    )
+
+    val (statusText, statusColor, statusIcon) = when (status) {
+        GoalStatus.ON_TRACK -> Triple("On Track", GoalStatusGreen, Icons.Rounded.EmojiEvents)
+        GoalStatus.AT_RISK -> Triple("At Risk", GoalStatusAmber, Icons.Rounded.Flag)
+        GoalStatus.OFF_TRACK -> Triple("Off Track", GoalStatusRed, Icons.Rounded.TrendingUp)
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Goal Status",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textSecondaryColor(),
+                )
+                Text(
+                    statusText,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(statusColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }
     }
 }
 
-private fun DrawScope.drawLaptopIllustration() {
-    val w = size.width
-    val h = size.height
-
-    val screenL = w * 0.10f
-    val screenT = h * 0.08f
-    val screenR = w * 0.90f
-    val screenB = h * 0.60f
-    val screenW = screenR - screenL
-    val screenH = screenB - screenT
-
-    drawRoundRect(
-        color = Color.White.copy(alpha = 0.85f),
-        topLeft = Offset(screenL, screenT),
-        size = Size(screenW, screenH),
-        cornerRadius = CornerRadius(6.dp.toPx()),
-    )
-    drawRoundRect(
-        color = OrangeAccent.copy(alpha = 0.28f),
-        topLeft = Offset(screenL + 4.dp.toPx(), screenT + 4.dp.toPx()),
-        size = Size(screenW - 8.dp.toPx(), screenH - 8.dp.toPx()),
-        cornerRadius = CornerRadius(4.dp.toPx()),
-    )
-    drawCircle(
-        color = Color.White.copy(alpha = 0.55f),
-        radius = 5.dp.toPx(),
-        center = Offset(w * 0.5f, (screenT + screenB) / 2f),
-    )
-
-    drawRoundRect(
-        color = Color.White.copy(alpha = 0.5f),
-        topLeft = Offset(w * 0.22f, screenB),
-        size = Size(w * 0.56f, 2.5f.dp.toPx()),
-        cornerRadius = CornerRadius(2.dp.toPx()),
-    )
-
-    val baseL = w * 0.04f
-    val baseT = screenB + 2.5f.dp.toPx()
-    val baseR = w * 0.96f
-    val baseB = h * 0.88f
-    drawRoundRect(
-        color = Color.White.copy(alpha = 0.75f),
-        topLeft = Offset(baseL, baseT),
-        size = Size(baseR - baseL, baseB - baseT),
-        cornerRadius = CornerRadius(4.dp.toPx()),
-    )
-
-    val kbL = w * 0.11f
-    val kbT = baseT + 3.dp.toPx()
-    val kbR = w * 0.89f
-    val kbB = baseB - 3.dp.toPx()
-    val keyRows = 3
-    val keyCols = 9
-    val rowH = (kbB - kbT) / keyRows
-    val colW = (kbR - kbL) / keyCols
-    for (row in 0 until keyRows) {
-        for (col in 0 until keyCols) {
-            drawRoundRect(
-                color = OrangeAccent.copy(alpha = 0.22f),
-                topLeft = Offset(kbL + col * colW + 1.dp.toPx(), kbT + row * rowH + 1.dp.toPx()),
-                size = Size(colW - 2.dp.toPx(), rowH - 2.dp.toPx()),
-                cornerRadius = CornerRadius(1.5f.dp.toPx()),
-            )
-        }
-    }
-}
+// ── Timeline Card ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun ConfettiOverlay(modifier: Modifier = Modifier, onDone: () -> Unit) {
-    val anim = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        anim.animateTo(1f, animationSpec = tween(2000, easing = LinearEasing))
-        onDone()
-    }
-    val prog = anim.value
-    val confettiColors = remember {
-        listOf(
-            Color(0xFFFF6B00), Color(0xFFFFBB00), Color(0xFF00C4FF),
-            Color(0xFF7C3AED), Color(0xFF10B981), Color.White,
-        )
-    }
-    Canvas(modifier = modifier) {
-        val rng = Random(42L)
-        repeat(32) { i ->
-            val startX = rng.nextFloat() * size.width
-            val velX = (rng.nextFloat() - 0.5f) * 80.dp.toPx()
-            val velY = 100.dp.toPx() + rng.nextFloat() * 120.dp.toPx()
-            val pieceX = startX + velX * prog
-            val pieceY = -10.dp.toPx() + velY * prog
-            val alpha = (1f - prog * 1.4f).coerceIn(0f, 1f)
-            if (alpha > 0f && pieceX in 0f..size.width && pieceY in 0f..size.height) {
-                drawCircle(
-                    color = confettiColors[i % confettiColors.size].copy(alpha = alpha),
-                    radius = (3.dp.toPx() + rng.nextFloat() * 3.dp.toPx()),
-                    center = Offset(pieceX, pieceY),
-                )
-            }
-        }
-    }
-}
-
-// ── Timeline intelligence ────────────────────────────────────────────────────
-
-@Composable
-private fun TimelineIntelligenceCard(
+private fun TimelineCard(
     goal: Goal,
     monthlyRequired: Double,
     savingsHistory: List<SavingsEntry>,
+    modifier: Modifier = Modifier,
 ) {
     val recentSaved = savingsHistory.lastOrNull()?.amount ?: 0.0
     val gap = monthlyRequired - recentSaved
-    val gapColor = if (gap <= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+    val gapColor = if (gap <= 0) GoalStatusGreen else GoalStatusRed
     val gapText = if (gap <= 0) {
         "Ahead by LKR ${String.format("%,d", (-gap).toInt())} this month"
     } else {
@@ -666,86 +756,88 @@ private fun TimelineIntelligenceCard(
         ((deadlineDate.time - now.time) / (1000L * 60L * 60L * 24L * 30L)).toInt()
     } else 0
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(Icons.Rounded.TrendingUp, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(20.dp))
-            Text(
-                "Timeline Intelligence",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(14.dp),
-            ) {
-                Text("Projected", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    projectedDate,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Text("completion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(14.dp),
-            ) {
-                Text("Deadline", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    if (monthsLeft > 0) "$monthsLeft mo left" else formatDate(deadlineDate),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (monthsLeft in 1..2) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Text(formatDate(deadlineDate), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(gapColor.copy(alpha = 0.1f))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("This month", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(gapText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = gapColor)
+            Text(
+                "Timeline",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = textPrimaryColor(),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(surfaceVariantColor())
+                        .padding(14.dp),
+                ) {
+                    Text("Projected", fontSize = 11.sp, color = textHintColor())
+                    Text(
+                        projectedDate,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimaryColor(),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(surfaceVariantColor())
+                        .padding(14.dp),
+                ) {
+                    Text("Deadline", fontSize = 11.sp, color = textHintColor())
+                    Text(
+                        if (monthsLeft > 0) "$monthsLeft mo left" else formatDate(deadlineDate),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (monthsLeft in 1..2) GoalStatusRed else textPrimaryColor(),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(gapColor.copy(alpha = 0.08f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Monthly Gap", fontSize = 12.sp, color = textSecondaryColor())
+                Text(gapText, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = gapColor)
+            }
         }
     }
 }
 
-// ── Grouped savings bar chart ────────────────────────────────────────────────
+// ── Savings Chart Card ────────────────────────────────────────────────────────
 
 @Composable
-private fun GroupedSavingsBarChart(
+private fun SavingsChartCard(
     savingsHistory: List<SavingsEntry>,
     monthlyRequired: Double,
     animationTrigger: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val barAnim by animateFloatAsState(
         targetValue = if (animationTrigger) 1f else 0f,
@@ -753,190 +845,186 @@ private fun GroupedSavingsBarChart(
         label = "bar",
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    val borderCol = borderColor()
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Text(
-            "Monthly Savings",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                "Monthly Savings",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = textPrimaryColor(),
+            )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(OrangeAccent))
-                Text("Saved", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(GoalOrangeAccent))
+                    Text("Saved", fontSize = 11.sp, color = textHintColor())
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(borderCol))
+                    Text("Required", fontSize = 11.sp, color = textHintColor())
+                }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outlineVariant))
-                Text("Required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
 
-        if (savingsHistory.isNotEmpty()) {
-            val maxVal = maxOf(savingsHistory.maxOfOrNull { it.amount } ?: 0.0, monthlyRequired, 1.0)
-            val barTrackColor = MaterialTheme.colorScheme.outline
+            if (savingsHistory.isNotEmpty()) {
+                val maxVal = maxOf(savingsHistory.maxOfOrNull { it.amount } ?: 0.0, monthlyRequired, 1.0)
 
-            Canvas(modifier = Modifier.fillMaxWidth().height(130.dp)) {
-                val totalW = size.width
-                val totalH = size.height
-                val groupW = totalW / savingsHistory.size
-                val barPad = 2.dp.toPx()
-                val barW = groupW / 2f - barPad - 2.dp.toPx()
+                Canvas(modifier = Modifier.fillMaxWidth().height(130.dp)) {
+                    val totalW = size.width
+                    val totalH = size.height
+                    val groupW = totalW / savingsHistory.size
+                    val barPad = 2.dp.toPx()
+                    val barW = groupW / 2f - barPad - 2.dp.toPx()
 
-                savingsHistory.forEachIndexed { index, entry ->
-                    val groupLeft = index * groupW + 4.dp.toPx()
+                    savingsHistory.forEachIndexed { index, entry ->
+                        val groupLeft = index * groupW + 4.dp.toPx()
 
-                    val reqH = (monthlyRequired / maxVal * totalH * barAnim).toFloat().coerceAtLeast(0f)
-                    drawRoundRect(
-                        color = barTrackColor,
-                        topLeft = Offset(groupLeft, totalH - reqH),
-                        size = Size(barW, reqH),
-                        cornerRadius = CornerRadius(3.dp.toPx()),
-                    )
-
-                    val savedH = (entry.amount / maxVal * totalH * barAnim).toFloat().coerceAtLeast(0f)
-                    if (savedH > 0f) {
+                        val reqH = (monthlyRequired / maxVal * totalH * barAnim).toFloat().coerceAtLeast(0f)
                         drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(OrangeSoft, OrangeAccent),
-                                startY = totalH - savedH,
-                                endY = totalH,
-                            ),
-                            topLeft = Offset(groupLeft + barW + barPad * 2, totalH - savedH),
-                            size = Size(barW, savedH),
+                            color = borderCol,
+                            topLeft = Offset(groupLeft, totalH - reqH),
+                            size = Size(barW, reqH),
                             cornerRadius = CornerRadius(3.dp.toPx()),
+                        )
+
+                        val savedH = (entry.amount / maxVal * totalH * barAnim).toFloat().coerceAtLeast(0f)
+                        if (savedH > 0f) {
+                            drawRoundRect(
+                                color = GoalOrangeAccent,
+                                topLeft = Offset(groupLeft + barW + barPad * 2, totalH - savedH),
+                                size = Size(barW, savedH),
+                                cornerRadius = CornerRadius(3.dp.toPx()),
+                            )
+                        }
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    savingsHistory.forEach { entry ->
+                        Text(
+                            entry.month,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            fontSize = 10.sp,
+                            color = textHintColor(),
                         )
                     }
                 }
+            } else {
+                Text(
+                    "No savings data yet",
+                    fontSize = 13.sp,
+                    color = textHintColor(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp),
+                    textAlign = TextAlign.Center,
+                )
             }
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                savingsHistory.forEach { entry ->
-                    Text(
-                        entry.month,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            Text(
-                "No savings history yet",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 20.dp),
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
 
-// ── Savings streak card ──────────────────────────────────────────────────────
+// ── Streak Card ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun SavingsStreakCard(savingsHistory: List<SavingsEntry>) {
+private fun StreakCard(
+    savingsHistory: List<SavingsEntry>,
+    modifier: Modifier = Modifier,
+) {
     val streak = savingsHistory.reversed().takeWhile { it.amount > 0 }.size
-    val fireColor = OrangeAccent
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(
-                    Icons.Rounded.LocalFireDepartment,
-                    contentDescription = null,
-                    tint = if (streak > 0) fireColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    "Savings Streak",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        if (streak > 0) fireColor.copy(alpha = 0.13f)
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    "$streak month${if (streak != 1) "s" else ""}",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (streak > 0) fireColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        if (savingsHistory.isNotEmpty()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                savingsHistory.forEach { entry ->
-                    val hit = entry.amount > 0
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (streak > 0) GoalOrangeAccent.copy(alpha = 0.12f)
+                            else surfaceVariantColor(),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = if (streak > 0) GoalOrangeAccent else textHintColor(),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        "Savings Streak",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimaryColor(),
+                    )
+                    Text(
+                        "${streak} month${if (streak != 1) "s" else ""}",
+                        fontSize = 13.sp,
+                        color = if (streak > 0) GoalOrangeAccent else textHintColor(),
+                    )
+                }
+            }
+
+            if (savingsHistory.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    savingsHistory.takeLast(4).forEach { entry ->
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (hit) fireColor.copy(alpha = 0.13f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    if (entry.amount > 0) GoalOrangeAccent.copy(alpha = 0.12f)
+                                    else surfaceVariantColor(),
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (hit) {
+                            if (entry.amount > 0) {
                                 Icon(
                                     Icons.Rounded.LocalFireDepartment,
                                     contentDescription = null,
-                                    tint = fireColor,
-                                    modifier = Modifier.size(16.dp),
+                                    tint = GoalOrangeAccent,
+                                    modifier = Modifier.size(14.dp),
                                 )
                             } else {
                                 Box(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(6.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)),
+                                        .background(textHintColor().copy(alpha = 0.3f)),
                                 )
                             }
                         }
-                        Text(
-                            entry.month,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (hit) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        )
                     }
                 }
             }
@@ -944,195 +1032,84 @@ private fun SavingsStreakCard(savingsHistory: List<SavingsEntry>) {
     }
 }
 
-// ── Smart suggestion card ────────────────────────────────────────────────────
+// ── Smart Tip Card ────────────────────────────────────────────────────────────
 
 @Composable
-private fun SmartSuggestionCard(
+private fun SmartTipCard(
     goal: Goal,
     monthlyRequired: Double,
     onNavigateToExpense: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val remaining = goal.targetAmount - goal.currentAmount
     val suggestion = when {
         remaining <= 0 -> "You've reached your goal! Set a new challenge to keep the momentum going."
-        monthlyRequired <= 0 -> "Add a deadline to your goal to get a personalised monthly savings plan."
-        else -> "You need to save LKR ${String.format("%,d", monthlyRequired.toInt())} per month. Review your discretionary spending to find room."
+        monthlyRequired <= 0 -> "Add a deadline to get a personalised monthly savings plan."
+        else -> "Save LKR ${String.format("%,d", monthlyRequired.toInt())}/mo. Review expenses to find room."
     }
 
-    Row(
-        modifier = Modifier
+    Card(
+        modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(OrangeAccent.copy(alpha = 0.07f))
-            .clickable(onClick = onNavigateToExpense)
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.Top,
+            .clickable(onClick = onNavigateToExpense),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(OrangeAccent.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Icon(Icons.Default.Lightbulb, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(20.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "Smart Suggestion",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = OrangeAccent,
-            )
-            Text(
-                suggestion,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                lineHeight = 18.sp,
-            )
-            Text(
-                "View your expenses →",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = OrangeAccent,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
-
-// ── Motivational empty state ─────────────────────────────────────────────────
-
-@Composable
-private fun EmptyGoalState(modifier: Modifier = Modifier, onCreateGoal: () -> Unit) {
-    Box(
-        modifier = modifier.background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        ) {
-            Canvas(modifier = Modifier.size(150.dp)) { drawEmptyGoalIllustration() }
-            Spacer(modifier = Modifier.height(28.dp))
-            Text(
-                "No Goals Yet",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                "Set your first savings goal and start building your future, one month at a time.",
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-            )
-            Spacer(modifier = Modifier.height(36.dp))
-            Button(
-                onClick = onCreateGoal,
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(GoalOrangeAccent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    tint = GoalOrangeAccent,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    "Create Your First Goal",
-                    style = MaterialTheme.typography.titleMedium,
+                    "Smart Suggestion",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
+                    color = textPrimaryColor(),
+                )
+                Text(
+                    suggestion,
+                    fontSize = 12.sp,
+                    color = textSecondaryColor(),
+                    lineHeight = 18.sp,
+                )
+                Text(
+                    "View expenses →",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GoalOrangeAccent,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
     }
 }
 
-private fun DrawScope.drawEmptyGoalIllustration() {
-    val w = size.width
-    val h = size.height
-    val cx = w * 0.5f
-    val cy = h * 0.42f
-
-    drawCircle(color = OrangeAccent.copy(alpha = 0.07f), radius = w * 0.46f, center = Offset(cx, cy))
-    drawCircle(color = OrangeAccent.copy(alpha = 0.13f), radius = w * 0.30f, center = Offset(cx, cy))
-    drawCircle(color = OrangeAccent.copy(alpha = 0.22f), radius = w * 0.17f, center = Offset(cx, cy))
-    drawCircle(color = OrangeAccent, radius = w * 0.07f, center = Offset(cx, cy))
-
-    for (i in 0..3) {
-        val coinY = h * 0.84f - i * 7.dp.toPx()
-        drawOval(
-            color = if (i % 2 == 0) Color(0xFFFFBB00) else Color(0xFFFFA500),
-            topLeft = Offset(cx - w * 0.18f, coinY - 4.dp.toPx()),
-            size = Size(w * 0.36f, 8.dp.toPx()),
-        )
-    }
-}
-
-// ── Kept composables ─────────────────────────────────────────────────────────
+// ── Log Savings Button ────────────────────────────────────────────────────────
 
 @Composable
-private fun GoalStatusBadge(goal: Goal, monthlyRequired: Double) {
-    val status = determineGoalStatus(
-        currentAmount = goal.currentAmount,
-        targetAmount = goal.targetAmount,
-        monthlyRequired = monthlyRequired,
-        deadline = goal.deadline?.toDate(),
-    )
-
-    val (statusText, statusColor, statusBg) = when (status) {
-        GoalStatus.ON_TRACK -> Triple("On Track", Color(0xFF10B981), Color(0xFF10B981).copy(alpha = 0.13f))
-        GoalStatus.AT_RISK -> Triple("At Risk", Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.13f))
-        GoalStatus.OFF_TRACK -> Triple("Off Track", Color(0xFFEF4444), Color(0xFFEF4444).copy(alpha = 0.13f))
-    }
-
-    val animBg by animateColorAsState(targetValue = statusBg, label = "bg")
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(animBg)
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text("Current Status", style = MaterialTheme.typography.labelMedium, color = statusColor.copy(alpha = 0.8f))
-            Text(
-                statusText,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = statusColor,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(statusColor.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                when (status) {
-                    GoalStatus.ON_TRACK -> "✓"
-                    GoalStatus.AT_RISK -> "!"
-                    GoalStatus.OFF_TRACK -> "✗"
-                },
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = statusColor,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LogSavingsSection(
+private fun LogSavingsButton(
     onLogSavings: (String, Double) -> Unit,
     onWithdrawSavings: (String, Double) -> Unit,
     goal: Goal,
@@ -1143,16 +1120,17 @@ private fun LogSavingsSection(
         onClick = { showDialog = true },
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(56.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = OrangeAccent,
+            containerColor = GoalOrangeAccent,
             contentColor = Color.White,
         ),
     ) {
         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Log / Adjust Savings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("Log Savings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     }
 
     if (showDialog) {
@@ -1166,7 +1144,71 @@ private fun LogSavingsSection(
     }
 }
 
-// ── Create / Edit Goal Bottom Sheet ──────────────────────────────────────────
+// ── Empty State ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun EmptyGoalState(modifier: Modifier = Modifier, onCreateGoal: () -> Unit) {
+    Box(
+        modifier = modifier.background(backgroundColor()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 32.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(GoalOrangeAccent.copy(alpha = 0.1f))
+                    .border(1.dp, GoalOrangeAccent.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = GoalOrangeAccent,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(28.dp))
+            Text(
+                "No Goals Yet",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = textPrimaryColor(),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                "Set your first savings goal and start\nbuilding your future, one month at a time.",
+                fontSize = 15.sp,
+                color = textHintColor(),
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp,
+            )
+            Spacer(modifier = Modifier.height(36.dp))
+            Button(
+                onClick = onCreateGoal,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GoalOrangeAccent),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Create Your First Goal",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+// ── Create / Edit Bottom Sheet ────────────────────────────────────────────────
 
 @Composable
 fun CreateEditGoalBottomSheet(
@@ -1182,19 +1224,27 @@ fun CreateEditGoalBottomSheet(
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val selectedDateLabel = goalState.deadlineMillis?.let { dateFormat.format(Date(it)) } ?: "Pick a date"
+    val sheetSurfaceColor = glassBgColor()
+    val sheetSurfaceVariantColor = surfaceVariantColor()
+    val sheetTextPrimary = textPrimaryColor()
+    val sheetTextSecondary = textSecondaryColor()
+
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        unfocusedContainerColor = sheetSurfaceVariantColor,
+        focusedContainerColor = sheetSurfaceVariantColor,
         unfocusedBorderColor = Color.Transparent,
-        focusedBorderColor = OrangeAccent,
+        focusedBorderColor = GoalOrangeAccent,
+        unfocusedTextColor = sheetTextPrimary,
+        focusedTextColor = sheetTextPrimary,
+        unfocusedLabelColor = sheetTextSecondary,
+        focusedLabelColor = GoalOrangeAccent,
     )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Box(
@@ -1203,17 +1253,16 @@ fun CreateEditGoalBottomSheet(
                 .height(4.dp)
                 .align(Alignment.CenterHorizontally)
                 .background(
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    sheetTextSecondary.copy(alpha = 0.3f),
                     RoundedCornerShape(2.dp),
                 ),
         )
-        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = if (isEditing) "Edit Goal" else "Create New Goal",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = sheetTextPrimary,
         )
 
         if (goalState.errorMessage != null) {
@@ -1233,7 +1282,7 @@ fun CreateEditGoalBottomSheet(
             value = goalState.title,
             onValueChange = onTitleChange,
             label = { Text("Goal Name") },
-            placeholder = { Text("e.g. MacBook Pro, Vacation, Emergency Fund") },
+            placeholder = { Text("e.g. MacBook Pro, Vacation Fund") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
@@ -1255,7 +1304,7 @@ fun CreateEditGoalBottomSheet(
         OutlinedTextField(
             value = goalState.currentAmount,
             onValueChange = onCurrentAmountChange,
-            label = { Text("Amount Already Saved (LKR)") },
+            label = { Text("Already Saved (LKR)") },
             placeholder = { Text("0 if starting fresh") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -1268,14 +1317,15 @@ fun CreateEditGoalBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .background(sheetSurfaceVariantColor)
+                .border(1.dp, borderColor(), RoundedCornerShape(16.dp))
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Target Date", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(selectedDateLabel, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text("Target Date", style = MaterialTheme.typography.labelMedium, color = sheetTextSecondary)
+                Text(selectedDateLabel, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = sheetTextPrimary)
             }
             TextButton(
                 onClick = {
@@ -1297,7 +1347,7 @@ fun CreateEditGoalBottomSheet(
                     ).show()
                 },
             ) {
-                Icon(Icons.Rounded.CalendarToday, contentDescription = "Pick date", tint = OrangeAccent, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.CalendarToday, contentDescription = "Pick date", tint = GoalOrangeAccent, modifier = Modifier.size(20.dp))
             }
         }
 
@@ -1307,7 +1357,7 @@ fun CreateEditGoalBottomSheet(
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = GoalOrangeAccent),
         ) {
             Text(
                 text = if (isEditing) "Save Changes" else "Create Goal",
@@ -1317,6 +1367,8 @@ fun CreateEditGoalBottomSheet(
         }
     }
 }
+
+// ── Log Savings Dialog ────────────────────────────────────────────────────────
 
 @Composable
 private fun LogSavingsDialog(
@@ -1331,26 +1383,31 @@ private fun LogSavingsDialog(
     val inputAmount = input.toDoubleOrNull() ?: 0.0
     val withdrawError = isWithdrawMode && inputAmount > currentAmount
 
-    val addColor = Color(0xFF10B981)
-    val withdrawColor = Color(0xFFEF4444)
+    val addColor = GoalStatusGreen
+    val withdrawColor = GoalStatusRed
     val activeColor by animateColorAsState(
         targetValue = if (isWithdrawMode) withdrawColor else addColor,
         animationSpec = tween(300),
         label = "mode_color",
     )
 
+    val dialogSurfaceColor = glassBgColor()
+    val dialogSurfaceVariantColor = surfaceVariantColor()
+    val dialogTextPrimary = textPrimaryColor()
+    val dialogTextSecondary = textSecondaryColor()
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = dialogSurfaceColor,
         shape = RoundedCornerShape(24.dp),
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Adjust Savings", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Adjust Savings", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = dialogTextPrimary)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .background(dialogSurfaceVariantColor.copy(alpha = 0.5f))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -1362,7 +1419,7 @@ private fun LogSavingsDialog(
                             label = "tab_bg",
                         )
                         val tabContent by animateColorAsState(
-                            targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            targetValue = if (selected) Color.White else dialogTextSecondary,
                             animationSpec = tween(300),
                             label = "tab_content",
                         )
@@ -1389,7 +1446,7 @@ private fun LogSavingsDialog(
                     else
                         "Current: LKR ${currentAmount.toInt()} / LKR ${targetAmount.toInt()}",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = dialogTextSecondary,
                 )
                 OutlinedTextField(
                     value = input,
@@ -1403,11 +1460,13 @@ private fun LogSavingsDialog(
                     } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedContainerColor = dialogSurfaceVariantColor.copy(alpha = 0.3f),
+                        focusedContainerColor = dialogSurfaceVariantColor.copy(alpha = 0.5f),
                         unfocusedBorderColor = Color.Transparent,
                         focusedBorderColor = activeColor,
                         errorBorderColor = MaterialTheme.colorScheme.error,
+                        unfocusedTextColor = dialogTextPrimary,
+                        focusedTextColor = dialogTextPrimary,
                     ),
                     singleLine = true,
                 )
@@ -1432,8 +1491,8 @@ private fun LogSavingsDialog(
             Button(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    containerColor = dialogSurfaceVariantColor,
+                    contentColor = dialogTextSecondary,
                 ),
                 shape = RoundedCornerShape(12.dp),
             ) {
@@ -1443,7 +1502,7 @@ private fun LogSavingsDialog(
     )
 }
 
-// ── Helper data classes and pure functions ────────────────────────────────────
+// ── Helper Functions ──────────────────────────────────────────────────────────
 
 data class SavingsEntry(val month: String, val amount: Double)
 
