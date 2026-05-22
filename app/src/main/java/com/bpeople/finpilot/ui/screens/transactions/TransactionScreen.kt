@@ -319,15 +319,6 @@ fun TransactionScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            FinPilotBottomNavBar(
-                currentTab = NavTab.TRANSACTIONS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToTransactions = { /* already here */ },
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile,
-            )
-        },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -336,8 +327,7 @@ fun TransactionScreen(
                     Brush.verticalGradient(
                         listOf(GlassTheme.BgStart, GlassTheme.BgMid, GlassTheme.BgEnd)
                     )
-                )
-                .padding(bottom = innerPadding.calculateBottomPadding()),
+                ),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
@@ -383,7 +373,9 @@ fun TransactionScreen(
                 isRefreshing = isRefreshing,
                 onRefresh = viewModel::refresh,
                 state = pullRefreshState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
             ) {
                 TransactionContent(
                     transactions = transactions,
@@ -406,6 +398,15 @@ fun TransactionScreen(
                     onLoadNextPage = viewModel::loadNextPage,
                 )
             }
+
+            FinPilotBottomNavBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                currentTab = NavTab.TRANSACTIONS,
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToTransactions = { /* already here */ },
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile,
+            )
         }
     }
 
@@ -482,7 +483,7 @@ private fun TransactionContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = 110.dp),
     ) {
         // ── Section 1+2: Orange header + overlapping summary cards ────────────
         item {
