@@ -85,8 +85,6 @@ fun FinPilotTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // enableEdgeToEdge() in MainActivity handles status bar transparency.
-            // Light theme uses a light background, so always use dark icons.
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
