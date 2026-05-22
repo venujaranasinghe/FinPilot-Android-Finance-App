@@ -2,6 +2,18 @@
 
 package com.bpeople.finpilot.ui.screens.transactions
 
+import androidx.compose.ui.draw.scale
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -141,6 +153,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.CornerRadius
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 
 // ── Enhanced Dark Theme Colors ─────────────────────────────────────────────────
 private val DarkSurface = Color(0xFF1C1C1E)
@@ -800,37 +820,278 @@ private fun PeriodTabPill(
     modifier: Modifier = Modifier,
 ) {
     val periods = listOf(Period.WEEK to "Week", Period.MONTH to "Month", Period.YEAR to "Year")
+    val density = LocalDensity.current
+    val isDark = isSystemInDarkTheme()
 
-    Row(
+    // Track the center positions of each tab
+    val tabCenters = remember { mutableStateListOf(0f, 0f, 0f) }
+
+    // Single position value - directly updated for instant response
+    val sliderX = remember { Animatable(0f) }
+    var hasInitializedPosition by remember { mutableStateOf(false) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    // Get the active index
+    val activeIndex = periods.indexOfFirst { it.first == selectedPeriod }.coerceAtLeast(0)
+    var swipeIndex by remember { mutableStateOf(activeIndex) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+
+    // Calculate parent padding offset in pixels (the 4.dp padding on the Box)
+    val parentPaddingPx = with(density) { 4.dp.toPx() }
+
+    // Animate to active tab when not dragging
+    LaunchedEffect(activeIndex, tabCenters.toList()) {
+        val target = tabCenters.getOrNull(activeIndex) ?: 0f
+        if (target != 0f) {
+            if (!hasInitializedPosition) {
+                sliderX.snapTo(target)
+                hasInitializedPosition = true
+            } else if (!isDragging) {
+                sliderX.animateTo(
+                    targetValue = target,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
+        }
+    }
+
+    // Haptic feedback on index change during drag
+    val closestIndex = remember(sliderX.value, tabCenters.toList()) {
+        if (tabCenters.isEmpty() || tabCenters.all { it == 0f }) {
+            swipeIndex
+        } else {
+            tabCenters.indices.minByOrNull { i ->
+                (tabCenters[i] - sliderX.value).absoluteValue
+            } ?: swipeIndex
+        }
+    }
+
+    var lastHapticIndex by remember { mutableStateOf(activeIndex) }
+
+    LaunchedEffect(closestIndex) {
+        if (isDragging && closestIndex != lastHapticIndex) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            lastHapticIndex = closestIndex
+        }
+    }
+
+    val pillWidth = 52.dp
+    val pillWidthPx = with(density) { pillWidth.toPx() }
+    val maxMagnifyDistance = with(density) { 40.dp.toPx() }
+
+    Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(glassSurfaceColor())
-            .border(1.dp, glassBorderColor(), RoundedCornerShape(50))
+            .background(
+                if (isDark) {
+                    Color(0xFF1A1A1A).copy(alpha = 0.6f)
+                } else {
+                    Color.White.copy(alpha = 0.6f)
+                }
+            )
+            .border(
+                width = 1.dp,
+                brush = if (isDark) {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0x40FFFFFF),
+                            Color(0x15FFFFFF),
+                            Color(0x20FFFFFF),
+                        )
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xF0FFFFFF),
+                            Color(0x5DFFFFFF),
+                            Color(0x66FFFFFF),
+                        )
+                    )
+                },
+                shape = RoundedCornerShape(50)
+            )
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        val newX = (sliderX.value + dragAmount).coerceIn(
+                            tabCenters.firstOrNull() ?: 0f,
+                            tabCenters.lastOrNull() ?: 0f
+                        )
+                        coroutineScope.launch {
+                            sliderX.snapTo(newX)
+                        }
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        val finalIndex = tabCenters.indices.minByOrNull { i ->
+                            (tabCenters[i] - sliderX.value).absoluteValue
+                        } ?: swipeIndex
+                        swipeIndex = finalIndex
+                        onPeriodChange(periods[finalIndex].first)
+                        coroutineScope.launch {
+                            sliderX.animateTo(
+                                targetValue = tabCenters.getOrNull(finalIndex) ?: 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
+                        }
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        coroutineScope.launch {
+                            sliderX.animateTo(
+                                targetValue = tabCenters.getOrNull(swipeIndex) ?: 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
+                        }
+                    },
+                )
+            }
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        contentAlignment = Alignment.Center
     ) {
-        periods.forEach { (period, label) ->
-            val isActive = period == selectedPeriod
-            val bgColor by animateColorAsState(
-                targetValue = if (isActive) OrangePrimary else Color.Transparent,
-                animationSpec = tween(200),
-                label = "tab_bg_$label",
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (isActive) Color.White else textSecondaryColor(),
-                animationSpec = tween(200),
-                label = "tab_text_$label",
-            )
-            Text(
-                text = label,
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            periods.forEachIndexed { index, (period, label) ->
+                val isActive = index == swipeIndex
+                val center = tabCenters.getOrNull(index) ?: 0f
+
+                // Magnifying glass effect - scale up when pill is near
+                val scaleFactor = if (center != 0f && hasInitializedPosition) {
+                    val distance = (center - sliderX.value).absoluteValue
+                    if (distance < maxMagnifyDistance) {
+                        // Calculate magnification based on proximity
+                        val fraction = 1f - (distance / maxMagnifyDistance)
+                        // Smooth easing for natural feel
+                        val smoothFraction = kotlin.math.sin(fraction * Math.PI / 2).toFloat()
+                        // Magnify up to 20% larger
+                        1f + 0.20f * smoothFraction
+                    } else {
+                        1f
+                    }
+                } else {
+                    if (isActive) 1.12f else 1f
+                }
+
+                // Also increase font weight based on proximity for stronger magnifying effect
+                val fontWeight = if (center != 0f && hasInitializedPosition) {
+                    val distance = (center - sliderX.value).absoluteValue
+                    if (distance < maxMagnifyDistance * 0.7f) {
+                        FontWeight.Bold
+                    } else if (distance < maxMagnifyDistance) {
+                        FontWeight.SemiBold
+                    } else {
+                        FontWeight.Medium
+                    }
+                } else {
+                    if (isActive) FontWeight.Bold else FontWeight.Medium
+                }
+
+                val textScale by animateFloatAsState(
+                    targetValue = scaleFactor,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessHigh,
+                    ),
+                    label = "scale_$label",
+                )
+
+                Text(
+                    text = label,
+                    modifier = Modifier
+                        .scale(textScale)
+                        .onGloballyPositioned { coords ->
+                            val textWidth = coords.size.width
+                            val textLeft = coords.positionInParent().x + parentPaddingPx
+                            val textCenter = textLeft + textWidth / 2f
+                            if (index < tabCenters.size) {
+                                tabCenters[index] = textCenter
+                            }
+                        }
+                        .clip(RoundedCornerShape(50))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            swipeIndex = index
+                            onPeriodChange(period)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = if (isActive) {
+                        if (isDark) Color.White else Color.Black
+                    } else {
+                        textSecondaryColor()
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = fontWeight,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        // ── Magnifying glass pill - transparent with visible border ──
+        if (hasInitializedPosition) {
+            Box(
                 modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset {
+                        IntOffset(
+                            x = (sliderX.value - pillWidthPx / 2f).roundToInt(),
+                            y = 0
+                        )
+                    }
+                    .size(width = pillWidth, height = 30.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(bgColor)
-                    .clickable { onPeriodChange(period) }
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                color = textColor,
-                fontSize = 13.sp,
-                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                    .background(Color.Transparent)
+                    .border(
+                        width = 1.5.dp,
+                        brush = if (isDark) {
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0x80FFFFFF),
+                                    Color(0x40FFFFFF),
+                                    Color(0x20FFFFFF),
+                                )
+                            )
+                        } else {
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFFBBBBBB),
+                                    Color(0x88AAAAAA),
+                                    Color(0x44999999),
+                                )
+                            )
+                        },
+                        shape = RoundedCornerShape(50)
+                    )
+                    // Inner glow for magnifying glass effect
+                    .border(
+                        width = 0.5.dp,
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f),
+                                Color.Transparent,
+                            )
+                        ),
+                        shape = RoundedCornerShape(50)
+                    )
             )
         }
     }
