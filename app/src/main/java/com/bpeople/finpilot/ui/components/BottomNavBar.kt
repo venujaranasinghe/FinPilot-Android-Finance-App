@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +78,8 @@ import kotlin.math.roundToInt
 
 private val GlassWhite    = GlassTheme.GlassSurface
 private val GlassBorder   = GlassTheme.GlassBorderLight
-private val InactiveIcon  = Color.DarkGray
+private val InactiveIconLight  = Color(0xFF666666) // Dark gray for light mode
+private val InactiveIconDark   = Color(0xFFBBBBBB) // Light gray for dark mode
 
 // ─── Nav model ───────────────────────────────────────────────────────────────
 
@@ -111,6 +113,44 @@ private val navItems = listOf(
 
 private const val FLING_VELOCITY_THRESHOLD = 500f  // px/s
 
+// ─── Dark mode colors ────────────────────────────────────────────────────────
+
+private data class NavBarColors(
+    val activeTintLight: Color,
+    val activeTintDark: Color,
+    val inactiveTint: Color,
+    val glassSurfaceTint: Color,
+    val blurOpacity: Float,
+    val brightness: Float,
+    val contrast: Float
+)
+
+@Composable
+private fun darkModeColors(): NavBarColors {
+    val isDark = isSystemInDarkTheme()
+    return if (isDark) {
+        NavBarColors(
+            activeTintLight = Color(0xFF1A1A1A),
+            activeTintDark = Color(0xFFFFFFFF),
+            inactiveTint = Color(0xFFBBBBBB),
+            glassSurfaceTint = Color(0xFF0D0D0D),
+            blurOpacity = 0.25f,
+            brightness = 0.08f,
+            contrast = 1.2f
+        )
+    } else {
+        NavBarColors(
+            activeTintLight = Color.Black,
+            activeTintDark = Color.Black,
+            inactiveTint = Color(0xFF666666),
+            glassSurfaceTint = Color.White,
+            blurOpacity = 0.15f,
+            brightness = 0.06f,
+            contrast = 1.12f
+        )
+    }
+}
+
 // ─── Public composable ───────────────────────────────────────────────────────
 
 @Composable
@@ -125,6 +165,9 @@ fun FinPilotBottomNavBar(
     onNavigateToProfile:      () -> Unit = {},
     onNavigateToSettings:     () -> Unit = {},
 ) {
+    val isDark = isSystemInDarkTheme()
+    val navBarColors = darkModeColors()
+
     val active = currentTab.resolved()
 
     // Map resolved active tab → index
@@ -218,13 +261,23 @@ fun FinPilotBottomNavBar(
                 .matchParentSize()
                 .clip(RoundedCornerShape(32.dp))
                 .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            GlassTheme.BgStart.copy(alpha = 0.08f),
-                            GlassTheme.BgMid.copy(alpha = 0.12f),
-                            GlassTheme.BgEnd.copy(alpha = 0.15f),
-                        ),
-                    ),
+                    if (isDark) {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF2A2A2A).copy(alpha = 0.15f),
+                                Color(0xFF1A1A1A).copy(alpha = 0.2f),
+                                Color(0xFF0A0A0A).copy(alpha = 0.25f),
+                            ),
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(
+                                GlassTheme.BgStart.copy(alpha = 0.08f),
+                                GlassTheme.BgMid.copy(alpha = 0.12f),
+                                GlassTheme.BgEnd.copy(alpha = 0.15f),
+                            ),
+                        )
+                    }
                 )
                 .layerBackdrop(backdrop),
         )
@@ -239,11 +292,11 @@ fun FinPilotBottomNavBar(
                     effects = {
                         blur(blurRadiusPx)
                         colorControls(
-                            brightness = 0.06f,
-                            contrast = 1.12f,
+                            brightness = navBarColors.brightness,
+                            contrast = navBarColors.contrast,
                             saturation = 1.0f,
                         )
-                        opacity(0.15f)
+                        opacity(navBarColors.blurOpacity)
                     },
                     highlight = { Highlight.Ambient },
                     shadow = { Shadow(radius = 6.dp) },
@@ -251,13 +304,23 @@ fun FinPilotBottomNavBar(
                 )
                 .border(
                     width = 2.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color(0xF0FFFFFF),
-                            Color(0x5DFFFFFF),
-                            Color(0x66FFFFFF),
+                    brush = if (isDark) {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0x40FFFFFF),
+                                Color(0x15FFFFFF),
+                                Color(0x20FFFFFF),
+                            )
                         )
-                    ),
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xF0FFFFFF),
+                                Color(0x5DFFFFFF),
+                                Color(0x66FFFFFF),
+                            )
+                        )
+                    },
                     shape = RoundedCornerShape(32.dp),
                 ),
         )
@@ -271,7 +334,10 @@ fun FinPilotBottomNavBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(GlassWhite.copy(alpha = 0.6f))
+                .background(
+                    if (isDark) Color(0xFF1A1A1A).copy(alpha = 0.8f)
+                    else GlassWhite.copy(alpha = 0.6f)
+                )
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
@@ -340,7 +406,7 @@ fun FinPilotBottomNavBar(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(horizontal = 8.dp, vertical = 4.dp) // Match the 8.dp horizontal padding of the icons row for perfect centering
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 if (hasInitializedPosition) {
                     Box(
@@ -355,22 +421,41 @@ fun FinPilotBottomNavBar(
                             .size(width = pillWidth, height = pillHeight)
                             .clip(RoundedCornerShape(26.dp))
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color(0x33FFFFFF),
-                                        Color(0x1AFFFFFF),
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF3A3A3A),
+                                            Color(0xFF2A2A2A),
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0x33FFFFFF),
+                                            Color(0x1AFFFFFF),
+                                        )
+                                    )
+                                }
                             )
                             .border(
                                 width = 1.5.dp,
-                                brush = Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xFFCCCCCC),
-                                        Color(0x99FFFFFF),
-                                        Color(0x66FFFFFF),
+                                brush = if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF666666),
+                                            Color(0xFF444444),
+                                            Color(0xFF333333),
+                                        )
                                     )
-                                ),
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFFCCCCCC),
+                                            Color(0x99FFFFFF),
+                                            Color(0x66FFFFFF),
+                                        )
+                                    )
+                                },
                                 shape = RoundedCornerShape(26.dp)
                             )
                             .border(
@@ -418,8 +503,9 @@ fun FinPilotBottomNavBar(
                         item     = item,
                         isActive = isActive,
                         scale    = scaleFactor,
+                        isDark   = isDark,
                         modifier = Modifier
-                            .weight(1f) // Distributes uniformly on any screen size adaptively
+                            .weight(1f)
                             .onGloballyPositioned { coords ->
                                 val width = coords.size.width
                                 val left = coords.positionInParent().x
@@ -452,11 +538,19 @@ fun FinPilotBottomNavBar(
                 .matchParentSize()
                 .clip(RoundedCornerShape(32.dp))
                 .background(
-                    Brush.verticalGradient(
-                        0f    to GlassWhite.copy(alpha = 0.18f),
-                        0.45f to GlassWhite.copy(alpha = 0.04f),
-                        1f    to Color.Transparent,
-                    ),
+                    if (isDark) {
+                        Brush.verticalGradient(
+                            0f    to Color.White.copy(alpha = 0.08f),
+                            0.45f to Color.White.copy(alpha = 0.02f),
+                            1f    to Color.Transparent,
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            0f    to GlassWhite.copy(alpha = 0.18f),
+                            0.45f to GlassWhite.copy(alpha = 0.04f),
+                            1f    to Color.Transparent,
+                        )
+                    }
                 ),
         )
     }
@@ -469,11 +563,15 @@ private fun GlassNavBarItem(
     item:     NavItem,
     isActive: Boolean,
     scale:    Float,
+    isDark:   Boolean,
     modifier: Modifier = Modifier,
     onClick:  () -> Unit,
 ) {
+    val activeTint = if (isDark) Color.White else Color.Black
+    val inactiveTint = if (isDark) Color(0xFFBBBBBB) else Color(0xFF666666)
+
     val iconTint by animateColorAsState(
-        targetValue   = if (isActive) Color.Black else InactiveIcon,
+        targetValue   = if (isActive) activeTint else inactiveTint,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label         = "tint_${item.tab}",
     )
@@ -500,7 +598,7 @@ private fun GlassNavBarItem(
                 indication = null,
                 onClick = onClick
             )
-            .height(52.dp),  // Fixed height, while width flows naturally from Row weight
+            .height(52.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -511,7 +609,7 @@ private fun GlassNavBarItem(
                 imageVector        = item.icon,
                 contentDescription = item.label,
                 tint               = iconTint,
-                modifier           = Modifier.size(20.dp).offset(y = 0.dp), // Bring closer to text
+                modifier           = Modifier.size(20.dp).offset(y = 0.dp),
             )
             Text(
                 text = item.label,
@@ -521,7 +619,7 @@ private fun GlassNavBarItem(
                 fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(y = (1).dp) // Bring closer to icon
+                modifier = Modifier.offset(y = (1).dp)
             )
         }
     }
