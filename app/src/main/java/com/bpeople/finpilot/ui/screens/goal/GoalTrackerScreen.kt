@@ -104,6 +104,7 @@ fun GoalTrackerScreen(
     onNavigateToExpense: () -> Unit = {},
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
 ) {
     val goalState by viewModel.goalState.collectAsState()
     val savingsHistory by viewModel.savingsHistory.collectAsState()
@@ -138,6 +139,7 @@ fun GoalTrackerScreen(
         onNavigateToGoals = {},
         onNavigateToProfile = onNavigateToProfile,
         onNavigateToIncome = onNavigateToIncome,
+        onNavigateToSettings = onNavigateToSettings,
     )
 
     if (showSheet) {
@@ -181,6 +183,7 @@ fun GoalTrackerScreenContent(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
 ) {
     val allGoals = goalState.allGoals
     val activeGoal = goalState.activeGoal
@@ -408,6 +411,7 @@ fun GoalTrackerScreenContent(
                 onNavigateToTransactions = onNavigateToTransactions,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
             )
         }
     }
