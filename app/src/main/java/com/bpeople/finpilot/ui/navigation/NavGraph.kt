@@ -141,6 +141,9 @@ fun FinPilotNavGraph(
                 onNavigateToIncome = {
                     navController.navigate(NavRoutes.Income.route)
                 },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
+                },
                 onNavigateToGoals = {
                     navController.navigate(NavRoutes.GoalTracker.createRoute())
                 },
