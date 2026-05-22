@@ -9,17 +9,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.CompareArrows
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,8 +54,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kashif_e.backdrop.drawBackdrop
 import com.kashif_e.backdrop.backdrops.layerBackdrop
 import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
@@ -74,7 +79,7 @@ private val OrangePrimary = GlassTheme.Orange
 private val OrangeGlow    = GlassTheme.OrangeLight
 private val GlassWhite    = GlassTheme.GlassSurface
 private val GlassBorder   = GlassTheme.GlassBorderLight
-private val InactiveIcon  = GlassTheme.TextSecondary
+private val InactiveIcon  = Color.DarkGray
 
 // ─── Nav model ───────────────────────────────────────────────────────────────
 
@@ -97,12 +102,11 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem(NavTab.HOME,         "Home",         Icons.Rounded.Home),
-    NavItem(NavTab.TRANSACTIONS, "Transactions", Icons.AutoMirrored.Rounded.CompareArrows),
-    NavItem(NavTab.GOALS,        "Goals",        Icons.Rounded.EmojiEvents),
-    NavItem(NavTab.SETTINGS,     "Settings",     Icons.Rounded.Settings),
-    NavItem(NavTab.PROFILE,      "Profile",      Icons.Rounded.Person)
-
+    NavItem(NavTab.HOME,         "Home",     Icons.Rounded.Home),
+    NavItem(NavTab.TRANSACTIONS, "Trans",    Icons.AutoMirrored.Rounded.CompareArrows),
+    NavItem(NavTab.GOALS,        "Goals",    Icons.Rounded.EmojiEvents),
+    NavItem(NavTab.SETTINGS,     "Settings", Icons.Rounded.Settings),
+    NavItem(NavTab.PROFILE,      "Profile",  Icons.Rounded.Person)
 )
 
 // ─── Swipe velocity threshold ────────────────────────────────────────────────
@@ -194,15 +198,15 @@ fun FinPilotBottomNavBar(
 
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
-    when (navItems.getOrNull(index)?.tab) {
-        NavTab.HOME         -> onNavigateToDashboard()
-        NavTab.TRANSACTIONS -> onNavigateToTransactions()
-        NavTab.GOALS        -> onNavigateToGoals()
-        NavTab.PROFILE      -> onNavigateToProfile()
-        NavTab.SETTINGS     -> onNavigateToSettings()
-        else                -> {}
+        when (navItems.getOrNull(index)?.tab) {
+            NavTab.HOME         -> onNavigateToDashboard()
+            NavTab.TRANSACTIONS -> onNavigateToTransactions()
+            NavTab.GOALS        -> onNavigateToGoals()
+            NavTab.PROFILE      -> onNavigateToProfile()
+            NavTab.SETTINGS     -> onNavigateToSettings()
+            else                -> {}
+        }
     }
-}
 
     Box(
         modifier = modifier
@@ -235,13 +239,13 @@ fun FinPilotBottomNavBar(
                     backdrop = backdrop,
                     shape = { RoundedCornerShape(32.dp) },
                     effects = {
-                        blur(blurRadiusPx) // crisp frosted blur
+                        blur(blurRadiusPx)
                         colorControls(
                             brightness = 0.06f,
                             contrast = 1.12f,
                             saturation = 1.0f,
                         )
-                                                opacity(0.15f) // higher opacity for clearer backdrop // beautifully balanced frosted glass transparency
+                        opacity(0.15f)
                     },
                     highlight = { Highlight.Ambient },
                     shadow = { Shadow(radius = 6.dp) },
@@ -251,9 +255,9 @@ fun FinPilotBottomNavBar(
                     width = 2.dp,
                     brush = Brush.verticalGradient(
                         listOf(
-                            Color(0xF0FFFFFF), // bright top reflection highlight
-                            Color(0x5DFFFFFF), // translucent midsection
-                            Color(0x66FF6B00), // warm glowing orange bottom outline
+                            Color(0xF0FFFFFF),
+                            Color(0x5DFFFFFF),
+                            Color(0x66FF6B00),
                         )
                     ),
                     shape = RoundedCornerShape(32.dp),
@@ -261,15 +265,15 @@ fun FinPilotBottomNavBar(
         )
 
         // ── Foreground content ────────────────────────────────────────────
-        val pillWidth = 54.dp
-        val pillHeight = 48.dp
+        val pillWidth = 58.dp
+        val pillHeight = 52.dp
         val pillWidthPx = with(LocalDensity.current) { pillWidth.toPx() }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                                .background(GlassWhite.copy(alpha = 0.6f)) // increased opacity for clearer glass
+                .background(GlassWhite.copy(alpha = 0.6f))
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
@@ -334,11 +338,11 @@ fun FinPilotBottomNavBar(
                     )
                 },
         ) {
-            // ── Glass Slider Pill (Background - aligned with exact horizontal padding) ──
+            // ── Glass Slider Pill ──
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp) // Match the 8.dp horizontal padding of the icons row for perfect centering
             ) {
                 if (hasInitializedPosition) {
                     Box(
@@ -351,26 +355,26 @@ fun FinPilotBottomNavBar(
                                 )
                             }
                             .size(width = pillWidth, height = pillHeight)
-                                                        .clip(RoundedCornerShape(32.dp))
+                            .clip(RoundedCornerShape(26.dp))
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        Color(0x22FFFFFF), // ultra-clear premium glass top sheen
-                                        Color(0x12FF6B00), // extremely subtle glass orange glow at bottom
+                                        Color(0x22FFFFFF),
+                                        Color(0x12FF6B00),
                                     )
                                 )
                             )
-                                                .border(
-                        width = 2.dp, // thicker premium glass bezel outline for stronger visibility
-                        brush = Brush.verticalGradient(
-                            listOf(
-                                Color(0xF0FFFFFF), // bright top reflection highlight
-                                Color(0x5DFFFFFF), // translucent midsection
-                                Color(0x66FF6B00), // warm glowing orange bottom outline
+                            .border(
+                                width = 2.dp,
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xF0FFFFFF),
+                                        Color(0x5DFFFFFF),
+                                        Color(0x66FF6B00),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(26.dp)
                             )
-                        ),
-                        shape = RoundedCornerShape(32.dp)
-                    )
                     )
                 }
             }
@@ -379,8 +383,7 @@ fun FinPilotBottomNavBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
                 navItems.forEachIndexed { index, item ->
@@ -393,15 +396,14 @@ fun FinPilotBottomNavBar(
                         val maxDistance = with(LocalDensity.current) { 70.dp.toPx() }
                         if (distance < maxDistance) {
                             val fraction = 1f - (distance / maxDistance)
-                            // Beautiful sine-power interpolation creating an organic water bubble swell profile
                             val smoothFraction = kotlin.math.sin(fraction * Math.PI / 2).toFloat()
-                            val bubbleProfile = smoothFraction.pow(2.2f)
-                                                        1f + 0.8f * bubbleProfile // increased zoom multiplier
+                            val bubbleProfile = smoothFraction.pow(1.5f)
+                            1f + 0.25f * bubbleProfile
                         } else {
                             1f
                         }
                     } else {
-                        if (isActive) 1.48f else 1f
+                        if (isActive) 1.12f else 1f
                     }
 
                     GlassNavBarItem(
@@ -409,6 +411,7 @@ fun FinPilotBottomNavBar(
                         isActive = isActive,
                         scale    = scaleFactor,
                         modifier = Modifier
+                            .weight(1f) // Distributes uniformly on any screen size adaptively
                             .onGloballyPositioned { coords ->
                                 val width = coords.size.width
                                 val left = coords.positionInParent().x
@@ -451,7 +454,7 @@ fun FinPilotBottomNavBar(
     }
 }
 
-// ─── Individual tab item (icons only, no labels) ─────────────────────────────
+// ─── Individual tab item (icons with labels) ─────────────────────────────────
 
 @Composable
 private fun GlassNavBarItem(
@@ -466,28 +469,52 @@ private fun GlassNavBarItem(
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label         = "tint_${item.tab}",
     )
+
+    // Clamp scale to prevent excessive zoom
+    val clampedScale = scale.coerceIn(1f, 1.15f)
+
     val smoothScale by animateFloatAsState(
-        targetValue   = scale,
+        targetValue   = clampedScale,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness    = Spring.StiffnessHigh,
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness    = Spring.StiffnessMedium,
         ),
         label = "scale_${item.tab}",
     )
+
+    // Using Box for perfect centering inside the dynamically distributed space
     Box(
         modifier = modifier
-                        .scale(smoothScale)
+            .scale(smoothScale)
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .height(52.dp),  // Fixed height, while width flows naturally from Row weight
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector        = item.icon,
-            contentDescription = item.label,
-            tint               = iconTint,
-            modifier           = Modifier
-                .size(24.dp),
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector        = item.icon,
+                contentDescription = item.label,
+                tint               = iconTint,
+                modifier           = Modifier.size(20.dp).offset(y = 0.dp), // Bring closer to text
+            )
+            Text(
+                text = item.label,
+                color = iconTint,
+                fontSize = 10.sp,
+                lineHeight = 10.sp,
+                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.offset(y = (1).dp) // Bring closer to icon
+            )
+        }
     }
 }
