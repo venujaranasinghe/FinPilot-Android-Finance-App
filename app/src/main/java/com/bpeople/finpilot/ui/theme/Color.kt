@@ -81,3 +81,23 @@ val PrimaryIndigo = Color(0xFF6366F1)
 val PrimaryTeal = Color(0xFF14B8A6)
 val DeepText = Color(0xFF111827)
 val SubtleText = Color(0xFF6B7280)
+
+// ── Enhanced Dark Theme Colors (matching Dashboard & Transactions) ────────────
+val DarkSurface = Color(0xFF1C1C1E)
+val DarkSurfaceVariant = Color(0xFF2C2C2E)
+val DarkBackground = Color(0xFF000000)
+val DarkBorder = Color(0xFF38383A)
+val DarkTextPrimary = Color(0xFFFFFFFF)
+val DarkTextSecondary = Color(0xFFEBEBF5).copy(alpha = 0.6f)
+val DarkTextHint = Color(0xFF636366)
+val DarkGlassBg = Color(0xFF1C1C1E).copy(alpha = 0.8f)
+val DarkGlassSurface = Color(0xFF2C2C2E).copy(alpha = 0.6f)
+val DarkGlassBorder = Color(0xFF38383A)
+val DarkGlassBorderLight = Color(0xFF38383A).copy(alpha = 0.5f)
+
+// ── Goal-specific colors ──────────────────────────────────────────────────────
+val GoalOrangeAccent = Color(0xFFFF6B00)
+val GoalOrangeSoft = Color(0xFFFF8F3C)
+val GoalStatusGreen = Color(0xFF10B981)
+val GoalStatusAmber = Color(0xFFF59E0B)
+val GoalStatusRed = Color(0xFFEF4444)
