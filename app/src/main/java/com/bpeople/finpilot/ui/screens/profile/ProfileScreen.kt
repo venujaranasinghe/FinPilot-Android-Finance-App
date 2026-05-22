@@ -251,7 +251,8 @@ fun ProfileScreen(
                 onNavigateToExpense = onNavigateToExpense,
                 onNavigateToTransactions = onNavigateToTransactions,
                 onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile
+                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings
             )
         }
     }

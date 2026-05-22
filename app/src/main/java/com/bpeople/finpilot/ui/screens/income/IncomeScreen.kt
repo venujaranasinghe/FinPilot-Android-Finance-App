@@ -156,6 +156,7 @@ fun IncomeScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     onNavigateToAddIncome: () -> Unit,
 ) {
     val state by viewModel.incomeState.collectAsState()
@@ -389,6 +390,7 @@ fun IncomeScreen(
                 onNavigateToTransactions = onNavigateToTransactions,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
             )
         }
     }
@@ -798,5 +800,3 @@ private fun GlassIncomeMonthlyTrend(
         }
     }
 }
-
-

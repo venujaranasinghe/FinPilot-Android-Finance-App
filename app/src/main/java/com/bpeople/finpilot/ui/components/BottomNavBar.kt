@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.rounded.CompareArrows
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +81,7 @@ private val InactiveIcon  = GlassTheme.TextSecondary
 enum class NavTab {
     HOME, TRANSACTIONS, GOALS, PROFILE,
     DASHBOARD, INCOME, EXPENSE,
+    SETTINGS,
 }
 
 private fun NavTab.resolved(): NavTab = when (this) {
@@ -98,7 +100,9 @@ private val navItems = listOf(
     NavItem(NavTab.HOME,         "Home",         Icons.Rounded.Home),
     NavItem(NavTab.TRANSACTIONS, "Transactions", Icons.AutoMirrored.Rounded.CompareArrows),
     NavItem(NavTab.GOALS,        "Goals",        Icons.Rounded.EmojiEvents),
-    NavItem(NavTab.PROFILE,      "Profile",      Icons.Rounded.Person),
+    NavItem(NavTab.SETTINGS,     "Settings",     Icons.Rounded.Settings),
+    NavItem(NavTab.PROFILE,      "Profile",      Icons.Rounded.Person)
+
 )
 
 // ─── Swipe velocity threshold ────────────────────────────────────────────────
@@ -117,6 +121,7 @@ fun FinPilotBottomNavBar(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals:        () -> Unit = {},
     onNavigateToProfile:      () -> Unit = {},
+    onNavigateToSettings:     () -> Unit = {},
 ) {
     val active = currentTab.resolved()
 
@@ -127,7 +132,7 @@ fun FinPilotBottomNavBar(
     var swipeIndex by remember(activeIndex) { mutableIntStateOf(activeIndex) }
 
     // Coordinates of navigation item centers relative to their parent row
-    val tabCenters = remember { mutableStateListOf(0f, 0f, 0f, 0f) }
+    val tabCenters = remember { mutableStateListOf(0f, 0f, 0f, 0f, 0f) }
 
     // Sliding pill horizontal position
     val sliderX = remember { Animatable(0f) }
@@ -189,14 +194,15 @@ fun FinPilotBottomNavBar(
 
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
-        when (navItems.getOrNull(index)?.tab) {
-            NavTab.HOME         -> onNavigateToDashboard()
-            NavTab.TRANSACTIONS -> onNavigateToTransactions()
-            NavTab.GOALS        -> onNavigateToGoals()
-            NavTab.PROFILE      -> onNavigateToProfile()
-            else                -> {}
-        }
+    when (navItems.getOrNull(index)?.tab) {
+        NavTab.HOME         -> onNavigateToDashboard()
+        NavTab.TRANSACTIONS -> onNavigateToTransactions()
+        NavTab.GOALS        -> onNavigateToGoals()
+        NavTab.PROFILE      -> onNavigateToProfile()
+        NavTab.SETTINGS     -> onNavigateToSettings()
+        else                -> {}
     }
+}
 
     Box(
         modifier = modifier
@@ -242,8 +248,14 @@ fun FinPilotBottomNavBar(
                     innerShadow = { InnerShadow(radius = 3.dp) },
                 )
                 .border(
-                    width = 1.dp,
-                                        color = Color(0x5DFFFFFF), // stronger translucent border, // elegant translucent white border highlight
+                    width = 2.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color(0xF0FFFFFF), // bright top reflection highlight
+                            Color(0x5DFFFFFF), // translucent midsection
+                            Color(0x66FF6B00), // warm glowing orange bottom outline
+                        )
+                    ),
                     shape = RoundedCornerShape(32.dp),
                 ),
         )
@@ -339,7 +351,7 @@ fun FinPilotBottomNavBar(
                                 )
                             }
                             .size(width = pillWidth, height = pillHeight)
-                            .clip(RoundedCornerShape(16.dp))
+                                                        .clip(RoundedCornerShape(32.dp))
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
@@ -348,17 +360,17 @@ fun FinPilotBottomNavBar(
                                     )
                                 )
                             )
-                            .border(
-                                width = 1.2.dp, // thicker premium glass bezel outline
-                                brush = Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xE6FFFFFF), // extremely bright top reflection highlight (90% white)
-                                        Color(0x2BFFFFFF), // highly translucent liquid body (17% white)
-                                        Color(0x4DFF6B00), // warm glowing refracted orange bottom outline
-                                    )
-                                ),
-                                shape = RoundedCornerShape(16.dp)
+                                                .border(
+                        width = 2.dp, // thicker premium glass bezel outline for stronger visibility
+                        brush = Brush.verticalGradient(
+                            listOf(
+                                Color(0xF0FFFFFF), // bright top reflection highlight
+                                Color(0x5DFFFFFF), // translucent midsection
+                                Color(0x66FF6B00), // warm glowing orange bottom outline
                             )
+                        ),
+                        shape = RoundedCornerShape(32.dp)
+                    )
                     )
                 }
             }
@@ -384,7 +396,7 @@ fun FinPilotBottomNavBar(
                             // Beautiful sine-power interpolation creating an organic water bubble swell profile
                             val smoothFraction = kotlin.math.sin(fraction * Math.PI / 2).toFloat()
                             val bubbleProfile = smoothFraction.pow(2.2f)
-                                                        1f + 0.6f * bubbleProfile // increased zoom multiplier
+                                                        1f + 0.8f * bubbleProfile // increased zoom multiplier
                         } else {
                             1f
                         }
@@ -464,7 +476,7 @@ private fun GlassNavBarItem(
     )
     Box(
         modifier = modifier
-            .scale(smoothScale)
+                        .scale(smoothScale)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),

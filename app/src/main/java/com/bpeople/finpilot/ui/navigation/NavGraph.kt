@@ -155,6 +155,9 @@ fun FinPilotNavGraph(
                 onNavigateToNotifications = {
                     navController.navigate(NavRoutes.Notifications.route)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
                 onLogout = {
                     authViewModel.signOut()
                     navController.navigate(NavRoutes.Login.route) {
@@ -182,6 +185,9 @@ fun FinPilotNavGraph(
                 },
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
                 },
                 onNavigateToAddIncome = {
                     navController.navigate(NavRoutes.AddIncome.route)
@@ -211,6 +217,9 @@ fun FinPilotNavGraph(
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
                 onIncomeAdded = {
                     navController.popBackStack()
                 },
@@ -236,6 +245,9 @@ fun FinPilotNavGraph(
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
                 onExpenseAdded = { insight ->
                     navController.previousBackStackEntry
                         ?.savedStateHandle
@@ -250,7 +262,7 @@ fun FinPilotNavGraph(
             arguments = listOf(
                 navArgument(NavRoutes.GoalTracker.ARG_GOAL_ID) { type = NavType.StringType }
             ),
-        ) { backStackEntry ->
+        ) {
             val goalViewModel: GoalViewModel = hiltViewModel()
             
             GoalTrackerScreen(
@@ -271,7 +283,10 @@ fun FinPilotNavGraph(
                 },
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
-                }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
+                },
             )
         }
 
@@ -289,6 +304,9 @@ fun FinPilotNavGraph(
                 },
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(NavRoutes.Settings.route)
                 },
             )
         }
@@ -353,7 +371,24 @@ fun FinPilotNavGraph(
             SettingsScreen(
                 state = settingsState,
                 events = settingsViewModel.events,
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDashboard = {
+                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.Income.route)
+                },
+                onNavigateToExpense = {
+                    navController.navigate(NavRoutes.AddExpense.route)
+                },
+                onNavigateToTransactions = {
+                    navController.navigate(NavRoutes.Transactions.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
                 onNotificationsChange = settingsViewModel::onNotificationsChange,
                 onThemeModeChange = settingsViewModel::onThemeModeChange,
                 onCloudSyncChange = settingsViewModel::onCloudSyncChange,

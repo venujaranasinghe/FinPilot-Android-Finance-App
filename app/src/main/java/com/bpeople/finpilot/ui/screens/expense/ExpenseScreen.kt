@@ -113,6 +113,7 @@ fun ExpenseScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     onExpenseAdded: (String) -> Unit,
 ) {
     val state by viewModel.expenseState.collectAsState()
@@ -151,6 +152,7 @@ fun ExpenseScreen(
         onNavigateToTransactions = onNavigateToTransactions,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
+        onNavigateToSettings = onNavigateToSettings,
         onShowAddSheet = viewModel::onShowAddSheet,
         onHideAddSheet = viewModel::onHideAddSheet,
         onDeleteEntry = viewModel::deleteExpense,
@@ -185,6 +187,7 @@ fun ExpenseListContent(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     onShowAddSheet: () -> Unit,
     onHideAddSheet: () -> Unit,
     onDeleteEntry: (ExpenseEntry) -> Unit,
@@ -491,6 +494,7 @@ fun ExpenseListContent(
                 onNavigateToTransactions = onNavigateToTransactions,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
             )
         }
     }
