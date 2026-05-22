@@ -280,6 +280,7 @@ fun TransactionScreen(
     onNavigateToDashboard: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onSeeAllTransactions: () -> Unit = {},
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -406,6 +407,7 @@ fun TransactionScreen(
                 onNavigateToTransactions = { /* already here */ },
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
             )
         }
     }

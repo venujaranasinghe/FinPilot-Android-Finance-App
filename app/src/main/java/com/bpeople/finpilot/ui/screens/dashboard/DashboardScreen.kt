@@ -265,6 +265,7 @@ fun DashboardScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     var balanceVisible by remember { mutableStateOf(true) }
@@ -429,6 +430,7 @@ fun DashboardScreen(
                 onNavigateToTransactions = onNavigateToTransactions,
                 onNavigateToGoals = onNavigateToGoals,
                 onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
             )
         }
     }

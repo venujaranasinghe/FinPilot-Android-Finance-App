@@ -9,17 +9,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Brightness4
 import androidx.compose.material.icons.rounded.Brightness7
@@ -35,7 +37,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -47,8 +48,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -59,7 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -67,14 +65,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.bpeople.finpilot.data.model.ThemeMode
-import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
+import com.bpeople.finpilot.ui.components.NavTab
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.emptyFlow
 import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +80,12 @@ import androidx.compose.ui.tooling.preview.Preview
 fun SettingsScreen(
     state: SettingsViewModel.SettingsUiState,
     events: Flow<SettingsViewModel.SettingsEvent>,
-    onNavigateBack: () -> Unit,
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateToIncome: () -> Unit = {},
+    onNavigateToExpense: () -> Unit = {},
+    onNavigateToTransactions: () -> Unit = {},
+    onNavigateToGoals: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onCloudSyncChange: (Boolean) -> Unit,
@@ -180,96 +183,93 @@ fun SettingsScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    // Custom header replace TopAppBar
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Settings",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
-                            .padding(start = 8.dp)
-                            .size(40.dp)
-                            .background(MaterialTheme.colorScheme.surface, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                SettingsSectionCard(title = "Preferences") {
-                    ThemeModeRow(
-                        selectedMode = state.themeMode,
-                        onModeSelected = onThemeModeChange
+                            .statusBarsPadding()
+                            .padding(bottom = 8.dp)
                     )
-                    SettingsRowDivider()
-                    preferences.forEachIndexed { index, toggle ->
-                        SettingsToggleRow(toggle)
-                        if (index < preferences.lastIndex) {
-                            SettingsRowDivider()
+                }
+
+                item {
+                    SettingsSectionCard(title = "Preferences") {
+                        ThemeModeRow(
+                            selectedMode = state.themeMode,
+                            onModeSelected = onThemeModeChange
+                        )
+                        SettingsRowDivider()
+                        preferences.forEachIndexed { index, toggle ->
+                            SettingsToggleRow(toggle)
+                            if (index < preferences.lastIndex) {
+                                SettingsRowDivider()
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                SettingsSectionCard(title = "Security") {
-                    security.forEachIndexed { index, toggle ->
-                        SettingsToggleRow(toggle)
-                        if (index < security.lastIndex) {
-                            SettingsRowDivider()
+                item {
+                    SettingsSectionCard(title = "Security") {
+                        security.forEachIndexed { index, toggle ->
+                            SettingsToggleRow(toggle)
+                            if (index < security.lastIndex) {
+                                SettingsRowDivider()
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                SettingsSectionCard(title = "Account") {
-                    accountActions.forEachIndexed { index, action ->
-                        SettingsNavigationRow(action)
-                        if (index < accountActions.lastIndex) {
-                            SettingsRowDivider()
+                item {
+                    SettingsSectionCard(title = "Account") {
+                        accountActions.forEachIndexed { index, action ->
+                            SettingsNavigationRow(action)
+                            if (index < accountActions.lastIndex) {
+                                SettingsRowDivider()
+                            }
                         }
                     }
                 }
+
+                item {
+                    // App version footer
+                    Text(
+                        text = "FinPilot · v1.0.0",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(110.dp))
+                }
             }
 
-            item {
-                // App version footer
-                Text(
-                    text = "FinPilot · v1.0.0",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            FinPilotBottomNavBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                currentTab = NavTab.SETTINGS,
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
+                onNavigateToExpense = onNavigateToExpense,
+                onNavigateToTransactions = onNavigateToTransactions,
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = {}
+            )
         }
     }
 
@@ -554,4 +554,3 @@ private fun createCsvExport(context: android.content.Context, csvContent: String
         null
     }
 }
-

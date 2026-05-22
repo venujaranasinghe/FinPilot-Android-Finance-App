@@ -168,6 +168,7 @@ fun AddIncomeScreen(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     onIncomeAdded: () -> Unit,
 ) {
     val state by viewModel.incomeState.collectAsState()
@@ -211,6 +212,7 @@ fun AddIncomeScreen(
         onNavigateToTransactions = onNavigateToTransactions,
         onNavigateToGoals = onNavigateToGoals,
         onNavigateToProfile = onNavigateToProfile,
+        onNavigateToSettings = onNavigateToSettings,
         onSourceChange = viewModel::onSourceChange,
         onAmountChange = viewModel::onAmountOriginalChange,
         onCurrencyChange = viewModel::onCurrencyChange,
@@ -238,6 +240,7 @@ fun AddIncomeContent(
     onNavigateToTransactions: () -> Unit = {},
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     onSourceChange: (String) -> Unit,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
@@ -655,6 +658,18 @@ fun AddIncomeContent(
                     Spacer(Modifier.height(24.dp))
                 }
             }
+
+            FinPilotBottomNavBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                currentTab = NavTab.INCOME,
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateToIncome = onNavigateToIncome,
+                onNavigateToExpense = onNavigateToExpense,
+                onNavigateToTransactions = onNavigateToTransactions,
+                onNavigateToGoals = onNavigateToGoals,
+                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToSettings = onNavigateToSettings,
+            )
         }
     }
 }
