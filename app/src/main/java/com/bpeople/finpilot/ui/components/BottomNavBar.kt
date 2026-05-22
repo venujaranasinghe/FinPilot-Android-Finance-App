@@ -75,8 +75,6 @@ import kotlin.math.roundToInt
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 
-private val OrangePrimary = GlassTheme.Orange
-private val OrangeGlow    = GlassTheme.OrangeLight
 private val GlassWhite    = GlassTheme.GlassSurface
 private val GlassBorder   = GlassTheme.GlassBorderLight
 private val InactiveIcon  = Color.DarkGray
@@ -257,7 +255,7 @@ fun FinPilotBottomNavBar(
                         listOf(
                             Color(0xF0FFFFFF),
                             Color(0x5DFFFFFF),
-                            Color(0x66FF6B00),
+                            Color(0x66FFFFFF),
                         )
                     ),
                     shape = RoundedCornerShape(32.dp),
@@ -359,18 +357,28 @@ fun FinPilotBottomNavBar(
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        Color(0x22FFFFFF),
-                                        Color(0x12FF6B00),
+                                        Color(0x33FFFFFF),
+                                        Color(0x1AFFFFFF),
                                     )
                                 )
                             )
                             .border(
-                                width = 2.dp,
+                                width = 1.5.dp,
                                 brush = Brush.verticalGradient(
                                     listOf(
-                                        Color(0xF0FFFFFF),
-                                        Color(0x5DFFFFFF),
-                                        Color(0x66FF6B00),
+                                        Color(0xFFCCCCCC),
+                                        Color(0x99FFFFFF),
+                                        Color(0x66FFFFFF),
+                                    )
+                                ),
+                                shape = RoundedCornerShape(26.dp)
+                            )
+                            .border(
+                                width = 0.5.dp,
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        Color(0x33FFFFFF),
+                                        Color(0x00FFFFFF),
                                     )
                                 ),
                                 shape = RoundedCornerShape(26.dp)
@@ -465,7 +473,7 @@ private fun GlassNavBarItem(
     onClick:  () -> Unit,
 ) {
     val iconTint by animateColorAsState(
-        targetValue   = if (isActive) OrangeGlow else InactiveIcon,
+        targetValue   = if (isActive) Color.Black else InactiveIcon,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label         = "tint_${item.tab}",
     )
