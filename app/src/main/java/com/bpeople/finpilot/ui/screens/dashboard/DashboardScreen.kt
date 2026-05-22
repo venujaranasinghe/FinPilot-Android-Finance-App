@@ -102,8 +102,22 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-// ── Colour constants ──────────────────────────────────────────────────────────
+// ── Enhanced Dark Theme Colors ───────────────────────────────────────────────
+private val DarkSurface = Color(0xFF1C1C1E)
+private val DarkSurfaceVariant = Color(0xFF2C2C2E)
+private val DarkBackground = Color(0xFF000000)
+private val DarkBorder = Color(0xFF38383A)
+private val DarkTextPrimary = Color(0xFFFFFFFF)
+private val DarkTextSecondary = Color(0xFFEBEBF5).copy(alpha = 0.6f)
 
+private val LightSurface = Color(0xFFFFFFFF)
+private val LightSurfaceVariant = Color(0xFFF2F2F7)
+private val LightBackground = Color(0xFFF9FAFB)
+private val LightBorder = Color(0xFFE5E7EB)
+private val LightTextPrimary = Color(0xFF000000)
+private val LightTextSecondary = Color(0xFF3C3C43).copy(alpha = 0.6f)
+
+// ── Brand Colors (work well in both themes) ─────────────────────────────────
 private val Orange = Color(0xFFF97316)
 private val OrangeLight = Color(0xFFFF8C42)
 private val OrangeHero1 = Color(0xFFFF6B35)
@@ -112,11 +126,8 @@ private val GlassBlueDeep = Color(0xFFF97316)
 private val GlassBlue = Color(0xFFFF8C42)
 private val GlassBlueSoft = Color(0xFFFDBA74)
 private val IncomePalette = listOf(
-    Color(0xFFF97316),
-    Color(0xFF4CAF50),
-    Color(0xFF2196F3),
-    Color(0xFF9C27B0),
-    Color(0xFFF59E0B),
+    Color(0xFFF97316), Color(0xFF4CAF50), Color(0xFF2196F3),
+    Color(0xFF9C27B0), Color(0xFFF59E0B),
 )
 private val ExpensePalette = listOf(
     Color(0xFFF97316), Color(0xFFEF4444), Color(0xFF8B5CF6),
@@ -124,8 +135,26 @@ private val ExpensePalette = listOf(
 )
 private val GoalGradient = listOf(OrangeHero1, OrangeHero2, Color(0xFFFDBA74))
 
-// ── Formatters ─────────────────────────────────────────────────────────────────
+// ── Theme-aware color providers ──────────────────────────────────────────────
+@Composable
+private fun surfaceColor(): Color = if (isSystemInDarkTheme()) DarkSurface else LightSurface
 
+@Composable
+private fun surfaceVariantColor(): Color = if (isSystemInDarkTheme()) DarkSurfaceVariant else LightSurfaceVariant
+
+@Composable
+private fun backgroundColor(): Color = if (isSystemInDarkTheme()) DarkBackground else LightBackground
+
+@Composable
+private fun borderColor(): Color = if (isSystemInDarkTheme()) DarkBorder else LightBorder
+
+@Composable
+private fun textPrimaryColor(): Color = MaterialTheme.colorScheme.onSurface
+
+@Composable
+private fun textSecondaryColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+
+// ── Formatters ─────────────────────────────────────────────────────────────────
 private fun formatLKR(amount: Double): String = when {
     amount >= 1_000_000 -> "LKR %.2fM".format(amount / 1_000_000)
     amount >= 1_000 -> "LKR %.0fK".format(amount / 1_000)
@@ -160,35 +189,21 @@ private fun categoryCircleColor(category: String): Color {
 }
 
 // ── Glassmorphism card scaffold ───────────────────────────────────────────────
-
 @Composable
 private fun GlassCard(
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = RoundedCornerShape(20.dp),
     content: @Composable () -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val glassFill = if (isDark) GlassBlue.copy(alpha = 0.12f) else GlassBlue.copy(alpha = 0.08f)
-    val shimmerBrush = Brush.verticalGradient(
-        listOf(
-            Color.White.copy(alpha = if (isDark) 0.14f else 0.90f),
-            Color.White.copy(alpha = if (isDark) 0.04f else 0.40f),
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = surfaceColor()),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (isSystemInDarkTheme()) DarkBorder else LightBorder
         ),
-    )
-    val borderBrush = Brush.linearGradient(
-        listOf(
-            GlassBlueDeep.copy(alpha = if (isDark) 0.35f else 0.40f),
-            Color.White.copy(alpha = if (isDark) 0.08f else 0.50f),
-        ),
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(glassFill, shape)
-            .background(shimmerBrush, shape)
-            .border(0.8.dp, borderBrush, shape),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier
@@ -212,7 +227,12 @@ private fun SectionRowHeader(title: String, actionLabel: String = "", onAction: 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = textPrimaryColor()
+        )
         if (actionLabel.isNotBlank()) {
             Text(
                 text = actionLabel,
@@ -230,10 +250,13 @@ private fun GradientProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 10.dp,
-    gradientColors: List<Color> = GoalGradient,
     trackColor: Color = Color.Unspecified,
+    progressColor: Color = OrangeHero1,
 ) {
-    val resolvedTrack = if (trackColor == Color.Unspecified) MaterialTheme.colorScheme.outlineVariant else trackColor
+    val resolvedTrack = if (trackColor == Color.Unspecified) {
+        if (isSystemInDarkTheme()) DarkSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
+    } else trackColor
+
     val animated by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(1000),
@@ -244,7 +267,7 @@ private fun GradientProgressBar(
         drawRoundRect(color = resolvedTrack, cornerRadius = cr)
         if (animated > 0f) {
             drawRoundRect(
-                brush = Brush.horizontalGradient(gradientColors, endX = size.width * animated),
+                color = progressColor,
                 size = Size(size.width * animated, size.height),
                 cornerRadius = cr,
             )
@@ -253,7 +276,6 @@ private fun GradientProgressBar(
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -272,17 +294,6 @@ fun DashboardScreen(
     var balanceVisible by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
     val pullState = rememberPullToRefreshState()
-    val isDark = isSystemInDarkTheme()
-
-    val bgGradient = if (isDark) {
-        Brush.verticalGradient(
-            listOf(Color(0xFF0A0500), Color(0xFF000000), Color(0xFF050010)),
-        )
-    } else {
-        Brush.verticalGradient(
-            listOf(Color(0xFFFFF7ED), Color(0xFFF5F3FF), Color(0xFFFFFFFF)),
-        )
-    }
 
     LaunchedEffect(isRefreshing) {
         if (!isRefreshing) return@LaunchedEffect
@@ -290,51 +301,15 @@ fun DashboardScreen(
         isRefreshing = false
     }
 
-    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { pv ->
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = backgroundColor()
+    ) { pv ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(bgGradient),
+                .background(backgroundColor()),
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GlassBlueDeep.copy(alpha = if (isDark) 0.28f else 0.18f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(size.width * 0.88f, size.height * 0.07f),
-                        radius = 260.dp.toPx(),
-                    ),
-                    center = Offset(size.width * 0.88f, size.height * 0.07f),
-                    radius = 260.dp.toPx(),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GlassBlue.copy(alpha = if (isDark) 0.15f else 0.08f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(size.width * 0.08f, size.height * 0.42f),
-                        radius = 220.dp.toPx(),
-                    ),
-                    center = Offset(size.width * 0.08f, size.height * 0.42f),
-                    radius = 220.dp.toPx(),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GlassBlueSoft.copy(alpha = if (isDark) 0.12f else 0.07f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(size.width * 0.5f, size.height * 0.85f),
-                        radius = 200.dp.toPx(),
-                    ),
-                    center = Offset(size.width * 0.5f, size.height * 0.85f),
-                    radius = 200.dp.toPx(),
-                )
-            }
-
             PullToRefreshBox(
                 modifier = Modifier
                     .fillMaxSize()
@@ -441,7 +416,6 @@ fun DashboardScreen(
 }
 
 // ── Section 1: Dashboard Header ───────────────────────────────────────────────
-
 @Composable
 private fun DashboardHeader(
     userName: String,
@@ -456,17 +430,11 @@ private fun DashboardHeader(
     val dateLabel = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault())
         .format(Calendar.getInstance().time)
         .uppercase(Locale.getDefault())
-    val monthLabel = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-        .format(Calendar.getInstance().time)
-
-    val isDark = isSystemInDarkTheme()
-    val glassFill = if (isDark) GlassBlue.copy(alpha = 0.10f) else GlassBlue.copy(alpha = 0.06f)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(glassFill)
-            // Pushes content below the system status bar — fixes overlap with the top alert bar
+            .background(backgroundColor())
             .statusBarsPadding(),
     ) {
         Row(
@@ -476,11 +444,7 @@ private fun DashboardHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-
-            // ── Left: date strip → greeting → name → context badge ────────
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-
-                // All-caps date strip with orange accent dot
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -500,91 +464,57 @@ private fun DashboardHeader(
                     )
                 }
 
-                // Greeting line
                 Text(
                     text = greeting,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = textSecondaryColor(),
                     letterSpacing = 0.2.sp,
                 )
 
-                // Name — headline weight, tight tracking
                 Text(
                     text = userName.ifBlank { "User" },
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = textPrimaryColor(),
                     letterSpacing = (-0.5).sp,
                 )
-
-                // "Financial Overview" context badge
-
             }
 
-            // ── Right: notification button + period label ──────────────────
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                // Rounded-square glass notification button
                 Box {
                     IconButton(
                         onClick = onNavigateToNotifications,
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(13.dp))
-                            .background(
-                                if (isDark) GlassBlue.copy(alpha = 0.18f)
-                                else GlassBlue.copy(alpha = 0.12f),
-                            )
-                            .border(
-                                0.8.dp,
-                                if (isDark) GlassBlueDeep.copy(alpha = 0.32f)
-                                else GlassBlueDeep.copy(alpha = 0.25f),
-                                RoundedCornerShape(13.dp),
-                            ),
+                            .background(surfaceColor())
+                            .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
                     ) {
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = textPrimaryColor(),
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    // Unread indicator with border ring so it's visible on all backgrounds
                     Box(
                         modifier = Modifier
                             .size(9.dp)
                             .background(Color(0xFFEF4444), CircleShape)
-                            .border(
-                                1.5.dp,
-                                if (isDark) Color(0xFF0A0500) else Color(0xFFFFF7ED),
-                                CircleShape,
-                            )
+                            .border(1.5.dp, backgroundColor(), CircleShape)
                             .align(Alignment.TopEnd),
                     )
                 }
-
             }
         }
-
-        // Orange gradient accent rule
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.5.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        listOf(GlassBlueDeep, GlassBlue, GlassBlueSoft, Color.Transparent),
-                    ),
-                ),
-        )
     }
 }
 
 // ── Section 2: Hero Balance Card ─────────────────────────────────────────────
-
 @Composable
 private fun HeroBalanceCard(
     totalBalance: Double,
@@ -601,51 +531,31 @@ private fun HeroBalanceCard(
     }
     val displayBalance = totalBalance * animCounter.value
 
+    // Hero card always uses dark theme aesthetic for better contrast
+    val heroBg = Color(0xFF1F2937)
+    val heroTextColor = Color.White
+
     Card(
         modifier = modifier.fillMaxWidth().height(200.dp),
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(containerColor = heroBg),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        listOf(GlassBlueDeep, GlassBlue, GlassBlueSoft, Color(0xFFDBEAFE)),
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                    ),
-                ),
+            modifier = Modifier.fillMaxSize(),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.10f),
+                    color = Color.White.copy(alpha = 0.05f),
                     radius = 130.dp.toPx(),
                     center = Offset(size.width * 0.90f, size.height * 0.12f),
                 )
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.07f),
+                    color = Color.White.copy(alpha = 0.03f),
                     radius = 80.dp.toPx(),
                     center = Offset(size.width * 0.80f, size.height * 0.65f),
                 )
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.06f),
-                    radius = 45.dp.toPx(),
-                    center = Offset(size.width * 0.15f, size.height * 0.18f),
-                )
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.18f), Color.Transparent),
-                        ),
-                    ),
-            )
 
             Column(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -659,14 +569,14 @@ private fun HeroBalanceCard(
                     Text(
                         "Total Balance",
                         fontSize = 13.sp,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = heroTextColor.copy(alpha = 0.85f),
                         fontWeight = FontWeight.Medium,
                     )
                     IconButton(onClick = onToggleVisibility, modifier = Modifier.size(24.dp)) {
                         Icon(
                             imageVector = if (balanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = heroTextColor.copy(alpha = 0.85f),
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -676,7 +586,7 @@ private fun HeroBalanceCard(
                     text = if (balanceVisible) formatLKRFull(displayBalance) else "LKR ●●●●●",
                     fontSize = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
+                    color = heroTextColor,
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -715,7 +625,6 @@ private fun MiniStatChip(label: String, value: String, isPositive: Boolean) {
 }
 
 // ── Section 3: Quick Actions ──────────────────────────────────────────────────
-
 @Composable
 private fun QuickActionsRow(
     onAddIncome: () -> Unit,
@@ -723,21 +632,12 @@ private fun QuickActionsRow(
     onGoals: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val glassFill = if (isDark) GlassBlue.copy(alpha = 0.12f) else GlassBlue.copy(alpha = 0.08f)
-    val borderBrush = Brush.linearGradient(
-        listOf(
-            GlassBlueDeep.copy(alpha = if (isDark) 0.35f else 0.40f),
-            Color.White.copy(alpha = if (isDark) 0.08f else 0.50f),
-        ),
-    )
-
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, borderBrush, RoundedCornerShape(20.dp)),
+            .background(surfaceColor())
+            .border(0.8.dp, borderColor(), RoundedCornerShape(20.dp)),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
@@ -746,25 +646,21 @@ private fun QuickActionsRow(
             QuickActionButton(
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
                 label = "Add Income",
-                tint = Color(0xFF10B981),
                 onClick = onAddIncome,
             )
             QuickActionButton(
                 icon = Icons.AutoMirrored.Filled.TrendingDown,
                 label = "Add Expense",
-                tint = Color(0xFFEF4444),
                 onClick = onAddExpense,
             )
             QuickActionButton(
                 icon = Icons.AutoMirrored.Filled.CompareArrows,
                 label = "Transfer",
-                tint = Color(0xFF6366F1),
                 onClick = {},
             )
             QuickActionButton(
                 icon = Icons.Default.EmojiEvents,
                 label = "Goals",
-                tint = GlassBlueDeep,
                 onClick = onGoals,
             )
         }
@@ -776,7 +672,6 @@ private fun QuickActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    tint: Color = Orange,
 ) {
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -784,11 +679,10 @@ private fun QuickActionButton(
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
         label = "qa_scale",
     )
-    val isDark = isSystemInDarkTheme()
-    val iconBg = Brush.radialGradient(
-        listOf(tint.copy(alpha = if (isDark) 0.22f else 0.14f), Color.Transparent),
-    )
-    val iconBorder = tint.copy(alpha = if (isDark) 0.35f else 0.22f)
+
+    val iconColor = textPrimaryColor()
+    val iconBg = surfaceVariantColor()
+    val iconBorder = borderColor()
 
     Column(
         modifier = Modifier
@@ -807,12 +701,12 @@ private fun QuickActionButton(
                 .border(0.8.dp, iconBorder, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(imageVector = icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
+            Icon(imageVector = icon, contentDescription = label, tint = iconColor, modifier = Modifier.size(24.dp))
         }
         Text(
             text = label,
             fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = textSecondaryColor(),
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
@@ -820,7 +714,6 @@ private fun QuickActionButton(
 }
 
 // ── Section 4: Spending Overview Chart ───────────────────────────────────────
-
 @Composable
 private fun SpendingOverviewChart(
     expensesByCategory: Map<String, Double>,
@@ -830,7 +723,7 @@ private fun SpendingOverviewChart(
 
     if (expensesByCategory.isEmpty()) {
         Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-            Text("No spending data yet", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text("No spending data yet", fontSize = 13.sp, color = textSecondaryColor(), textAlign = TextAlign.Center)
         }
         return
     }
@@ -839,7 +732,8 @@ private fun SpendingOverviewChart(
     val maxVal = sorted.firstOrNull()?.value ?: 1.0
     val barCount = sorted.size.coerceAtMost(6)
     val bars = sorted.take(barCount)
-    val axisLineColor = MaterialTheme.colorScheme.outline
+    val axisLineColor = if (isSystemInDarkTheme()) DarkBorder else MaterialTheme.colorScheme.outline
+    val barColor = if (isSystemInDarkTheme()) GlassBlueSoft else GlassBlue
 
     Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
         val barW = (size.width - 32.dp.toPx()) / barCount
@@ -854,7 +748,7 @@ private fun SpendingOverviewChart(
             val bottom = maxHeight
 
             drawRoundRect(
-                brush = Brush.verticalGradient(listOf(GlassBlueDeep, GlassBlue), startY = top, endY = bottom),
+                color = barColor,
                 topLeft = Offset(left, top),
                 size = Size(right - left, barHeight),
                 cornerRadius = CornerRadius(6.dp.toPx()),
@@ -869,20 +763,43 @@ private fun SpendingOverviewChart(
         )
     }
 
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceAround) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceAround
+    ) {
         sorted.take(barCount).forEach { (category, _) ->
-            Text(text = category.take(5), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+            Text(
+                text = category.take(5),
+                fontSize = 9.sp,
+                color = textSecondaryColor(),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("TOTAL SPENT", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.sp)
-        Text(text = formatLKRFull(totalExpenses), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ExpenseRed)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "TOTAL SPENT",
+            fontSize = 10.sp,
+            color = textSecondaryColor(),
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = formatLKRFull(totalExpenses),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = ExpenseRed
+        )
     }
 }
 
 // ── Section 5: Income Sources Breakdown ──────────────────────────────────────
-
+// ── Section 5: Income Sources Breakdown (Alternative with Custom Donut) ──────
 @Composable
 private fun IncomeSourcesBreakdown(
     incomeBreakdown: Map<String, Double>,
@@ -898,24 +815,16 @@ private fun IncomeSourcesBreakdown(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val slices = sorted.mapIndexed { i, (label, value) ->
-            PieChartData.Slice(label, value.toFloat(), IncomePalette.getOrElse(i) { IncomePalette.last() })
-        }
-
-        if (slices.isNotEmpty()) {
-            Box(modifier = Modifier.size(130.dp)) {
-                DonutPieChart(
-                    modifier = Modifier.size(130.dp),
-                    pieChartData = PieChartData(slices = slices, plotType = PlotType.Donut),
-                    pieChartConfig = PieChartConfig(
-                        strokeWidth = 40f,
-                        isAnimationEnable = true,
-                        showSliceLabels = false,
-                        isSumVisible = false,
-                        backgroundColor = MaterialTheme.colorScheme.surface,
-                        activeSliceAlpha = 0.9f,
-                        inActiveSliceAlpha = 0.65f,
-                    ),
+        if (sorted.isNotEmpty()) {
+            Box(
+                modifier = Modifier.size(130.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CustomDonutChart(
+                    data = sorted.mapIndexed { i, (_, value) ->
+                        value.toFloat() to IncomePalette.getOrElse(i) { IncomePalette.last() }
+                    },
+                    modifier = Modifier.size(130.dp)
                 )
             }
         }
@@ -930,17 +839,66 @@ private fun IncomeSourcesBreakdown(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(color))
-                    Text(text = source, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = source,
+                        fontSize = 12.sp,
+                        color = textPrimaryColor(),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Text("$pct%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
-                    Text(text = formatLKR(amount), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = formatLKR(amount),
+                        fontSize = 11.sp,
+                        color = textSecondaryColor(),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
     }
 }
 
-// ── Section 6: Goals Carousel ─────────────────────────────────────────────────
+// Custom Donut Chart without background issues
+@Composable
+private fun CustomDonutChart(
+    data: List<Pair<Float, Color>>,
+    modifier: Modifier = Modifier
+) {
+    val total = data.sumOf { it.first.toDouble() }.toFloat()
 
+    Canvas(modifier = modifier) {
+        val strokeWidth = 40f
+        val radius = (size.minDimension - strokeWidth) / 2
+        val center = Offset(size.width / 2, size.height / 2)
+        var startAngle = -90f
+
+        data.forEach { (value, color) ->
+            val sweepAngle = (value / total) * 360f
+            if (sweepAngle > 0) {
+                drawArc(
+                    color = color,
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    style = Stroke(
+                        width = strokeWidth,
+                        cap = StrokeCap.Butt
+                    ),
+                    topLeft = Offset(
+                        center.x - radius,
+                        center.y - radius
+                    ),
+                    size = Size(radius * 2, radius * 2)
+                )
+                startAngle += sweepAngle
+            }
+        }
+    }
+}
+
+// ── Section 6: Goals Carousel ─────────────────────────────────────────────────
 @Composable
 private fun GoalsCarousel(goals: List<Goal>, modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { goals.size })
@@ -969,7 +927,7 @@ private fun GoalsCarousel(goals: List<Goal>, modifier: Modifier = Modifier) {
                             .padding(horizontal = 3.dp)
                             .size(if (isSelected) 8.dp else 5.dp)
                             .background(
-                                color = if (isSelected) GlassBlueDeep else MaterialTheme.colorScheme.outlineVariant,
+                                color = if (isSelected) GlassBlueDeep else if (isSystemInDarkTheme()) DarkBorder else MaterialTheme.colorScheme.outlineVariant,
                                 shape = CircleShape,
                             ),
                     )
@@ -979,8 +937,7 @@ private fun GoalsCarousel(goals: List<Goal>, modifier: Modifier = Modifier) {
     }
 }
 
-// ── Section 6: Savings Goal Card ─────────────────────────────────────────────
-
+// ── Savings Goal Card ────────────────────────────────────────────────────────
 @Composable
 private fun SavingsGoalCard(
     goal: Goal,
@@ -988,15 +945,23 @@ private fun SavingsGoalCard(
     monthlyRequired: Double,
     modifier: Modifier = Modifier,
 ) {
-    val animProg by animateFloatAsState(targetValue = progressPercent.coerceIn(0f, 1f), animationSpec = tween(1200), label = "goal_prog")
+    val animProg by animateFloatAsState(
+        targetValue = progressPercent.coerceIn(0f, 1f),
+        animationSpec = tween(1200),
+        label = "goal_prog"
+    )
     val pct = (animProg * 100).roundToInt()
     val remaining = (goal.targetAmount - goal.currentAmount).coerceAtLeast(0.0)
+
+    // Goal card maintains dark theme aesthetic for consistency
+    val goalBg = Color(0xFF1F2937)
+    val goalTextColor = Color.White
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(GoalGradient))
+            .background(goalBg)
             .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(22.dp)),
     ) {
         Column(
@@ -1009,17 +974,35 @@ private fun SavingsGoalCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Canvas(modifier = Modifier.size(54.dp)) { drawDashboardLaptopIllustration() }
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "$pct%", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(text = "saved", fontSize = 11.sp, color = Color.White.copy(alpha = 0.75f))
+                    Text(text = "$pct%", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = goalTextColor)
+                    Text(text = "saved", fontSize = 11.sp, color = goalTextColor.copy(alpha = 0.75f))
                 }
             }
 
-            Text(text = goal.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
-            Text(text = "${formatLKRFull(goal.currentAmount)} / ${formatLKRFull(goal.targetAmount)}", fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f))
+            Text(
+                text = goal.title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = goalTextColor,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "${formatLKRFull(goal.currentAmount)} / ${formatLKRFull(goal.targetAmount)}",
+                fontSize = 13.sp,
+                color = goalTextColor.copy(alpha = 0.8f)
+            )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                GoalStatCell("$pct%", "Saved", valueColor = Color.White, labelColor = Color.White.copy(alpha = 0.7f))
-                GoalStatCell(formatLKR(monthlyRequired) + "/mo", "Required", valueColor = Color.White, labelColor = Color.White.copy(alpha = 0.7f))
+                GoalStatCell(
+                    "$pct%", "Saved",
+                    valueColor = goalTextColor,
+                    labelColor = goalTextColor.copy(alpha = 0.7f)
+                )
+                GoalStatCell(
+                    formatLKR(monthlyRequired) + "/mo", "Required",
+                    valueColor = goalTextColor,
+                    labelColor = goalTextColor.copy(alpha = 0.7f)
+                )
                 val deadline = goal.deadline
                 val months = if (deadline != null) {
                     val now = Calendar.getInstance()
@@ -1027,12 +1010,21 @@ private fun SavingsGoalCard(
                     ((dl.get(Calendar.YEAR) - now.get(Calendar.YEAR)) * 12 +
                             dl.get(Calendar.MONTH) - now.get(Calendar.MONTH)).coerceAtLeast(0)
                 } else 0
-                GoalStatCell("$months mo", "Remaining", valueColor = Color.White, labelColor = Color.White.copy(alpha = 0.7f))
+                GoalStatCell(
+                    "$months mo", "Remaining",
+                    valueColor = goalTextColor,
+                    labelColor = goalTextColor.copy(alpha = 0.7f)
+                )
             }
 
-            // No emoji — professional motivational text
-            val motivText = if (remaining <= 0) "Goal complete. Outstanding work." else "Stay consistent to reach your goal."
-            Text(text = motivText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.9f))
+            val motivText = if (remaining <= 0) "Goal complete. Outstanding work."
+            else "Stay consistent to reach your goal."
+            Text(
+                text = motivText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = goalTextColor.copy(alpha = 0.9f)
+            )
         }
     }
 }
@@ -1058,10 +1050,7 @@ private fun DashboardMilestoneRing(progress: Float, modifier: Modifier = Modifie
         val sweep = progress * 360f
         if (sweep > 0f) {
             drawArc(
-                brush = Brush.sweepGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.7f), Color.White, Color.White.copy(alpha = 0.7f)),
-                    center = center,
-                ),
+                color = Color.White,
                 startAngle = startAngle,
                 sweepAngle = sweep,
                 useCenter = false,
@@ -1077,8 +1066,16 @@ private fun DashboardMilestoneRing(progress: Float, modifier: Modifier = Modifie
             val dotX = center.x + ringRadius * cos(angle).toFloat()
             val dotY = center.y + ringRadius * sin(angle).toFloat()
             val reached = progress >= milestoneProgress
-            drawCircle(color = if (reached) OrangeHero1 else Color.White.copy(alpha = 0.45f), radius = 5.dp.toPx(), center = Offset(dotX, dotY))
-            if (reached) drawCircle(color = Color.White, radius = 2.5.dp.toPx(), center = Offset(dotX, dotY))
+            drawCircle(
+                color = if (reached) OrangeHero1 else Color.White.copy(alpha = 0.45f),
+                radius = 5.dp.toPx(),
+                center = Offset(dotX, dotY)
+            )
+            if (reached) drawCircle(
+                color = Color.White,
+                radius = 2.5.dp.toPx(),
+                center = Offset(dotX, dotY)
+            )
         }
     }
 }
@@ -1089,125 +1086,72 @@ private fun DrawScope.drawDashboardLaptopIllustration() {
     val screenL = w * 0.12f; val screenT = h * 0.08f; val screenR = w * 0.88f; val screenB = h * 0.60f
     val screenW = screenR - screenL; val screenH = screenB - screenT
 
-    drawRoundRect(color = Color.White.copy(alpha = 0.85f), topLeft = Offset(screenL, screenT), size = Size(screenW, screenH), cornerRadius = CornerRadius(6.dp.toPx()))
-    drawRoundRect(color = OrangeHero1.copy(alpha = 0.28f), topLeft = Offset(screenL + 3.dp.toPx(), screenT + 3.dp.toPx()), size = Size(screenW - 6.dp.toPx(), screenH - 6.dp.toPx()), cornerRadius = CornerRadius(4.dp.toPx()))
-    drawCircle(color = Color.White.copy(alpha = 0.55f), radius = 4.dp.toPx(), center = Offset(w * 0.5f, (screenT + screenB) / 2f))
-    drawRoundRect(color = Color.White.copy(alpha = 0.5f), topLeft = Offset(w * 0.24f, screenB), size = Size(w * 0.52f, 2.5f.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.85f),
+        topLeft = Offset(screenL, screenT),
+        size = Size(screenW, screenH),
+        cornerRadius = CornerRadius(6.dp.toPx())
+    )
+    drawRoundRect(
+        color = OrangeHero1.copy(alpha = 0.28f),
+        topLeft = Offset(screenL + 3.dp.toPx(), screenT + 3.dp.toPx()),
+        size = Size(screenW - 6.dp.toPx(), screenH - 6.dp.toPx()),
+        cornerRadius = CornerRadius(4.dp.toPx())
+    )
+    drawCircle(
+        color = Color.White.copy(alpha = 0.55f),
+        radius = 4.dp.toPx(),
+        center = Offset(w * 0.5f, (screenT + screenB) / 2f)
+    )
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.5f),
+        topLeft = Offset(w * 0.24f, screenB),
+        size = Size(w * 0.52f, 2.5f.dp.toPx()),
+        cornerRadius = CornerRadius(2.dp.toPx())
+    )
 
-    val baseL = w * 0.08f; val baseT = screenB + 2.5f.dp.toPx(); val baseR = w * 0.92f; val baseB = h * 0.88f
-    drawRoundRect(color = Color.White.copy(alpha = 0.75f), topLeft = Offset(baseL, baseT), size = Size(baseR - baseL, baseB - baseT), cornerRadius = CornerRadius(4.dp.toPx()))
+    val baseL = w * 0.08f; val baseT = screenB + 2.5f.dp.toPx()
+    val baseR = w * 0.92f; val baseB = h * 0.88f
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.75f),
+        topLeft = Offset(baseL, baseT),
+        size = Size(baseR - baseL, baseB - baseT),
+        cornerRadius = CornerRadius(4.dp.toPx())
+    )
 
-    val kbL = w * 0.16f; val kbT = baseT + 3.dp.toPx(); val kbR = w * 0.84f; val kbB = baseB - 3.dp.toPx()
+    val kbL = w * 0.16f; val kbT = baseT + 3.dp.toPx()
+    val kbR = w * 0.84f; val kbB = baseB - 3.dp.toPx()
     val keyRows = 3; val keyCols = 8
     val rowH = (kbB - kbT) / keyRows; val colW = (kbR - kbL) / keyCols
     for (row in 0 until keyRows) {
         for (col in 0 until keyCols) {
-            drawRoundRect(color = OrangeHero1.copy(alpha = 0.22f), topLeft = Offset(kbL + col * colW + 1.dp.toPx(), kbT + row * rowH + 1.dp.toPx()), size = Size(colW - 2.dp.toPx(), rowH - 2.dp.toPx()), cornerRadius = CornerRadius(1.5f.dp.toPx()))
+            drawRoundRect(
+                color = OrangeHero1.copy(alpha = 0.22f),
+                topLeft = Offset(kbL + col * colW + 1.dp.toPx(), kbT + row * rowH + 1.dp.toPx()),
+                size = Size(colW - 2.dp.toPx(), rowH - 2.dp.toPx()),
+                cornerRadius = CornerRadius(1.5f.dp.toPx())
+            )
         }
     }
 }
 
 @Composable
-private fun GoalStatCell(value: String, label: String, valueColor: Color = MaterialTheme.colorScheme.onSurface, labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun GoalStatCell(
+    value: String,
+    label: String,
+    valueColor: Color = textPrimaryColor(),
+    labelColor: Color = textSecondaryColor()
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
         Text(label, fontSize = 10.sp, color = labelColor)
     }
 }
 
-// ── Section 7: Committed vs Discretionary ────────────────────────────────────
-
-@Composable
-private fun CommittedVsDiscretionary(committedPercent: Double, discretionaryPercent: Double, totalExpenses: Double) {
-    SectionRowHeader(title = "Budget Breakdown")
-
-    val committedAmt = totalExpenses * (committedPercent / 100)
-    val discAmt = totalExpenses * (discretionaryPercent / 100)
-    val isDark = isSystemInDarkTheme()
-
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(
-            modifier = Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                .background(brush = Brush.verticalGradient(listOf(Color(0xFFFFEDD5).copy(alpha = if (isDark) 0.20f else 0.70f), Color(0xFFFED7AA).copy(alpha = if (isDark) 0.14f else 0.55f))))
-                .border(0.8.dp, Brush.linearGradient(listOf(OrangeHero1.copy(alpha = 0.45f), OrangeHero2.copy(alpha = 0.18f))), RoundedCornerShape(18.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(Icons.Default.Home, null, tint = OrangeHero1, modifier = Modifier.size(18.dp))
-            Text("Committed", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(formatLKRFull(committedAmt), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("Rent, gym, subscriptions", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-
-        Column(
-            modifier = Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                .background(brush = Brush.verticalGradient(listOf(Color(0xFFFFF7ED).copy(alpha = if (isDark) 0.18f else 0.70f), Color(0xFFFDE68A).copy(alpha = if (isDark) 0.12f else 0.55f))))
-                .border(0.8.dp, Brush.linearGradient(listOf(OrangeHero2.copy(alpha = 0.40f), OrangeLight.copy(alpha = 0.15f))), RoundedCornerShape(18.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(Icons.Default.AttachMoney, null, tint = OrangeHero2, modifier = Modifier.size(18.dp))
-            Text("Discretionary", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(formatLKRFull(discAmt), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("Available to spend", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
-
-    val total = (committedPercent + discretionaryPercent).coerceAtLeast(1.0)
-    val committedWeight = (committedPercent / total).toFloat().coerceIn(0.05f, 0.95f)
-    val animCommitted by animateFloatAsState(targetValue = committedWeight, animationSpec = tween(900), label = "ratio_bar")
-
-    Box(
-        modifier = Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.30f))
-            .border(0.6.dp, OrangeHero2.copy(alpha = if (isDark) 0.20f else 0.40f), RoundedCornerShape(7.dp)),
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(animCommitted).fillMaxSize().background(Brush.horizontalGradient(listOf(OrangeHero1, OrangeHero2))))
-            Box(modifier = Modifier.weight(1f - animCommitted).fillMaxSize().background(OrangeLight.copy(alpha = 0.25f)))
-        }
-    }
-
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(OrangeHero1))
-            Text("Committed ${committedPercent.roundToInt()}%", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(OrangeHero2))
-            Text("Flexible ${discretionaryPercent.roundToInt()}%", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-// ── Section 8: Transaction Row ────────────────────────────────────────────────
-
-@Composable
-private fun TransactionRow(transaction: DashboardViewModel.RecentTransaction, formattedDate: String, modifier: Modifier = Modifier) {
-    val color = if (transaction.isExpense) ExpenseRed else IncomeGreen
-    val icon = categoryIcon(transaction.title)
-    val circleColor = if (transaction.isExpense) categoryCircleColor(transaction.title) else IncomeGreen
-    val prefix = if (transaction.isExpense) "- " else "+ "
-
-    Row(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(GlassBlue.copy(alpha = 0.08f))
-            .border(0.6.dp, GlassBlue.copy(alpha = 0.25f), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(modifier = Modifier.size(42.dp).background(circleColor.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = circleColor, modifier = Modifier.size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(transaction.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(formattedDate, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(text = "$prefix${formatLKRFull(transaction.amount)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
-    }
-}
-
-// ── Section 9: Financial Health Score ─────────────────────────────────────────
-
+// ── Financial Health Score ────────────────────────────────────────────────────
 @Composable
 private fun FinancialHealthScore(
     totalIncome: Double,
@@ -1217,88 +1161,200 @@ private fun FinancialHealthScore(
     fixedCostsPercentage: Double,
 ) {
     val score = calculateHealthScore(totalIncome, totalExpenses, goalProgressPercent, fixedCostsPercentage)
-    val scoreLabel = when { score >= 80 -> "Excellent"; score >= 60 -> "Good"; score >= 40 -> "Fair"; else -> "Needs Work" }
-    val scoreColor = when { score >= 80 -> GlassBlueDeep; score >= 60 -> GlassBlue; score >= 40 -> Color(0xFFF59E0B); else -> ExpenseRed }
+    val scoreLabel = when {
+        score >= 80 -> "Excellent"
+        score >= 60 -> "Good"
+        score >= 40 -> "Fair"
+        else -> "Needs Work"
+    }
+    val scoreColor = when {
+        score >= 80 -> GlassBlueDeep
+        score >= 60 -> GlassBlue
+        score >= 40 -> Color(0xFFF59E0B)
+        else -> ExpenseRed
+    }
 
     val animScore = remember { Animatable(0f) }
     LaunchedEffect(score) { animScore.animateTo(score / 100f, tween(1400)) }
 
     SectionRowHeader(title = "Financial Health Score")
 
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        val arcTrackColor = MaterialTheme.colorScheme.outlineVariant
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        val arcTrackColor = if (isSystemInDarkTheme()) DarkSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
+
         Box(modifier = Modifier.size(140.dp), contentAlignment = Alignment.BottomCenter) {
             Canvas(modifier = Modifier.size(140.dp)) {
                 val strokeW = 18.dp.toPx()
                 val padding = strokeW / 2 + 4.dp.toPx()
                 val arcSize = Size(size.width - padding * 2, size.height - padding * 2)
                 val topLeft = Offset(padding, padding)
-                drawArc(color = arcTrackColor, startAngle = 180f, sweepAngle = 180f, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(strokeW, cap = StrokeCap.Round))
-                drawArc(brush = Brush.sweepGradient(listOf(GlassBlue, GlassBlueDeep), center = Offset(size.width / 2, size.height / 2)), startAngle = 180f, sweepAngle = 180f * animScore.value, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(strokeW, cap = StrokeCap.Round))
+
+                drawArc(
+                    color = arcTrackColor,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(strokeW, cap = StrokeCap.Round)
+                )
+                drawArc(
+                    color = GlassBlueDeep,
+                    startAngle = 180f,
+                    sweepAngle = 180f * animScore.value,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(strokeW, cap = StrokeCap.Round)
+                )
                 if (animScore.value > 0f) {
                     val angleRad = Math.toRadians((180.0 + 180.0 * animScore.value))
                     val cx = size.width / 2 + (arcSize.width / 2) * cos(angleRad).toFloat()
                     val cy = size.height / 2 + (arcSize.height / 2) * sin(angleRad).toFloat()
-                    drawCircle(color = GlassBlueDeep, radius = strokeW / 2, center = Offset(cx, cy))
+                    drawCircle(
+                        color = GlassBlueDeep,
+                        radius = strokeW / 2,
+                        center = Offset(cx, cy)
+                    )
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 8.dp)) {
-                Text(text = score.toString(), fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, color = scoreColor)
-                Text(scoreLabel, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = score.toString(),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = scoreColor
+                )
+                Text(
+                    scoreLabel,
+                    fontSize = 11.sp,
+                    color = textSecondaryColor(),
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpenses) / totalIncome * 100).coerceIn(0.0, 100.0) else 0.0
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            val savingsRate = if (totalIncome > 0)
+                ((totalIncome - totalExpenses) / totalIncome * 100).coerceIn(0.0, 100.0) else 0.0
             HealthScoreRow("Savings Rate", savingsRate.roundToInt(), "%")
             HealthScoreRow("Fixed Costs", (100 - fixedCostsPercentage.coerceIn(0.0, 100.0)).roundToInt(), "%")
-            if (activeGoal != null) HealthScoreRow("Goal Progress", (goalProgressPercent * 100).roundToInt(), "%")
+            if (activeGoal != null)
+                HealthScoreRow("Goal Progress", (goalProgressPercent * 100).roundToInt(), "%")
         }
     }
 }
 
 @Composable
 private fun HealthScoreRow(label: String, value: Int, suffix: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("$value$suffix", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 12.sp, color = textSecondaryColor())
+        Text(
+            "$value$suffix",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = textPrimaryColor()
+        )
     }
 }
 
-private fun calculateHealthScore(totalIncome: Double, totalExpenses: Double, goalProgressPercent: Float, fixedCostsPercentage: Double): Int {
+private fun calculateHealthScore(
+    totalIncome: Double,
+    totalExpenses: Double,
+    goalProgressPercent: Float,
+    fixedCostsPercentage: Double
+): Int {
     if (totalIncome <= 0) return 50
     val savingsRate = ((totalIncome - totalExpenses) / totalIncome * 100).coerceIn(-100.0, 100.0)
-    val savingsScore = when { savingsRate >= 30 -> 35; savingsRate >= 20 -> 30; savingsRate >= 10 -> 22; savingsRate >= 0 -> 15; else -> 0 }
-    val fixedScore = when { fixedCostsPercentage <= 30 -> 25; fixedCostsPercentage <= 50 -> 20; fixedCostsPercentage <= 70 -> 12; else -> 5 }
+    val savingsScore = when {
+        savingsRate >= 30 -> 35
+        savingsRate >= 20 -> 30
+        savingsRate >= 10 -> 22
+        savingsRate >= 0 -> 15
+        else -> 0
+    }
+    val fixedScore = when {
+        fixedCostsPercentage <= 30 -> 25
+        fixedCostsPercentage <= 50 -> 20
+        fixedCostsPercentage <= 70 -> 12
+        else -> 5
+    }
     val goalScore = (goalProgressPercent * 25).roundToInt().coerceIn(0, 25)
     val incomeScore = if (totalIncome > 0) 15 else 0
     return (savingsScore + fixedScore + goalScore + incomeScore).coerceIn(0, 100)
 }
 
 // ── Previews ──────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, name = "Dashboard - light")
+@Preview(showBackground = true, name = "Dashboard - Dark")
 @Composable
-private fun DashboardPreviewLight() {
-    FinPilotTheme(darkTheme = false) {
+private fun DashboardPreviewDark() {
+    FinPilotTheme(darkTheme = true) {
         DashboardScreen(
             state = DashboardViewModel.DashboardUiState(
-                totalIncome = 142000.0, totalExpenses = 28450.0, netPosition = 127450.0,
-                activeGoal = Goal(id = "1", userId = "u", title = "MacBook Pro M4", targetAmount = 490000.0, currentAmount = 127450.0, monthlyRequired = 46820.0, isActive = true),
-                goalProgressPercent = 0.26f, monthlyRequired = 46820.0,
-                incomeBreakdown = mapOf("Salary" to 88000.0, "Freelance" to 35000.0, "AdSense" to 11500.0, "Crypto" to 7000.0),
-                expensesByCategory = mapOf("Food" to 12000.0, "Transport" to 6000.0, "Housing" to 8000.0, "Subscriptions" to 2450.0),
-                fixedCostsPercentage = 34.4, discretionaryPercentage = 65.6,
+                totalIncome = 142000.0,
+                totalExpenses = 28450.0,
+                netPosition = 127450.0,
+                activeGoal = Goal(
+                    id = "1", userId = "u", title = "MacBook Pro M4",
+                    targetAmount = 490000.0, currentAmount = 127450.0,
+                    monthlyRequired = 46820.0, isActive = true
+                ),
+                goalProgressPercent = 0.26f,
+                monthlyRequired = 46820.0,
+                incomeBreakdown = mapOf(
+                    "Salary" to 88000.0, "Freelance" to 35000.0,
+                    "AdSense" to 11500.0, "Crypto" to 7000.0
+                ),
+                expensesByCategory = mapOf(
+                    "Food" to 12000.0, "Transport" to 6000.0,
+                    "Housing" to 8000.0, "Subscriptions" to 2450.0
+                ),
+                fixedCostsPercentage = 34.4,
+                discretionaryPercentage = 65.6,
             ),
             userName = "Kavindu",
         )
     }
 }
 
-@Preview(showBackground = true, name = "Dashboard - empty")
+@Preview(showBackground = true, name = "Dashboard - Light")
 @Composable
-private fun DashboardPreviewEmpty() {
+private fun DashboardPreviewLight() {
     FinPilotTheme(darkTheme = false) {
-        DashboardScreen(state = DashboardViewModel.DashboardUiState(), userName = "Kavindu")
+        DashboardScreen(
+            state = DashboardViewModel.DashboardUiState(
+                totalIncome = 142000.0, totalExpenses = 28450.0, netPosition = 127450.0,
+                activeGoal = Goal(
+                    id = "1", userId = "u", title = "MacBook Pro M4",
+                    targetAmount = 490000.0, currentAmount = 127450.0,
+                    monthlyRequired = 46820.0, isActive = true
+                ),
+                goalProgressPercent = 0.26f, monthlyRequired = 46820.0,
+                incomeBreakdown = mapOf(
+                    "Salary" to 88000.0, "Freelance" to 35000.0,
+                    "AdSense" to 11500.0, "Crypto" to 7000.0
+                ),
+                expensesByCategory = mapOf(
+                    "Food" to 12000.0, "Transport" to 6000.0,
+                    "Housing" to 8000.0, "Subscriptions" to 2450.0
+                ),
+                fixedCostsPercentage = 34.4, discretionaryPercentage = 65.6,
+            ),
+            userName = "Kavindu",
+        )
     }
 }
