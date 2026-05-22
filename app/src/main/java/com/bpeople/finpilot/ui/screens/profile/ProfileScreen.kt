@@ -159,15 +159,17 @@ fun ProfileScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(bottom = 96.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 // 1 — PROFILE HEADER
@@ -236,6 +238,9 @@ fun ProfileScreen(
                         onDeleteAccount = { showDeleteDialog = true }
                     )
                 }
+
+                // Add spacer to allow scrolling past the floating bottom bar
+                Spacer(modifier = Modifier.height(110.dp))
             }
 
             FinPilotBottomNavBar(
