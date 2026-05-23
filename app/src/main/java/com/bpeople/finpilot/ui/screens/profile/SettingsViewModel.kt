@@ -14,12 +14,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -45,18 +45,51 @@ class SettingsViewModel @Inject constructor(
         val cloudSyncEnabled: Boolean = true,
         val biometricsEnabled: Boolean = true,
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
+        // Currency
+        val usdEnabled: Boolean = true,
+        val usdtEnabled: Boolean = false,
+        val autoConvert: Boolean = true,
+        val rateLastUpdated: String = "Updated 2h ago",
+        // Detailed notifications
+        val notifySalaryReminder: Boolean = true,
+        val notifyWeeklySummary: Boolean = true,
+        val notifyGoalMilestone: Boolean = true,
+        val notifyBudgetOverspend: Boolean = true,
+        val budgetOverspendThreshold: String = "10000",
     )
 
-    val uiState: StateFlow<SettingsUiState> = settingsRepository.settings
-        .map { prefs ->
-            SettingsUiState(
-                notificationsEnabled = prefs.notificationsEnabled,
-                cloudSyncEnabled = prefs.cloudSyncEnabled,
-                biometricsEnabled = prefs.biometricsEnabled,
-                themeMode = prefs.themeMode,
-            )
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { prefs ->
+                _uiState.update { current ->
+                    current.copy(
+                        notificationsEnabled = prefs.notificationsEnabled,
+                        cloudSyncEnabled = prefs.cloudSyncEnabled,
+                        biometricsEnabled = prefs.biometricsEnabled,
+                        themeMode = prefs.themeMode,
+                    )
+                }
+            }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+    }
+
+    fun setUsdEnabled(v: Boolean) { _uiState.update { it.copy(usdEnabled = v) } }
+    fun setUsdtEnabled(v: Boolean) { _uiState.update { it.copy(usdtEnabled = v) } }
+    fun setAutoConvert(v: Boolean) { _uiState.update { it.copy(autoConvert = v) } }
+    fun setNotifySalaryReminder(v: Boolean) { _uiState.update { it.copy(notifySalaryReminder = v) } }
+    fun setNotifyWeeklySummary(v: Boolean) { _uiState.update { it.copy(notifyWeeklySummary = v) } }
+    fun setNotifyGoalMilestone(v: Boolean) { _uiState.update { it.copy(notifyGoalMilestone = v) } }
+    fun setNotifyBudgetOverspend(v: Boolean) { _uiState.update { it.copy(notifyBudgetOverspend = v) } }
+    fun setBudgetOverspendThreshold(v: String) { _uiState.update { it.copy(budgetOverspendThreshold = v) } }
+
+    fun onClearCache() {
+        viewModelScope.launch {
+            _events.emit(SettingsEvent.ShowMessage("Cache cleared"))
+        }
+    }
 
     fun onNotificationsChange(enabled: Boolean) {
         viewModelScope.launch {
