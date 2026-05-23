@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,10 +35,13 @@ import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.GlassTheme
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -258,32 +263,16 @@ fun ExpenseListContent(
         else state.entries.filter { it.category.equals(state.selectedCategoryFilter, ignoreCase = true) }
     }
 
-    val groupedByDate = remember(displayEntries) {
+    val listState = rememberLazyListState()
+    var currentPage by remember { mutableIntStateOf(0) }
+    val pageSize = 10
+    LaunchedEffect(displayEntries) { currentPage = 0 }
+    val totalPages = max(1, (displayEntries.size + pageSize - 1) / pageSize)
+    val pagedEntries = remember(displayEntries, currentPage) {
         displayEntries
             .sortedByDescending { it.date?.seconds ?: 0L }
-            .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
-            .entries.toList()
-    }
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(listState, state.hasMore, state.isLoadingMore, state.isLoading, displayEntries.size) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            if (totalItems == 0) {
-                false
-            } else {
-                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                lastVisibleIndex >= totalItems - 4
-            }
-        }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                if (state.hasMore && !state.isLoadingMore && !state.isLoading) {
-                    onLoadNextPage()
-                }
-            }
+            .drop(currentPage * pageSize)
+            .take(pageSize)
     }
 
     val trendData = remember(state.entries) { computeMonthlyTrend(state.entries) }
@@ -338,38 +327,12 @@ fun ExpenseListContent(
             ) {
                 // ── Hero header ──────────────────────────────────────────────
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "My Expenses",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = GlassTheme.TextPrimary,
-                            letterSpacing = (-0.5).sp,
-                        )
-                        IconButton(onClick = onShowAddSheet) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = "Add Expense",
-                                tint = GlassTheme.TextPrimary,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-                // ── Hero header ──────────────────────────────────────────────
-                item {
                     GlassExpenseHeader(
                         monthTotal = monthTotal,
                         committed = committed,
                         discretionary = discretionary,
                         entryCount = monthEntries.size,
+                        onAddClick = onShowAddSheet,
                     )
                 }
 
@@ -440,19 +403,29 @@ fun ExpenseListContent(
                     return@LazyColumn
                 }
 
-                // ── Date-grouped list ─────────────────────────────────────────
-                groupedByDate.forEach { (label, entries) ->
-                    stickyHeader(key = "header_$label") {
-                        GlassDateHeader(label = label)
-                    }
-                    items(entries, key = { it.id }) { entry ->
-                        GlassSwipeableRow(
-                            entry = entry,
-                            onDelete = { onDeleteEntry(entry) },
-                            onDuplicate = { onDuplicateEntry(entry) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
-                        )
-                    }
+                // ── History table ─────────────────────────────────────────────
+                item {
+                    ExpenseHistoryTable(
+                        entries = pagedEntries,
+                        onDelete = onDeleteEntry,
+                    )
+                }
+
+                // ── Pagination bar ────────────────────────────────────────────
+                item {
+                    ExpenseHistoryPaginationBar(
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        hasMore = state.hasMore,
+                        isLoadingMore = state.isLoadingMore,
+                        onPreviousPage = { currentPage-- },
+                        onNextPage = {
+                            currentPage++
+                            if (currentPage >= totalPages - 1 && state.hasMore && !state.isLoadingMore) {
+                                onLoadNextPage()
+                            }
+                        },
+                    )
                 }
 
                 // ── Monthly trend ─────────────────────────────────────────────
@@ -463,37 +436,6 @@ fun ExpenseListContent(
                         onToggle = onToggleTrendChart,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
-                }
-
-                if (state.isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                color = GlassTheme.Orange,
-                                strokeWidth = 2.5.dp,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                }
-
-                if (!state.hasMore && displayEntries.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "No more expense entries",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            color = GlassTheme.TextHint,
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
                 }
             }
 
@@ -521,53 +463,75 @@ private fun GlassExpenseHeader(
     committed: Double,
     discretionary: Double,
     entryCount: Int,
+    onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind {
-                // Orange orb top-right
-                drawCircle(
-                    color = Color(0x2EFF6B00),
-                    radius = 220.dp.toPx(),
-                    center = Offset(size.width * 0.92f, -60.dp.toPx()),
-                )
-                // Purple orb left
-                drawCircle(
-                    color = Color(0x1A534AB7),
-                    radius = 150.dp.toPx(),
-                    center = Offset(size.width * 0.05f, size.height * 0.7f),
-                )
-            }
-            .padding(top = 16.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
     ) {
+        DynamicHeaderBackground(
+            patternType = "expense",
+            modifier = Modifier.matchParentSize().clip(wavyBottomShape())
+        )
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding(),
         ) {
-            Text(
-                "THIS MONTH'S EXPENSES",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 2.sp,
-                color = GlassTheme.TextHint,
-            )
-            Text(
-                formatLKRFull(monthTotal),
-                fontSize = 44.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = GlassTheme.TextPrimary,
-                letterSpacing = (-1.5).sp,
-            )
-
-            // Badge row
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GlassHeroBadge("${formatLKRShort(committed)} committed")
-                GlassHeroBadge("${formatLKRShort(discretionary)} discretionary")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "My Expenses",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GlassTheme.TextPrimary,
+                    letterSpacing = (-0.5).sp,
+                )
+                IconButton(onClick = onAddClick) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = "Add Expense",
+                        tint = GlassTheme.TextPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
-            GlassHeroBadge("$entryCount entries")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "THIS MONTH'S EXPENSES",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 2.sp,
+                    color = GlassTheme.TextHint,
+                )
+                Text(
+                    formatLKRFull(monthTotal),
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GlassTheme.TextPrimary,
+                    letterSpacing = (-1.5).sp,
+                )
+
+                // Badge row
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassHeroBadge("${formatLKRShort(committed)} committed")
+                    GlassHeroBadge("${formatLKRShort(discretionary)} discretionary")
+                }
+                GlassHeroBadge("$entryCount entries")
+            }
+            Spacer(modifier = Modifier.height(36.dp))
         }
     }
 }
@@ -1277,6 +1241,220 @@ private fun GlassEmptyState(category: String, onAddClick: () -> Unit) {
                 .padding(horizontal = 28.dp, vertical = 14.dp),
         ) {
             Text("Add Expense", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+        }
+    }
+}
+
+// ── Expense history table ─────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpenseHistoryTable(
+    entries: List<ExpenseEntry>,
+    onDelete: (ExpenseEntry) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (entries.isEmpty()) return
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassTheme.GlassBg),
+        border = BorderStroke(1.dp, GlassTheme.GlassBorderLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            entries.forEachIndexed { index, entry ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = {
+                        if (it == SwipeToDismissBoxValue.EndToStart) { onDelete(entry); true }
+                        else false
+                    },
+                    positionalThreshold = { it * 0.40f },
+                )
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        val isDelete = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(if (isDelete) Color(0x33EF4444) else Color.Transparent)
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            if (isDelete) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = GlassTheme.Danger,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    ExpenseTableRow(entry = entry)
+                }
+                if (index < entries.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = GlassTheme.GlassBorder,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpenseTableRow(entry: ExpenseEntry, modifier: Modifier = Modifier) {
+    val dateFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val isAutoDebit = entry.paymentMethod.contains("Auto", ignoreCase = true) || entry.isRecurring
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(GlassTheme.GlassBg)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    entry.subCategory?.takeIf { it.isNotBlank() } ?: entry.category,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GlassTheme.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isAutoDebit) {
+                    Icon(
+                        Icons.Rounded.Autorenew,
+                        contentDescription = null,
+                        tint = GlassTheme.OrangeLight.copy(alpha = 0.8f),
+                        modifier = Modifier.size(13.dp),
+                    )
+                }
+            }
+            Text(
+                entry.note?.takeIf { it.isNotBlank() } ?: entry.category,
+                fontSize = 11.sp,
+                color = GlassTheme.TextHint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            entry.date?.toDate()?.let { dateFormat.format(it) } ?: "",
+            fontSize = 11.sp,
+            color = GlassTheme.TextHint,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                "-${formatLKRFull(entry.amount)}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = GlassTheme.Danger,
+            )
+            Text(
+                entry.paymentMethod,
+                fontSize = 10.sp,
+                color = GlassTheme.TextHint,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpenseHistoryPaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val canGoPrev = currentPage > 0
+        val canGoNext = currentPage < totalPages - 1 || hasMore
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoPrev) GlassTheme.GlassSurface else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoPrev) GlassTheme.GlassBorder else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoPrev) { onPreviousPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous page",
+                tint = if (canGoPrev) GlassTheme.TextPrimary else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        if (isLoadingMore) {
+            CircularProgressIndicator(
+                color = GlassTheme.Orange,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Text(
+                text = "Page ${currentPage + 1} of ${if (hasMore && currentPage >= totalPages - 1) "${totalPages}+" else "$totalPages"}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GlassTheme.TextHint,
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoNext && !isLoadingMore) GlassTheme.GlassSurface else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoNext && !isLoadingMore) GlassTheme.GlassBorder else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoNext && !isLoadingMore) { onNextPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next page",
+                tint = if (canGoNext && !isLoadingMore) GlassTheme.TextPrimary else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }

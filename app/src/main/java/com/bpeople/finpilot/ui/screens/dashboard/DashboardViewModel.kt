@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    incomeRepository: IncomeRepository,
+    private val incomeRepository: IncomeRepository,
     private val expenseRepository: ExpenseRepository,
     goalRepository: GoalRepository,
     userRepository: UserRepository
@@ -233,6 +233,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun deleteTransaction(id: String, isExpense: Boolean) {
+        viewModelScope.launch {
+            if (isExpense) expenseRepository.deleteExpense(id)
+            else incomeRepository.deleteIncome(id)
+        }
+    }
+
     private fun buildRecentTransactions(
         incomes: List<IncomeEntry>,
         expenses: List<ExpenseEntry>,
@@ -265,7 +272,6 @@ class DashboardViewModel @Inject constructor(
 
         return (incomeTransactions + expenseTransactions)
             .sortedByDescending { it.dateMillis }
-            .take(5)
     }
 
     private fun buildIncomeBreakdown(incomes: List<IncomeEntry>): Map<String, Double> {

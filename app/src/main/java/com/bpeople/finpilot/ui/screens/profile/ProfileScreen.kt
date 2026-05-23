@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.DarkBackground
 import com.bpeople.finpilot.ui.theme.DarkBorder
@@ -227,119 +229,123 @@ private fun ProfileHeader(
     onEditName: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor())
-            .statusBarsPadding(),
     ) {
-        Row(
+        DynamicHeaderBackground(
+            patternType = "profile",
+            modifier = Modifier.matchParentSize().clip(wavyBottomShape())
+        )
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .statusBarsPadding()
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-
-                Text(
-                    text = "Profile",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = textPrimaryColor(),
-                    letterSpacing = (-0.5).sp,
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(
-                    onClick = onNavigateToSettings,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(glassBgColor())
-                        .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
-                ) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = "Settings",
-                        tint = textPrimaryColor(),
-                        modifier = Modifier.size(20.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Profile",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF0F172A),
+                        letterSpacing = (-0.5).sp,
                     )
                 }
 
-                IconButton(
-                    onClick = onEditName,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(glassBgColor())
-                        .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
-                ) {
-                    Icon(
-                        Icons.Rounded.Edit,
-                        contentDescription = "Edit Profile",
-                        tint = textPrimaryColor(),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        }
-
-        // Avatar and user info
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(28.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            colors = CardDefaults.cardColors(containerColor = heroBgColor()),
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = onNavigateToSettings,
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Brush.radialGradient(listOf(OrangeMain, OrangeMain.copy(alpha = 0.7f)))),
-                        contentAlignment = Alignment.Center
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(Color.White.copy(alpha = 0.4f))
+                            .border(0.8.dp, Color(0x1A0F172A), RoundedCornerShape(13.dp)),
                     ) {
-                        Text(
-                            text = initialsFrom(name, email),
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                        Icon(
+                            Icons.Rounded.Settings,
+                            contentDescription = "Settings",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(20.dp),
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    IconButton(
+                        onClick = onEditName,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(Color.White.copy(alpha = 0.4f))
+                            .border(0.8.dp, Color(0x1A0F172A), RoundedCornerShape(13.dp)),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Edit,
+                            contentDescription = "Edit Profile",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
 
-                    Text(
-                        text = name ?: "Your Profile",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            // Avatar and user info
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(Brush.radialGradient(listOf(Color(0xFFFF8C42), Color(0xFFFF6B00)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = initialsFrom(name, email),
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
 
-                    if (!email.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         Text(
-                            text = email,
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.65f),
+                            text = name ?: "Your Profile",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp),
                         )
+
+                        if (!email.isNullOrBlank()) {
+                            Text(
+                                text = email,
+                                fontSize = 13.sp,
+                                color = Color(0xFF0F172A).copy(alpha = 0.65f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
-                }
             }
+            Spacer(modifier = Modifier.height(36.dp))
         }
     }
 }

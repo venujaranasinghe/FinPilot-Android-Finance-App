@@ -54,4 +54,27 @@ class UserRepository @Inject constructor(
         val updates = mapOf("displayName" to displayName)
         firestore.collection("users").document(uid).set(updates, SetOptions.merge()).await()
     }
+
+    fun observeIncomeSources(): Flow<List<Map<String, Any>>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val listener = firestore.collection("users").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                @Suppress("UNCHECKED_CAST")
+                val sources = snapshot?.get("incomeSources") as? List<Map<String, Any>> ?: emptyList()
+                trySend(sources)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun updateIncomeSources(sources: List<Map<String, Any>>) = withContext(Dispatchers.IO) {
+        val uid = auth.currentUser?.uid ?: return@withContext
+        firestore.collection("users").document(uid)
+            .set(mapOf("incomeSources" to sources), SetOptions.merge()).await()
+    }
 }

@@ -162,7 +162,10 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Login.route) {
                         popUpTo(NavRoutes.Dashboard.route) { inclusive = true }
                     }
-                }
+                },
+                onDeleteTransaction = { id, isExpense ->
+                    dashboardViewModel.deleteTransaction(id, isExpense)
+                },
             )
         }
 
@@ -279,9 +282,10 @@ fun FinPilotNavGraph(
         composable(NavRoutes.Profile.route) {
             val profileViewModel: ProfileViewModel = hiltViewModel()
             val currentUser by profileViewModel.currentUser.collectAsState()
+            val userProfile by profileViewModel.userProfile.collectAsState()
             val profileUiState by profileViewModel.uiState.collectAsState()
             ProfileScreen(
-                displayName = currentUser?.displayName,
+                displayName = userProfile?.displayName ?: currentUser?.displayName,
                 email = currentUser?.email,
                 uiState = profileUiState,
                 onNavigateToDashboard = {
