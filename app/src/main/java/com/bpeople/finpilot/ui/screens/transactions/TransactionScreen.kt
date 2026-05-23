@@ -140,6 +140,8 @@ import com.bpeople.finpilot.data.model.TransactionType
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.GlassTheme
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -160,7 +162,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.max
 import kotlin.math.roundToInt
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 
 // ── Enhanced Dark Theme Colors ─────────────────────────────────────────────────
 private val DarkSurface = Color(0xFF1C1C1E)
@@ -533,35 +539,26 @@ private fun TransactionContent(
     hasMore: Boolean,
     onLoadNextPage: () -> Unit,
 ) {
-    val groupedTransactions by remember(transactions) {
-        derivedStateOf {
-            transactions
-                .groupBy { txn -> formatDateHeader(txn.timestampMillis) }
-                .entries
-                .toList()
-        }
-    }
-    val listState = rememberLazyListState()
+    var typeFilter by remember { mutableStateOf("All") }
+    var currentPage by remember { mutableIntStateOf(0) }
+    val pageSize = 10
 
-    LaunchedEffect(listState, hasMore, isLoadingMore, transactions.size) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            if (totalItems == 0) {
-                false
-            } else {
-                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                lastVisibleIndex >= totalItems - 4
-            }
+    val filteredTransactions = remember(transactions, typeFilter) {
+        when (typeFilter) {
+            "Income" -> transactions.filter { it.type == TransactionType.INCOME }
+            "Expenses" -> transactions.filter { it.type == TransactionType.EXPENSE }
+            else -> transactions
         }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                if (hasMore && !isLoadingMore) {
-                    onLoadNextPage()
-                }
-            }
     }
+
+    LaunchedEffect(filteredTransactions) { currentPage = 0 }
+
+    val totalPages = max(1, (filteredTransactions.size + pageSize - 1) / pageSize)
+    val pagedTransactions = remember(filteredTransactions, currentPage) {
+        filteredTransactions.drop(currentPage * pageSize).take(pageSize)
+    }
+
+    val listState = rememberLazyListState()
 
     LazyColumn(
         state = listState,
@@ -616,54 +613,38 @@ private fun TransactionContent(
             )
         }
 
-        if (transactions.isEmpty()) {
+        item {
+            TransactionTypeToggle(
+                selected = typeFilter,
+                onSelect = { typeFilter = it },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
+        if (filteredTransactions.isEmpty()) {
             item { TransactionEmptyState() }
         } else {
-            groupedTransactions.forEach { (dateLabel, items) ->
-                stickyHeader(key = "date_$dateLabel") {
-                    DateGroupHeader(label = dateLabel)
-                }
-                items(
-                    items = items,
-                    key = { txn -> txn.id.ifBlank { txn.hashCode().toString() } },
-                ) { txn ->
-                    SwipeToDismissTransactionRow(
-                        transaction = txn,
-                        onDelete = { onDeleteTransaction(txn) },
-                        onEdit = { onEditTransaction(txn) },
-                    )
-                }
+            item {
+                TransactionTable(
+                    transactions = pagedTransactions,
+                    onDelete = onDeleteTransaction,
+                    onEdit = onEditTransaction,
+                )
             }
-
-            if (isLoadingMore) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            color = OrangePrimary,
-                            strokeWidth = 2.5.dp,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                }
-            }
-
-            if (!hasMore && transactions.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "No more transactions",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        color = textHintColor(),
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+            item {
+                TransactionPaginationBar(
+                    currentPage = currentPage,
+                    totalPages = totalPages,
+                    hasMore = hasMore,
+                    isLoadingMore = isLoadingMore,
+                    onPreviousPage = { currentPage-- },
+                    onNextPage = {
+                        currentPage++
+                        if (currentPage >= totalPages - 1 && hasMore && !isLoadingMore) {
+                            onLoadNextPage()
+                        }
+                    },
+                )
             }
         }
     }
@@ -701,35 +682,15 @@ private fun OrangeHeaderWithCards(
     val orangeGlowColor = orbOrangeColor()
     val purpleGlowColor = orbPurpleColor()
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+    ) {
         // Hero glass gradient with soft glow
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(210.dp)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            bgStartColor,
-                            bgMidColor,
-                            bgStartColor,
-                        ),
-                    ),
-                ),
-        ) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                drawCircle(
-                    color = orangeGlowColor,
-                    radius = 220.dp.toPx(),
-                    center = Offset(size.width * 0.9f, -40.dp.toPx()),
-                )
-                drawCircle(
-                    color = purpleGlowColor,
-                    radius = 150.dp.toPx(),
-                    center = Offset(size.width * 0.1f, size.height * 0.7f),
-                )
-            }
-        }
+        DynamicHeaderBackground(
+            patternType = "transaction",
+            modifier = Modifier.matchParentSize().clip(wavyBottomShape())
+        )
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Spacer(modifier = Modifier.statusBarsPadding())
@@ -803,6 +764,7 @@ private fun OrangeHeaderWithCards(
                     bgColor = expenseSummaryBgColor(),
                 )
             }
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 
@@ -2152,5 +2114,312 @@ private fun EditDetailRow(label: String, value: String) {
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
         )
+    }
+}
+
+// ── Transaction Type Toggle (glass UI) ────────────────────────────────────────
+@Composable
+private fun TransactionTypeToggle(
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val options = listOf("All", "Income", "Expenses")
+    val isDark = isSystemInDarkTheme()
+    val primaryColor = textPrimaryColor()
+    val secondaryColor = textSecondaryColor()
+    val activeBg = if (isDark) DarkSurfaceVariant else Color.White.copy(alpha = 0.85f)
+    val borderColor = if (isDark) DarkGlassBorder else GlassTheme.GlassBorder
+    val outerBg = if (isDark) Color(0xFF1A1A1A).copy(alpha = 0.65f) else Color.White.copy(alpha = 0.55f)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(50))
+            .background(outerBg)
+            .border(1.dp, borderColor, RoundedCornerShape(50))
+            .padding(4.dp),
+    ) {
+        options.forEach { option ->
+            val isActive = option == selected
+            val bgColor by animateColorAsState(
+                targetValue = when {
+                    isActive && option == "Income" -> IncomeColor.copy(alpha = 0.18f)
+                    isActive && option == "Expenses" -> ExpenseColor.copy(alpha = 0.18f)
+                    isActive -> activeBg
+                    else -> Color.Transparent
+                },
+                animationSpec = tween(200),
+                label = "toggle_bg_$option",
+            )
+            val textColor by animateColorAsState(
+                targetValue = when {
+                    isActive && option == "Income" -> IncomeColor
+                    isActive && option == "Expenses" -> ExpenseColor
+                    isActive -> primaryColor
+                    else -> secondaryColor
+                },
+                animationSpec = tween(200),
+                label = "toggle_text_$option",
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(bgColor)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(option) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = option,
+                    fontSize = 13.sp,
+                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                    color = textColor,
+                )
+            }
+        }
+    }
+}
+
+// ── Transaction Table (glass card, very round corners) ────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransactionTable(
+    transactions: List<TransactionItem>,
+    onDelete: (TransactionItem) -> Unit,
+    onEdit: (TransactionItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (transactions.isEmpty()) return
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBgColor()),
+        border = androidx.compose.foundation.BorderStroke(1.dp, glassBorderLightColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            transactions.forEachIndexed { index, txn ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                            onDelete(txn)
+                            true
+                        } else false
+                    },
+                    positionalThreshold = { it * 0.40f },
+                )
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        val isDeleting = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                        val progress by animateFloatAsState(
+                            targetValue = if (isDeleting) 1f else 0f,
+                            label = "table_swipe_$index",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(ExpenseColor.copy(alpha = 0.10f + progress * 0.45f))
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            if (isDeleting) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Delete",
+                                        tint = ExpenseColor,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Text(
+                                        text = "Delete",
+                                        fontSize = 9.sp,
+                                        color = ExpenseColor,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+                        }
+                    },
+                ) {
+                    TransactionTableRow(
+                        transaction = txn,
+                        onLongPress = { onEdit(txn) },
+                    )
+                }
+                if (index < transactions.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = glassBorderColor(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionTableRow(
+    transaction: TransactionItem,
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isIncome = transaction.type == TransactionType.INCOME
+    val amountColor = if (isIncome) IncomeColor else ExpenseColor
+    val amountPrefix = if (isIncome) "+" else "−"
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(glassBgColor())
+            .combinedClickable(onClick = {}, onLongClick = onLongPress)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = transaction.displayName,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textPrimaryColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = transaction.source.replaceFirstChar { it.titlecase() },
+                    fontSize = 11.sp,
+                    color = textHintColor(),
+                )
+                if (transaction.isRecurring) {
+                    Text(text = "· ↻", fontSize = 11.sp, color = Color(0xFF8B5CF6))
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = if (transaction.timestampMillis != 0L)
+                SimpleDateFormat("d MMM", Locale.getDefault())
+                    .format(java.util.Date(transaction.timestampMillis))
+            else "",
+            fontSize = 11.sp,
+            color = textHintColor(),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "$amountPrefix${formatLKR(transaction.amountInLKR)}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = amountColor,
+            )
+            if (transaction.currency != "LKR" && transaction.exchangeRate != null) {
+                Text(
+                    text = "${transaction.currency} ${transaction.amount}",
+                    fontSize = 10.sp,
+                    color = textHintColor(),
+                )
+            }
+        }
+    }
+}
+
+// ── Transaction Pagination Bar ────────────────────────────────────────────────
+@Composable
+private fun TransactionPaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val canGoPrev = currentPage > 0
+        val canGoNext = currentPage < totalPages - 1 || hasMore
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoPrev) glassSurfaceColor() else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoPrev) glassBorderColor() else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoPrev) { onPreviousPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous page",
+                tint = if (canGoPrev) textPrimaryColor() else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        if (isLoadingMore) {
+            CircularProgressIndicator(
+                color = OrangePrimary,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Text(
+                text = "Page ${currentPage + 1} of ${if (hasMore && currentPage >= totalPages - 1) "${totalPages}+" else "$totalPages"}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textHintColor(),
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoNext && !isLoadingMore) glassSurfaceColor() else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoNext && !isLoadingMore) glassBorderColor() else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoNext && !isLoadingMore) { onNextPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next page",
+                tint = if (canGoNext && !isLoadingMore) textPrimaryColor() else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }

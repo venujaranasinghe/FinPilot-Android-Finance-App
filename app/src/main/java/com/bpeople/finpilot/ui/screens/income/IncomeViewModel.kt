@@ -7,6 +7,7 @@ import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.data.repository.ExchangeRatesRepository
 import com.bpeople.finpilot.data.repository.FreelanceProjectRepository
 import com.bpeople.finpilot.data.repository.IncomeRepository
+import com.bpeople.finpilot.data.repository.UserRepository
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Calendar
@@ -26,6 +27,7 @@ class IncomeViewModel @Inject constructor(
     private val incomeRepository: IncomeRepository,
     private val freelanceProjectRepository: FreelanceProjectRepository,
     private val exchangeRatesRepository: ExchangeRatesRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     enum class HistoryDateRange(val label: String) {
@@ -67,6 +69,7 @@ class IncomeViewModel @Inject constructor(
         val showMonthlyView: Boolean = true,
         val isLoadingMore: Boolean = false,
         val hasMore: Boolean = true,
+        val availableSources: List<String> = SOURCES,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -97,6 +100,14 @@ class IncomeViewModel @Inject constructor(
                     }
                 }
             }
+
+        viewModelScope.launch {
+            userRepository.observeIncomeSources().collect { maps ->
+                val persisted = maps.mapNotNull { m -> m["label"] as? String }.filter { it.isNotBlank() }
+                val merged = (persisted + SOURCES).distinct()
+                _incomeState.update { it.copy(availableSources = merged) }
+            }
+        }
 
         viewModelScope.launch {
             exchangeRatesRepository.refreshRatesIfNeeded()
