@@ -2,6 +2,14 @@
 
 package com.bpeople.finpilot.ui.screens.profile
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +24,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -319,27 +328,10 @@ private fun ProfileHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(OrangeMain),
-                    )
-                    Text(
-                        text = "PROFILE",
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = OrangeMain,
-                        letterSpacing = 1.1.sp,
-                    )
-                }
+
                 Text(
-                    text = "Settings",
-                    fontSize = 26.sp,
+                    text = "Profile",
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = textPrimaryColor(),
                     letterSpacing = (-0.5).sp,
@@ -754,17 +746,169 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun OrangeSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = enabled,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.White,
-            checkedTrackColor = OrangeMain,
-            uncheckedThumbColor = Color.White,
-            uncheckedTrackColor = borderColor(),
-        )
+    val isDark = isSystemInDarkTheme()
+    val animProgress by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "switch_anim"
     )
+
+    val trackWidth = 52.dp
+    val trackHeight = 32.dp
+    val thumbSize = 28.dp
+    val thumbPadding = 2.dp
+    val density = LocalDensity.current
+
+    val thumbOffsetPx = with(density) {
+        (thumbPadding).toPx() + animProgress * (trackWidth - thumbSize - thumbPadding * 2).toPx()
+    }
+
+    Box(
+        modifier = Modifier
+            .size(width = trackWidth, height = trackHeight)
+            .clip(RoundedCornerShape(50))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = enabled,
+                onClick = { onCheckedChange(!checked) }
+            ),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        // Track background with glass effect
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = if (checked) {
+                        Brush.horizontalGradient(
+                            colors = if (isDark) {
+                                listOf(
+                                    Color(0xFF1A3A2A).copy(alpha = 0.6f),
+                                    Color(0xFF0D2818).copy(alpha = 0.6f),
+                                )
+                            } else {
+                                listOf(
+                                    Color(0xFFE8F5E9).copy(alpha = 0.6f),
+                                    Color(0xFFC8E6C9).copy(alpha = 0.6f),
+                                )
+                            }
+                        )
+                    } else {
+                        Brush.horizontalGradient(
+                            colors = if (isDark) {
+                                listOf(
+                                    Color(0xFF2C2C2E).copy(alpha = 0.6f),
+                                    Color(0xFF1C1C1E).copy(alpha = 0.6f),
+                                )
+                            } else {
+                                listOf(
+                                    Color(0xFFE5E5EA).copy(alpha = 0.6f),
+                                    Color(0xFFD1D1D6).copy(alpha = 0.6f),
+                                )
+                            }
+                        )
+                    }
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.horizontalGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                Color(0x40FFFFFF),
+                                Color(0x15FFFFFF),
+                            )
+                        } else {
+                            listOf(
+                                Color(0x30FFFFFF),
+                                Color(0x10FFFFFF),
+                            )
+                        }
+                    ),
+                    shape = RoundedCornerShape(50)
+                )
+        )
+
+        // Inner shadow/top highlight
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 4.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            if (isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.5f),
+                            Color.Transparent,
+                        )
+                    )
+                )
+        )
+
+        // Thumb with glass effect
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(thumbOffsetPx.roundToInt(), 0) }
+                .padding(thumbPadding)
+                .size(thumbSize)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                Color(0xFFEEEEEE),
+                                Color(0xFFDDDDDD),
+                            )
+                        } else {
+                            listOf(
+                                Color.White,
+                                Color(0xFFF5F5F5),
+                            )
+                        }
+                    )
+                )
+                .border(
+                    width = 0.5.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0x33FFFFFF),
+                            Color(0x00FFFFFF),
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Thumb inner shadow
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(3.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = if (checked) {
+                                listOf(
+                                    if (isDark) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.5f),
+                                    Color.Transparent,
+                                )
+                            } else {
+                                listOf(
+                                    Color.Transparent,
+                                    Color.Transparent,
+                                )
+                            }
+                        )
+                    )
+            )
+        }
+
+    }
 }
 
 private fun initialsFrom(name: String?, email: String?): String {
