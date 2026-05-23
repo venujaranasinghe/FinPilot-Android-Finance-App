@@ -19,13 +19,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     incomeRepository: IncomeRepository,
-    expenseRepository: ExpenseRepository,
+    private val expenseRepository: ExpenseRepository,
     goalRepository: GoalRepository,
     userRepository: UserRepository
 ) : ViewModel() {
@@ -212,6 +213,25 @@ class DashboardViewModel @Inject constructor(
             recentTransactions = recentTransactions,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardUiState())
+
+    fun quickSend(amount: Double, recipientName: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                val entry = ExpenseEntry(
+                    id = java.util.UUID.randomUUID().toString(),
+                    amount = amount,
+                    category = "Transfer",
+                    note = "Quick send to $recipientName",
+                    date = com.google.firebase.Timestamp.now(),
+                    paymentMethod = "Card"
+                )
+                expenseRepository.addExpense(entry)
+                onComplete()
+            } catch (e: Exception) {
+                // handle failure or log it
+            }
+        }
+    }
 
     private fun buildRecentTransactions(
         incomes: List<IncomeEntry>,

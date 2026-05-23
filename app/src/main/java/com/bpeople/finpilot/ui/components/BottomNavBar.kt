@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -616,6 +617,7 @@ private fun GlassNavBarItem(
                 color = iconTint,
                 fontSize = 10.sp,
                 lineHeight = 10.sp,
+                fontFamily = MaterialTheme.typography.labelSmall.fontFamily,
                 fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
