@@ -290,20 +290,6 @@ fun ExpenseListContent(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onShowAddSheet,
-                icon = {
-                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
-                },
-                text = {
-                    Text("Add Expense", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                },
-                containerColor = GlassTheme.Orange,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(28.dp),
-            )
-        },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
     ) { pv ->
@@ -350,6 +336,33 @@ fun ExpenseListContent(
                     .padding(pv),
                 contentPadding = PaddingValues(bottom = 88.dp),
             ) {
+                // ── Hero header ──────────────────────────────────────────────
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "My Expenses",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GlassTheme.TextPrimary,
+                            letterSpacing = (-0.5).sp,
+                        )
+                        IconButton(onClick = onShowAddSheet) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = "Add Expense",
+                                tint = GlassTheme.TextPrimary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                }
                 // ── Hero header ──────────────────────────────────────────────
                 item {
                     GlassExpenseHeader(
@@ -487,7 +500,7 @@ fun ExpenseListContent(
             // Floating Bottom Nav
             FinPilotBottomNavBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                currentTab = NavTab.TRANSACTIONS,
+                currentTab = NavTab.EXPENSE,
                 onNavigateToDashboard = onNavigateToDashboard,
                 onNavigateToIncome = onNavigateToIncome,
                 onNavigateToExpense = {},
@@ -527,7 +540,7 @@ private fun GlassExpenseHeader(
                     center = Offset(size.width * 0.05f, size.height * 0.7f),
                 )
             }
-            .padding(top = 52.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
+            .padding(top = 16.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -1298,276 +1311,331 @@ private fun GlassAddExpenseSheet(
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
     val showExchange = state.currency != "LKR"
 
+    val fieldBg = GlassTheme.GlassBg
+    val textPrimary = GlassTheme.TextPrimary
+    val textSecondary = GlassTheme.TextSecondary
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedContainerColor = fieldBg,
+        focusedContainerColor = fieldBg,
+        unfocusedBorderColor = Color.Transparent,
+        focusedBorderColor = GlassTheme.Orange,
+        unfocusedTextColor = textPrimary,
+        focusedTextColor = textPrimary,
+        unfocusedLabelColor = textSecondary,
+        focusedLabelColor = GlassTheme.Orange,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
-            .padding(bottom = 36.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         // Drag handle
         Box(
             modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
                 .align(Alignment.CenterHorizontally)
-                .padding(top = 8.dp)
-                .width(40.dp).height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(GlassTheme.GlassBorder),
+                .background(textSecondary.copy(alpha = 0.3f), RoundedCornerShape(2.dp)),
         )
 
         Text(
             "Add Expense",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = GlassTheme.TextPrimary,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = textPrimary,
         )
 
-        // Quick presets
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Quick Add")
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                quickPresets.forEach { p ->
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(GlassTheme.OrangeDim)
-                            .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(14.dp))
-                            .clickable { onCategoryChange(p.category); onSubCategoryChange(p.merchant) }
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(p.emoji, fontSize = 14.sp)
-                        Text(p.label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GlassTheme.OrangeLight)
+        // Error
+        state.errorMessage?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f))
+                    .padding(12.dp),
+            )
+        }
+
+        // Currency + Amount
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            var currencyExpanded by remember { mutableStateOf(false) }
+            Box {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(fieldBg)
+                        .clickable { currencyExpanded = true }
+                        .padding(horizontal = 16.dp, vertical = 18.dp),
+                ) {
+                    Text(state.currency, color = GlassTheme.Orange, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+                DropdownMenu(
+                    expanded = currencyExpanded,
+                    onDismissRequest = { currencyExpanded = false },
+                    containerColor = GlassTheme.BgMid,
+                ) {
+                    ExpenseViewModel.CURRENCIES.forEach { cur ->
+                        DropdownMenuItem(
+                            text = { Text(cur, color = textPrimary) },
+                            onClick = { onCurrencyChange(cur); currencyExpanded = false },
+                        )
                     }
                 }
             }
-        }
-
-        // Amount
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Amount")
-
             OutlinedTextField(
                 value = state.amount,
                 onValueChange = onAmountChange,
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(
-                    fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
-                    color = GlassTheme.TextPrimary,
-                ),
-                placeholder = {
-                    Text(
-                        "0.00",
-                        style = TextStyle(
-                            fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
-                            color = GlassTheme.TextHint,
-                        ),
-                    )
-                },
-                leadingIcon = {
-                    var expanded by remember { mutableStateOf(false) }
-                    Box {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(GlassTheme.OrangeDim)
-                                .clickable { expanded = true }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(state.currency, fontWeight = FontWeight.ExtraBold, color = GlassTheme.OrangeLight, fontSize = 14.sp)
-                            Icon(Icons.Rounded.ArrowDropDown, null, tint = GlassTheme.OrangeLight, modifier = Modifier.size(16.dp))
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            containerColor = GlassTheme.BgMid,
-                        ) {
-                            ExpenseViewModel.CURRENCIES.forEach { cur ->
-                                DropdownMenuItem(
-                                    text = { Text(cur, color = GlassTheme.TextPrimary) },
-                                    onClick = { onCurrencyChange(cur); expanded = false },
-                                )
-                            }
-                        }
-                    }
-                },
+                label = { Text("Amount") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GlassTheme.Orange,
-                    unfocusedBorderColor = GlassTheme.GlassBorder,
-                    focusedContainerColor = GlassTheme.GlassSurface,
-                    unfocusedContainerColor = GlassTheme.GlassBg,
-                    cursorColor = GlassTheme.Orange,
-                ),
+                colors = fieldColors,
             )
+        }
 
-            AnimatedVisibility(
-                showExchange,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+        // Exchange rate
+        AnimatedVisibility(
+            visible = showExchange,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(fieldBg)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(GlassTheme.OrangeDim)
-                        .border(1.dp, Color(0x40FF6B00), RoundedCornerShape(14.dp))
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
-                        fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GlassTheme.OrangeLight,
-                    )
-                    val rateText = state.exchangeRateLastUpdatedMillis
-                        ?.let { rateFormat.format(Date(it)) } ?: "unknown"
-                    Text(
-                        "1 ${state.currency} = LKR ${state.exchangeRate} · $rateText" +
-                                if (state.exchangeRateIsStale) " · stale" else "",
-                        fontSize = 11.sp, color = GlassTheme.TextSecondary,
-                    )
-                    TextButton(onClick = onRefreshRates, enabled = !state.isRefreshingRates) {
-                        if (state.isRefreshingRates) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = GlassTheme.OrangeLight,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.OrangeLight)
+                Text(
+                    "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTheme.Orange,
+                )
+                val rateText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                Text(
+                    "1 ${state.currency} = LKR ${state.exchangeRate} · $rateText" +
+                            if (state.exchangeRateIsStale) " · stale" else "",
+                    fontSize = 11.sp,
+                    color = textSecondary,
+                )
+                TextButton(onClick = onRefreshRates, enabled = !state.isRefreshingRates) {
+                    if (state.isRefreshingRates) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 1.5.dp,
+                            color = GlassTheme.Orange,
+                        )
+                        Spacer(Modifier.width(6.dp))
                     }
-                }
-            }
-        }
-
-        // Category grid
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Category")
-            GlassCategoryGrid(
-                categories = ExpenseViewModel.CATEGORIES,
-                selected = state.category,
-                onSelect = onCategoryChange,
-            )
-        }
-
-        // Merchant
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Merchant (optional)")
-            OutlinedTextField(
-                value = state.subCategory,
-                onValueChange = onSubCategoryChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("e.g. Keells, PickMe, Netflix", fontSize = 13.sp, color = GlassTheme.TextHint) },
-                textStyle = TextStyle(fontSize = 14.sp, color = GlassTheme.TextPrimary),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GlassTheme.Orange,
-                    unfocusedBorderColor = GlassTheme.GlassBorder,
-                    focusedContainerColor = GlassTheme.GlassSurface,
-                    unfocusedContainerColor = GlassTheme.GlassBg,
-                    cursorColor = GlassTheme.Orange,
-                ),
-            )
-        }
-
-        // Note
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Note (optional)")
-            OutlinedTextField(
-                value = state.note,
-                onValueChange = onNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("e.g. Friday lunch with team", fontSize = 13.sp, color = GlassTheme.TextHint) },
-                textStyle = TextStyle(fontSize = 14.sp, color = GlassTheme.TextPrimary),
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GlassTheme.Orange,
-                    unfocusedBorderColor = GlassTheme.GlassBorder,
-                    focusedContainerColor = GlassTheme.GlassSurface,
-                    unfocusedContainerColor = GlassTheme.GlassBg,
-                    cursorColor = GlassTheme.Orange,
-                ),
-            )
-        }
-
-        // Payment methods
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Payment Method")
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExpenseViewModel.PAYMENT_METHODS.forEach { method ->
-                    val isSel = state.paymentMethod == method
-                    val bg by animateColorAsState(
-                        if (isSel) GlassTheme.Orange else GlassTheme.GlassBg, tween(150), label = "pm_$method",
-                    )
-                    val tc by animateColorAsState(
-                        if (isSel) Color.White else GlassTheme.TextSecondary, tween(150), label = "pmt_$method",
-                    )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(bg)
-                            .border(1.dp, if (isSel) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
-                            .clickable { onPaymentMethodChange(method) }
-                            .padding(vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
-                    ) {
-                        Icon(paymentMethodIcon(method), null, tint = if (isSel) Color.White else GlassTheme.OrangeLight, modifier = Modifier.size(16.dp))
-                        Text(method, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = tc, textAlign = TextAlign.Center)
-                    }
+                    Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.Orange)
                 }
             }
         }
 
         // Date
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetLabel("Date")
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(GlassTheme.GlassBg)
-                    .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(14.dp))
-                    .clickable {
-                        val cal = Calendar.getInstance().also { it.timeInMillis = state.dateMillis }
-                        DatePickerDialog(context, { _, y, m, d ->
-                            onDateChange(Calendar.getInstance().also { c ->
-                                c.set(y, m, d, 0, 0, 0); c.set(Calendar.MILLISECOND, 0)
-                            }.timeInMillis)
-                        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-                    }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(Icons.Rounded.CalendarToday, null, tint = GlassTheme.OrangeLight, modifier = Modifier.size(20.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(fieldBg)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Date", style = MaterialTheme.typography.labelMedium, color = textSecondary)
                 Text(
                     dateFormat.format(Date(state.dateMillis)),
-                    fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = GlassTheme.TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = textPrimary,
                 )
+            }
+            TextButton(
+                onClick = {
+                    val cal = Calendar.getInstance().also { it.timeInMillis = state.dateMillis }
+                    DatePickerDialog(context, { _, y, m, d ->
+                        onDateChange(Calendar.getInstance().also { c ->
+                            c.set(y, m, d, 0, 0, 0); c.set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis)
+                    }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                },
+            ) {
+                Text("Change", color = GlassTheme.Orange)
             }
         }
 
-        // Recurring toggle
-        GlassRecurringRow(isRecurring = state.isRecurring, onRecurringChange = onRecurringChange)
+        // Category
+        Text(
+            "CATEGORY",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            color = textSecondary,
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ExpenseViewModel.CATEGORIES.forEach { name ->
+                val isSelected = state.category == name
+                val bg by animateColorAsState(
+                    if (isSelected) GlassTheme.categoryColor(name) else fieldBg,
+                    tween(220), label = "cat_bg_$name",
+                )
+                val contentColor by animateColorAsState(
+                    if (isSelected) Color.White else textSecondary,
+                    tween(220), label = "cat_fg_$name",
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(bg)
+                        .clickable { onCategoryChange(name) }
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                ) {
+                    Text(
+                        name,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = contentColor,
+                    )
+                }
+            }
+        }
 
-        // Error
-        state.errorMessage?.let {
-            Text(it, fontSize = 12.sp, color = GlassTheme.Danger)
+        // Payment method
+        Text(
+            "PAYMENT METHOD",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            color = textSecondary,
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ExpenseViewModel.PAYMENT_METHODS.forEach { name ->
+                val isSelected = state.paymentMethod == name
+                val bg by animateColorAsState(
+                    if (isSelected) GlassTheme.Orange else fieldBg,
+                    tween(220), label = "pay_bg_$name",
+                )
+                val contentColor by animateColorAsState(
+                    if (isSelected) Color.White else textSecondary,
+                    tween(220), label = "pay_fg_$name",
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(bg)
+                        .clickable { onPaymentMethodChange(name) }
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                ) {
+                    Text(
+                        name,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = contentColor,
+                    )
+                }
+            }
+        }
+
+        // Merchant
+        OutlinedTextField(
+            value = state.subCategory,
+            onValueChange = onSubCategoryChange,
+            label = { Text("Merchant / Sub-category") },
+            placeholder = { Text("e.g. Keells, PickMe, Netflix") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            colors = fieldColors,
+        )
+
+        // Note
+        OutlinedTextField(
+            value = state.note,
+            onValueChange = onNoteChange,
+            label = { Text("Note (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            colors = fieldColors,
+        )
+
+        // Recurring
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(fieldBg)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text(
+                    "Recurring / Auto-debit",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textPrimary,
+                )
+                Text(
+                    "Marks this as a recurring charge",
+                    fontSize = 11.sp,
+                    color = textSecondary,
+                )
+            }
+            Switch(
+                checked = state.isRecurring,
+                onCheckedChange = onRecurringChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = GlassTheme.Orange,
+                    uncheckedThumbColor = textSecondary,
+                    uncheckedTrackColor = GlassTheme.GlassBorder,
+                ),
+            )
         }
 
         // Save
-        GlassSaveButton(isLoading = state.isLoading, onClick = onRequestSubmit)
+        Button(
+            onClick = onRequestSubmit,
+            enabled = !state.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GlassTheme.Orange,
+                disabledContainerColor = GlassTheme.Orange.copy(alpha = 0.4f),
+            ),
+        ) {
+            if (state.isLoading) {
+                CircularProgressIndicator(strokeWidth = 2.dp, color = Color.White, modifier = Modifier.size(22.dp))
+            } else {
+                Text("Save Expense", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
     }
 }
 

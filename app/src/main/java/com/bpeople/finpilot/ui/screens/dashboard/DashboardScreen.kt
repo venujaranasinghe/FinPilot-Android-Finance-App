@@ -143,12 +143,12 @@ private fun StyledAvatar(
     isSelected: Boolean = false
 ) {
     val gradients = when (name.lowercase()) {
-        "lay" -> listOf(Color(0xFFEC4899), Color(0xFF8B5CF6))
+        "lay" -> listOf(Color(0xFFEC4899), Color(0xFFEA580C))
         "nina" -> listOf(Color(0xFFFBBF24), Color(0xFFF87171))
         "kim" -> listOf(Color(0xFF38BDF8), Color(0xFF3B82F6))
         "john" -> listOf(Color(0xFF34D399), Color(0xFF059669))
         "nomaa" -> listOf(Color(0xFFFB7185), Color(0xFFE11D48))
-        else -> listOf(Color(0xFFA78BFA), Color(0xFF6366F1))
+        else -> listOf(Color(0xFFFB923C), Color(0xFFF97316))
     }
 
     Box(
@@ -157,7 +157,7 @@ private fun StyledAvatar(
             .clip(CircleShape)
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) Color(0xFF8A6FFF) else Color.White.copy(alpha = 0.5f),
+                color = if (isSelected) Color(0xFFF97316) else Color.White.copy(alpha = 0.5f),
                 shape = CircleShape
             )
             .background(Brush.linearGradient(gradients))
@@ -288,7 +288,7 @@ fun DashboardScreen(
                 label = "Total Balance",
                 subtitle = "Net position across all accounts",
                 amount = state.netPosition,
-                gradient = Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD8B4FE)))
+                gradient = Brush.linearGradient(listOf(Color(0xFFF97316), Color(0xFFFFEDD5)))
             ),
             FinanceCard(
                 id = "income",
@@ -395,7 +395,7 @@ fun DashboardScreen(
                                 text = activeCard?.label ?: "Your balance",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF8A6FFF)
+                                color = Color(0xFFF97316)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(
@@ -461,8 +461,8 @@ fun DashboardScreen(
                                             .size(if (i == activeCardIndex) 8.dp else 5.dp)
                                             .clip(CircleShape)
                                             .background(
-                                                if (i == activeCardIndex) Color(0xFF8A6FFF)
-                                                else Color(0xFF8A6FFF).copy(alpha = 0.3f)
+                                                if (i == activeCardIndex) Color(0xFFF97316)
+                                                else Color(0xFFF97316).copy(alpha = 0.3f)
                                             )
                                     )
                                 }
@@ -502,14 +502,14 @@ fun DashboardScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF8A6FFF).copy(alpha = 0.15f))
+                                        .background(Color(0xFFF97316).copy(alpha = 0.15f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = state.recentTransactions.size.toString(),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF8A6FFF)
+                                        color = Color(0xFFF97316)
                                     )
                                 }
                             }
@@ -644,7 +644,7 @@ private fun DashboardHeader(
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(Color(0xFF8A6FFF), CircleShape)
+                        .background(Color(0xFFF97316), CircleShape)
                         .border(1.5.dp, surfaceColor(), CircleShape)
                         .align(Alignment.TopEnd)
                         .offset(x = (-3).dp, y = 3.dp)
@@ -1035,7 +1035,7 @@ private fun BarItem(
     isSelected: Boolean
 ) {
     val barColor = if (isSelected) {
-        Brush.verticalGradient(listOf(Color(0xFF8A6FFF), Color(0xFFE5C0FF)))
+        Brush.verticalGradient(listOf(Color(0xFFF97316), Color(0xFFFFEDD5)))
     } else {
         Brush.verticalGradient(listOf(Color(0xFFEBEBF5).copy(alpha = 0.7f), Color(0xFFEBEBF5).copy(alpha = 0.7f)))
     }
@@ -1073,7 +1073,7 @@ private fun BarItem(
                         .background(Color.White)
                         .padding(2.5.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF8A6FFF))
+                        .background(Color(0xFFF97316))
                 )
             }
         }
@@ -1084,7 +1084,7 @@ private fun BarItem(
             text = label,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color(0xFF8A6FFF) else textSecondaryColor()
+            color = if (isSelected) Color(0xFFF97316) else textSecondaryColor()
         )
     }
 }
@@ -1102,7 +1102,7 @@ private fun CategoryDistributionPieChart(
     }
     val total = categories.sumOf { it.value }.coerceAtLeast(1.0)
     val palette = listOf(
-        Color(0xFF8A6FFF),
+        Color(0xFFF97316),
         Color(0xFF3B82F6),
         Color(0xFF10B981),
         Color(0xFFF59E0B),
@@ -1460,7 +1460,7 @@ private fun IncomeSourcesBreakdown(
                     Icon(
                         imageVector = Icons.Default.PieChart,
                         contentDescription = null,
-                        tint = Color(0xFF8A6FFF),
+                        tint = Color(0xFFF97316),
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -1585,7 +1585,7 @@ private fun QuickActionsSection(
                     Icon(
                         imageVector = action.icon,
                         contentDescription = action.title,
-                        tint = Color(0xFF8A6FFF),
+                        tint = Color(0xFFF97316),
                         modifier = Modifier.size(16.dp)
                     )
                     Text(

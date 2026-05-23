@@ -1,19 +1,27 @@
 package com.bpeople.finpilot.ui.screens.income
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,22 +34,33 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AttachMoney
-import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.CurrencyBitcoin
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Work
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -50,6 +69,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +78,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -68,11 +90,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.GlassTheme
@@ -83,6 +109,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private fun formatLKRFull(amount: Double) = "LKR %,.0f".format(amount)
@@ -157,10 +184,19 @@ fun IncomeScreen(
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToAddIncome: () -> Unit,
 ) {
     val state by viewModel.incomeState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAddSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(state.isSubmitted) {
+        if (!state.isSubmitted) return@LaunchedEffect
+        viewModel.consumeSubmitted()
+        snackbarHostState.showSnackbar("Income saved!")
+        scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false }
+    }
 
     LaunchedEffect(state.pendingDeleteEntry) {
         val entry = state.pendingDeleteEntry ?: return@LaunchedEffect
@@ -229,16 +265,6 @@ fun IncomeScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToAddIncome,
-                icon = { androidx.compose.material3.Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp)) },
-                text = { Text("Add Income", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp) },
-                containerColor = GlassTheme.Orange,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(28.dp),
-            )
-        },
         containerColor = Color.Transparent,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     ) { pv ->
@@ -286,6 +312,32 @@ fun IncomeScreen(
                 contentPadding = PaddingValues(bottom = 88.dp),
             ) {
                 item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "My Income",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GlassTheme.TextPrimary,
+                            letterSpacing = (-0.5).sp,
+                        )
+                        IconButton(onClick = { showAddSheet = true }) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = "Add Income",
+                                tint = GlassTheme.TextPrimary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
+                }
+                item {
                     GlassIncomeHeader(
                         monthTotal = monthTotal,
                         recurringTotal = recurringTotal,
@@ -322,7 +374,7 @@ fun IncomeScreen(
                 if (displayEntries.isEmpty()) {
                     item {
                         GlassEmptyIncomeState(
-                            onAddClick = onNavigateToAddIncome,
+                            onAddClick = { showAddSheet = true },
                             selectedSourceFilter = selectedSourceFilter,
                         )
                     }
@@ -394,6 +446,30 @@ fun IncomeScreen(
             )
         }
     }
+
+    if (showAddSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddSheet = false },
+            sheetState = sheetState,
+            containerColor = GlassTheme.GlassSurface,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        ) {
+            AddIncomeFormSheet(
+                state = state,
+                onSourceChange = viewModel::onSourceChange,
+                onAmountChange = viewModel::onAmountOriginalChange,
+                onCurrencyChange = viewModel::onCurrencyChange,
+                onDateChange = viewModel::onDateChange,
+                onLabelChange = viewModel::onLabelChange,
+                onIncomeTypeChange = viewModel::onIncomeTypeChange,
+                onProjectRefChange = viewModel::onProjectRefChange,
+                onRequestSubmit = viewModel::requestSubmit,
+                onConfirmExchangeRate = viewModel::confirmExchangeRate,
+                onDismissRateConfirmation = viewModel::dismissRateConfirmation,
+                onRefreshRates = viewModel::refreshExchangeRates,
+            )
+        }
+    }
 }
 
 @Composable
@@ -419,7 +495,7 @@ private fun GlassIncomeHeader(
                     center = Offset(size.width * 0.05f, size.height * 0.7f),
                 )
             }
-            .padding(top = 52.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
+            .padding(top = 16.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
     ) {
         androidx.compose.foundation.layout.Column(
             modifier = Modifier.fillMaxWidth(),
@@ -795,6 +871,505 @@ private fun GlassIncomeMonthlyTrend(
                             ),
                     )
                     Text(point.label, fontSize = 10.sp, color = GlassTheme.TextHint)
+                }
+            }
+        }
+    }
+}
+
+// ── Add Income Form Sheet ─────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddIncomeFormSheet(
+    state: IncomeViewModel.IncomeUiState,
+    onSourceChange: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
+    onDateChange: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
+    onIncomeTypeChange: (String) -> Unit,
+    onProjectRefChange: (String) -> Unit,
+    onRequestSubmit: () -> Unit,
+    onConfirmExchangeRate: () -> Unit,
+    onDismissRateConfirmation: () -> Unit,
+    onRefreshRates: () -> Unit,
+) {
+    val context = LocalContext.current
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
+    val showExchange = state.currencyOriginal != "LKR"
+    val selectedDateLabel = remember(state.dateMillis) { dateFormat.format(Date(state.dateMillis)) }
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedContainerColor = GlassTheme.GlassSurface,
+        focusedContainerColor = GlassTheme.GlassSurface,
+        unfocusedBorderColor = Color.Transparent,
+        focusedBorderColor = GlassTheme.Orange,
+        unfocusedTextColor = GlassTheme.TextPrimary,
+        focusedTextColor = GlassTheme.TextPrimary,
+        unfocusedLabelColor = GlassTheme.TextSecondary,
+        focusedLabelColor = GlassTheme.Orange,
+    )
+
+    if (state.showRateConfirmation) {
+        AlertDialog(
+            onDismissRequest = onDismissRateConfirmation,
+            containerColor = GlassTheme.GlassSurface,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text(
+                    "Confirm exchange rate",
+                    color = GlassTheme.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                val updatedText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                Text(
+                    "Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?",
+                    color = GlassTheme.TextSecondary,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirmExchangeRate,
+                    colors = ButtonDefaults.buttonColors(containerColor = GlassTheme.Orange),
+                    shape = RoundedCornerShape(12.dp),
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRateConfirmation) {
+                    Text("Cancel", color = GlassTheme.TextSecondary)
+                }
+            },
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        // Drag handle
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .align(Alignment.CenterHorizontally)
+                .background(
+                    GlassTheme.TextSecondary.copy(alpha = 0.3f),
+                    RoundedCornerShape(2.dp),
+                ),
+        )
+
+        Text(
+            text = "Add Income",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = GlassTheme.TextPrimary,
+        )
+
+        // Error message
+        if (state.errorMessage != null) {
+            Text(
+                text = state.errorMessage,
+                color = GlassTheme.Danger,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(GlassTheme.Danger.copy(alpha = 0.08f))
+                    .padding(12.dp),
+            )
+        }
+
+        // Amount field
+        OutlinedTextField(
+            value = state.amountOriginal,
+            onValueChange = onAmountChange,
+            label = { Text("Amount") },
+            placeholder = { Text("0.00", color = GlassTheme.TextHint) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            textStyle = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold),
+            colors = fieldColors,
+        )
+
+        // Currency row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.GlassSurface)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Currency",
+                    fontSize = 12.sp,
+                    color = GlassTheme.TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    state.currencyOriginal,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GlassTheme.TextPrimary,
+                )
+            }
+            var currencyExpanded by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { currencyExpanded = true }) {
+                    Text("Change", color = GlassTheme.Orange, fontWeight = FontWeight.SemiBold)
+                }
+                DropdownMenu(
+                    expanded = currencyExpanded,
+                    onDismissRequest = { currencyExpanded = false },
+                    containerColor = GlassTheme.GlassSurface,
+                ) {
+                    IncomeViewModel.CURRENCIES.forEach { cur ->
+                        DropdownMenuItem(
+                            text = { Text(cur, color = GlassTheme.TextPrimary) },
+                            onClick = { onCurrencyChange(cur); currencyExpanded = false },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Exchange rate info (non-LKR)
+        AnimatedVisibility(
+            visible = showExchange,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(GlassTheme.OrangeDim)
+                    .border(1.dp, GlassTheme.Orange.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTheme.Orange,
+                )
+                val updatedText = state.exchangeRateLastUpdatedMillis
+                    ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                Text(
+                    text = if (state.exchangeRateAvailable)
+                        "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText" +
+                            if (state.exchangeRateIsStale) " · stale" else ""
+                    else "Rate unavailable",
+                    fontSize = 11.sp,
+                    color = GlassTheme.TextSecondary,
+                )
+                TextButton(
+                    onClick = onRefreshRates,
+                    enabled = !state.isRefreshingRates,
+                ) {
+                    if (state.isRefreshingRates) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 1.5.dp,
+                            color = GlassTheme.Orange,
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.Orange)
+                }
+            }
+        }
+
+        // Source selector
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.GlassSurface)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "Income Source",
+                fontSize = 12.sp,
+                color = GlassTheme.TextSecondary,
+                fontWeight = FontWeight.Medium,
+            )
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IncomeViewModel.SOURCES.forEach { src ->
+                    val isSelected = state.source == src
+                    val bg by animateColorAsState(
+                        if (isSelected) GlassTheme.Orange else GlassTheme.GlassBg,
+                        tween(200),
+                        label = "src_bg",
+                    )
+                    val tc by animateColorAsState(
+                        if (isSelected) Color.White else GlassTheme.TextSecondary,
+                        tween(200),
+                        label = "src_tc",
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bg)
+                            .border(
+                                1.dp,
+                                if (isSelected) Color.Transparent else GlassTheme.GlassBorder,
+                                RoundedCornerShape(20.dp),
+                            )
+                            .clickable { onSourceChange(src) }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(src, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tc)
+                    }
+                }
+            }
+        }
+
+        // Income type selector
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.GlassSurface)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "Income Type",
+                fontSize = 12.sp,
+                color = GlassTheme.TextSecondary,
+                fontWeight = FontWeight.Medium,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IncomeViewModel.INCOME_TYPES.forEach { type ->
+                    val isSelected = state.incomeType == type
+                    val bg by animateColorAsState(
+                        if (isSelected) GlassTheme.Orange else GlassTheme.GlassBg,
+                        tween(200),
+                        label = "type_bg",
+                    )
+                    val tc by animateColorAsState(
+                        if (isSelected) Color.White else GlassTheme.TextSecondary,
+                        tween(200),
+                        label = "type_tc",
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(bg)
+                            .border(
+                                1.dp,
+                                if (isSelected) Color.Transparent else GlassTheme.GlassBorder,
+                                RoundedCornerShape(12.dp),
+                            )
+                            .clickable { onIncomeTypeChange(type) }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            type,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = tc,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Note field
+        OutlinedTextField(
+            value = state.label,
+            onValueChange = onLabelChange,
+            label = { Text("Note (optional)") },
+            placeholder = { Text("Description or reference", color = GlassTheme.TextHint) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            colors = fieldColors,
+        )
+
+        // Date row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTheme.GlassSurface)
+                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Date",
+                    fontSize = 12.sp,
+                    color = GlassTheme.TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    selectedDateLabel,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GlassTheme.TextPrimary,
+                )
+            }
+            TextButton(
+                onClick = {
+                    val cal = Calendar.getInstance().apply { timeInMillis = state.dateMillis }
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            val picked = Calendar.getInstance().apply {
+                                set(year, month, day, 0, 0, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            onDateChange(picked.timeInMillis)
+                        },
+                        cal.get(Calendar.YEAR),
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.DAY_OF_MONTH),
+                    ).show()
+                },
+            ) {
+                Text("Change", color = GlassTheme.Orange, fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        // Freelance project link
+        AnimatedVisibility(
+            visible = state.source == "Freelance",
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            IncomeProjectRow(
+                projects = state.projects,
+                selectedId = state.projectRef,
+                onSelect = onProjectRefChange,
+            )
+        }
+
+        // Submit button
+        Button(
+            onClick = onRequestSubmit,
+            enabled = !state.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GlassTheme.Orange,
+                disabledContainerColor = GlassTheme.Orange.copy(alpha = 0.4f),
+            ),
+        ) {
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    color = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                Text("Save Income", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun IncomeProjectRow(
+    projects: List<FreelanceProject>,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = projects.firstOrNull { it.id == selectedId }
+    val label = selected?.let { "${it.projectTitle} — ${it.clientName}" }
+        ?: if (projects.isEmpty()) "No projects" else "Select project"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Link to Project",
+                fontSize = 12.sp,
+                color = GlassTheme.TextSecondary,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (selected != null) GlassTheme.TextPrimary else GlassTheme.TextHint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box {
+            TextButton(
+                onClick = { if (projects.isNotEmpty()) expanded = true },
+                enabled = projects.isNotEmpty(),
+            ) {
+                Text("Change", color = GlassTheme.Orange, fontWeight = FontWeight.SemiBold)
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = GlassTheme.GlassSurface,
+            ) {
+                DropdownMenuItem(
+                    text = { Text("None", color = GlassTheme.TextPrimary) },
+                    onClick = { onSelect(""); expanded = false },
+                )
+                projects.forEach { p ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    p.projectTitle,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    color = GlassTheme.TextPrimary,
+                                )
+                                Text(p.clientName, fontSize = 12.sp, color = GlassTheme.TextHint)
+                            }
+                        },
+                        onClick = { onSelect(p.id); expanded = false },
+                    )
                 }
             }
         }

@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Brightness4
 import androidx.compose.material.icons.rounded.Brightness7
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.CurrencyExchange
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Lock
@@ -37,7 +39,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -61,12 +66,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.bpeople.finpilot.data.model.ThemeMode
-import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
-import com.bpeople.finpilot.ui.components.NavTab
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -80,12 +85,7 @@ import androidx.compose.ui.tooling.preview.Preview
 fun SettingsScreen(
     state: SettingsViewModel.SettingsUiState,
     events: Flow<SettingsViewModel.SettingsEvent>,
-    onNavigateToDashboard: () -> Unit = {},
-    onNavigateToIncome: () -> Unit = {},
-    onNavigateToExpense: () -> Unit = {},
-    onNavigateToTransactions: () -> Unit = {},
-    onNavigateToGoals: () -> Unit = {},
-    onNavigateToProfile: () -> Unit = {},
+    onNavigateBack: () -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onCloudSyncChange: (Boolean) -> Unit,
@@ -94,6 +94,15 @@ fun SettingsScreen(
     onExportData: () -> Unit,
     onDeleteAccount: () -> Unit,
     onAccountDeleted: () -> Unit,
+    onSetUsdEnabled: (Boolean) -> Unit = {},
+    onSetUsdtEnabled: (Boolean) -> Unit = {},
+    onSetAutoConvert: (Boolean) -> Unit = {},
+    onNotifySalaryReminder: (Boolean) -> Unit = {},
+    onNotifyWeeklySummary: (Boolean) -> Unit = {},
+    onNotifyGoalMilestone: (Boolean) -> Unit = {},
+    onNotifyBudgetOverspend: (Boolean) -> Unit = {},
+    onBudgetThreshold: (String) -> Unit = {},
+    onClearCache: () -> Unit = {},
 ) {
     var showExportDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
@@ -137,6 +146,12 @@ fun SettingsScreen(
             title = "Export data",
             subtitle = "Download your transactions",
             onClick = { showExportDialog = true }
+        ),
+        SettingNavigation(
+            icon = Icons.Rounded.PhoneAndroid,
+            title = "Clear cache",
+            subtitle = "Free up local storage",
+            onClick = onClearCache
         ),
         SettingNavigation(
             icon = Icons.Rounded.Delete,
@@ -193,17 +208,107 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    // Custom header replace TopAppBar
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                    // Custom header with back button
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
                         modifier = Modifier
+                            .fillMaxWidth()
                             .statusBarsPadding()
-                            .padding(bottom = 8.dp)
-                    )
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = "Settings",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                item {
+                    SettingsSectionCard(title = "Currency") {
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.CurrencyExchange,
+                            title = "USD",
+                            subtitle = "US Dollar",
+                            checked = state.usdEnabled,
+                            onCheckedChange = onSetUsdEnabled
+                        ))
+                        SettingsRowDivider()
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.CurrencyExchange,
+                            title = "USDT",
+                            subtitle = "Tether stablecoin",
+                            checked = state.usdtEnabled,
+                            onCheckedChange = onSetUsdtEnabled
+                        ))
+                        SettingsRowDivider()
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.CurrencyExchange,
+                            title = "Auto convert",
+                            subtitle = state.rateLastUpdated,
+                            checked = state.autoConvert,
+                            onCheckedChange = onSetAutoConvert
+                        ))
+                    }
+                }
+
+                item {
+                    SettingsSectionCard(title = "Notification preferences") {
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.Notifications,
+                            title = "Salary reminder",
+                            subtitle = "Monthly income reminder",
+                            checked = state.notifySalaryReminder,
+                            onCheckedChange = onNotifySalaryReminder
+                        ))
+                        SettingsRowDivider()
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.Notifications,
+                            title = "Weekly summary",
+                            subtitle = "Weekly spending report",
+                            checked = state.notifyWeeklySummary,
+                            onCheckedChange = onNotifyWeeklySummary
+                        ))
+                        SettingsRowDivider()
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.Notifications,
+                            title = "Goal milestone",
+                            subtitle = "Savings goal reached",
+                            checked = state.notifyGoalMilestone,
+                            onCheckedChange = onNotifyGoalMilestone
+                        ))
+                        SettingsRowDivider()
+                        SettingsToggleRow(SettingToggle(
+                            icon = Icons.Rounded.Notifications,
+                            title = "Budget overspend",
+                            subtitle = "Alert when budget exceeded",
+                            checked = state.notifyBudgetOverspend,
+                            onCheckedChange = onNotifyBudgetOverspend
+                        ))
+                        if (state.notifyBudgetOverspend) {
+                            SettingsRowDivider()
+                            OutlinedTextField(
+                                value = state.budgetOverspendThreshold,
+                                onValueChange = onBudgetThreshold,
+                                label = { Text("Alert threshold") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                )
+                            )
+                        }
+                    }
                 }
 
                 item {
@@ -255,21 +360,9 @@ fun SettingsScreen(
                             .padding(vertical = 8.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(110.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
-
-            FinPilotBottomNavBar(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                currentTab = NavTab.SETTINGS,
-                onNavigateToDashboard = onNavigateToDashboard,
-                onNavigateToIncome = onNavigateToIncome,
-                onNavigateToExpense = onNavigateToExpense,
-                onNavigateToTransactions = onNavigateToTransactions,
-                onNavigateToGoals = onNavigateToGoals,
-                onNavigateToProfile = onNavigateToProfile,
-                onNavigateToSettings = {}
-            )
         }
     }
 

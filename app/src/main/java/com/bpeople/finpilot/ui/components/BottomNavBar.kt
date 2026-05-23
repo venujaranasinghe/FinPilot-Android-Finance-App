@@ -24,11 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.CompareArrows
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -91,9 +91,8 @@ enum class NavTab {
 }
 
 private fun NavTab.resolved(): NavTab = when (this) {
-    NavTab.DASHBOARD              -> NavTab.HOME
-    NavTab.INCOME, NavTab.EXPENSE -> NavTab.TRANSACTIONS
-    else                          -> this
+    NavTab.DASHBOARD -> NavTab.HOME
+    else             -> this
 }
 
 private data class NavItem(
@@ -103,11 +102,11 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem(NavTab.HOME,         "Home",     Icons.Rounded.Home),
-    NavItem(NavTab.TRANSACTIONS, "Trans",    Icons.AutoMirrored.Rounded.CompareArrows),
-    NavItem(NavTab.GOALS,        "Goals",    Icons.Rounded.EmojiEvents),
-    NavItem(NavTab.SETTINGS,     "Settings", Icons.Rounded.Settings),
-    NavItem(NavTab.PROFILE,      "Profile",  Icons.Rounded.Person)
+    NavItem(NavTab.HOME,    "Home",    Icons.Rounded.Home),
+    NavItem(NavTab.INCOME,  "Income",  Icons.Rounded.ArrowUpward),
+    NavItem(NavTab.EXPENSE, "Expense", Icons.Rounded.ArrowDownward),
+    NavItem(NavTab.GOALS,   "Goals",   Icons.Rounded.EmojiEvents),
+    NavItem(NavTab.PROFILE, "Profile", Icons.Rounded.Person)
 )
 
 // ─── Swipe velocity threshold ────────────────────────────────────────────────
@@ -241,12 +240,13 @@ fun FinPilotBottomNavBar(
     // Navigate callback dispatcher
     fun navigateTo(index: Int) {
         when (navItems.getOrNull(index)?.tab) {
-            NavTab.HOME         -> onNavigateToDashboard()
-            NavTab.TRANSACTIONS -> onNavigateToTransactions()
-            NavTab.GOALS        -> onNavigateToGoals()
-            NavTab.PROFILE      -> onNavigateToProfile()
-            NavTab.SETTINGS     -> onNavigateToSettings()
-            else                -> {}
+            NavTab.HOME     -> onNavigateToDashboard()
+            NavTab.INCOME   -> onNavigateToIncome()
+            NavTab.EXPENSE  -> onNavigateToExpense()
+            NavTab.GOALS    -> onNavigateToGoals()
+            NavTab.PROFILE  -> onNavigateToProfile()
+            NavTab.SETTINGS -> onNavigateToSettings()
+            else            -> {}
         }
     }
 

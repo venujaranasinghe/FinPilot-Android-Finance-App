@@ -23,7 +23,6 @@ import com.bpeople.finpilot.ui.screens.expense.ExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
 import com.bpeople.finpilot.ui.screens.goal.GoalTrackerScreen
 import com.bpeople.finpilot.ui.screens.goal.GoalViewModel
-import com.bpeople.finpilot.ui.screens.income.AddIncomeScreen
 import com.bpeople.finpilot.ui.screens.income.IncomeScreen
 import com.bpeople.finpilot.ui.screens.income.IncomeViewModel
 import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
@@ -189,40 +188,6 @@ fun FinPilotNavGraph(
                 onNavigateToSettings = {
                     navController.navigate(NavRoutes.Settings.route)
                 },
-                onNavigateToAddIncome = {
-                    navController.navigate(NavRoutes.AddIncome.route)
-                },
-            )
-        }
-
-        composable(NavRoutes.AddIncome.route) {
-            val incomeViewModel: IncomeViewModel = hiltViewModel()
-            AddIncomeScreen(
-                viewModel = incomeViewModel,
-                onNavigateToDashboard = {
-                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
-                },
-                onNavigateToIncome = {
-                    navController.navigate(NavRoutes.Income.route)
-                },
-                onNavigateToExpense = {
-                    navController.navigate(NavRoutes.AddExpense.route)
-                },
-                onNavigateToTransactions = {
-                    navController.navigate(NavRoutes.Transactions.route)
-                },
-                onNavigateToGoals = {
-                    navController.navigate(NavRoutes.GoalTracker.createRoute())
-                },
-                onNavigateToProfile = {
-                    navController.navigate(NavRoutes.Profile.route)
-                },
-                onNavigateToSettings = {
-                    navController.navigate(NavRoutes.Settings.route)
-                },
-                onIncomeAdded = {
-                    navController.popBackStack()
-                },
             )
         }
 
@@ -345,23 +310,8 @@ fun FinPilotNavGraph(
                     }
                 },
                 onUpdateDisplayName = profileViewModel::updateDisplayName,
-                onDeleteAccount = {
-                    profileViewModel.signOut()
-                    navController.navigate(NavRoutes.Login.route) {
-                        popUpTo(NavRoutes.Profile.route) { inclusive = true }
-                    }
-                },
-                onSetUsdEnabled = profileViewModel::setUsdEnabled,
-                onSetUsdtEnabled = profileViewModel::setUsdtEnabled,
-                onSetAutoConvert = profileViewModel::setAutoConvert,
                 onToggleIncomeSource = profileViewModel::toggleIncomeSource,
                 onAddIncomeSource = profileViewModel::addIncomeSource,
-                onNotifySalaryReminder = profileViewModel::setNotifySalaryReminder,
-                onNotifyWeeklySummary = profileViewModel::setNotifyWeeklySummary,
-                onNotifyGoalMilestone = profileViewModel::setNotifyGoalMilestone,
-                onNotifyBudgetOverspend = profileViewModel::setNotifyBudgetOverspend,
-                onBudgetThreshold = profileViewModel::setBudgetOverspendThreshold,
-                onDarkMode = profileViewModel::setDarkMode,
             )
         }
 
@@ -371,24 +321,7 @@ fun FinPilotNavGraph(
             SettingsScreen(
                 state = settingsState,
                 events = settingsViewModel.events,
-                onNavigateToDashboard = {
-                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
-                },
-                onNavigateToIncome = {
-                    navController.navigate(NavRoutes.Income.route)
-                },
-                onNavigateToExpense = {
-                    navController.navigate(NavRoutes.AddExpense.route)
-                },
-                onNavigateToTransactions = {
-                    navController.navigate(NavRoutes.Transactions.route)
-                },
-                onNavigateToGoals = {
-                    navController.navigate(NavRoutes.GoalTracker.createRoute())
-                },
-                onNavigateToProfile = {
-                    navController.navigate(NavRoutes.Profile.route)
-                },
+                onNavigateBack = { navController.popBackStack() },
                 onNotificationsChange = settingsViewModel::onNotificationsChange,
                 onThemeModeChange = settingsViewModel::onThemeModeChange,
                 onCloudSyncChange = settingsViewModel::onCloudSyncChange,
@@ -400,7 +333,16 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Login.route) {
                         popUpTo(NavRoutes.Settings.route) { inclusive = true }
                     }
-                }
+                },
+                onSetUsdEnabled = settingsViewModel::setUsdEnabled,
+                onSetUsdtEnabled = settingsViewModel::setUsdtEnabled,
+                onSetAutoConvert = settingsViewModel::setAutoConvert,
+                onNotifySalaryReminder = settingsViewModel::setNotifySalaryReminder,
+                onNotifyWeeklySummary = settingsViewModel::setNotifyWeeklySummary,
+                onNotifyGoalMilestone = settingsViewModel::setNotifyGoalMilestone,
+                onNotifyBudgetOverspend = settingsViewModel::setNotifyBudgetOverspend,
+                onBudgetThreshold = settingsViewModel::setBudgetOverspendThreshold,
+                onClearCache = settingsViewModel::onClearCache,
             )
         }
 
