@@ -86,6 +86,8 @@ import androidx.compose.ui.unit.sp
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import com.bpeople.finpilot.ui.theme.DarkBackground
 import com.bpeople.finpilot.ui.theme.DarkBorder
 import com.bpeople.finpilot.ui.theme.DarkGlassBg
@@ -279,18 +281,11 @@ fun GoalTrackerScreenContent(
                     item {
                         GoalsHeader(
                             activeGoal = activeGoal,
-                            onOpenCreate = onOpenCreate,
-                            onOpenEdit = onOpenEdit,
-                        )
-                    }
-
-                    // Hero Card with Pager
-                    item {
-                        GoalHeroCard(
                             allGoals = allGoals,
-                            activeGoal = activeGoal,
                             pagerState = pagerState,
                             animationTrigger = animationTrigger,
+                            onOpenCreate = onOpenCreate,
+                            onOpenEdit = onOpenEdit,
                         )
                     }
 
@@ -376,61 +371,88 @@ fun GoalTrackerScreenContent(
 
 // ── Goals Header ──────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GoalsHeader(
     activeGoal: Goal,
+    allGoals: List<Goal>,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    animationTrigger: Boolean,
     onOpenCreate: () -> Unit,
     onOpenEdit: (Goal) -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor())
-            .statusBarsPadding(),
     ) {
-        Row(
+        DynamicHeaderBackground(
+            patternType = "goal",
+            modifier = Modifier.matchParentSize().clip(wavyBottomShape())
+        )
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .statusBarsPadding()
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-
-                Text(
-                    text = "My Goals",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = textPrimaryColor(),
-                    letterSpacing = (-0.5).sp,
-                )
-            }
-
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
-                    onClick = onOpenCreate,
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add Goal",
-                        tint = textPrimaryColor(),
-                        modifier = Modifier.size(24.dp),
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "My Goals",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF0F172A),
+                        letterSpacing = (-0.5).sp,
                     )
                 }
-                IconButton(
-                    onClick = { onOpenEdit(activeGoal) },
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Edit Goal",
-                        tint = textPrimaryColor(),
-                        modifier = Modifier.size(20.dp),
-                    )
+                    IconButton(
+                        onClick = onOpenCreate,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.4f))
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add Goal",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = { onOpenEdit(activeGoal) },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.4f))
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit Goal",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
+            GoalHeroCard(
+                allGoals = allGoals,
+                activeGoal = activeGoal,
+                pagerState = pagerState,
+                animationTrigger = animationTrigger,
+            )
+            Spacer(modifier = Modifier.height(36.dp))
         }
     }
 }
@@ -451,9 +473,21 @@ private fun GoalHeroCard(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = heroBgColor()),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFAB66),
+                            Color(0xFFFFBF80),
+                            Color(0xFFFFD9A8),
+                        )
+                    )
+                )
+        ) {
             // Background circles
             Canvas(modifier = Modifier.matchParentSize()) {
                 drawCircle(
@@ -510,7 +544,7 @@ private fun GoalHeroCard(
                                     val startAngle = -90f
 
                                     drawArc(
-                                        color = Color.White.copy(alpha = 0.2f),
+                                        color = Color(0xFF994400).copy(alpha = 0.2f),
                                         startAngle = startAngle,
                                         sweepAngle = 360f,
                                         useCenter = false,
@@ -522,7 +556,13 @@ private fun GoalHeroCard(
                                     val sweep = progressAnimatable.value * 360f
                                     if (sweep > 0f) {
                                         drawArc(
-                                            color = Color.White,
+                                            brush = Brush.sweepGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFFFFFF),
+                                                    Color(0xFFFFE0A0),
+                                                    Color(0xFFFFFFFF),
+                                                )
+                                            ),
                                             startAngle = startAngle,
                                             sweepAngle = sweep,
                                             useCenter = false,
@@ -539,13 +579,13 @@ private fun GoalHeroCard(
                                         val dotY = center.y + ringRadius * sin(angle).toFloat()
                                         val reached = progressAnimatable.value >= milestoneProgress
                                         drawCircle(
-                                            color = if (reached) GoalOrangeAccent else Color.White.copy(alpha = 0.4f),
+                                            color = if (reached) Color(0xFF7A3000) else Color(0xFF7A3000).copy(alpha = 0.25f),
                                             radius = 5.dp.toPx(),
                                             center = Offset(dotX, dotY),
                                         )
                                         if (reached) {
                                             drawCircle(
-                                                color = Color.White,
+                                                color = Color(0xFFFFEDD5),
                                                 radius = 2.5.dp.toPx(),
                                                 center = Offset(dotX, dotY),
                                             )
@@ -558,12 +598,12 @@ private fun GoalHeroCard(
                                         text = "${(progressAnimatable.value * 100).roundToInt()}%",
                                         fontSize = 32.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = Color(0xFF7A3000),
                                     )
                                     Text(
                                         text = "saved",
                                         fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.75f),
+                                        color = Color(0xFF7A3000).copy(alpha = 0.7f),
                                     )
                                 }
                             }
@@ -575,7 +615,7 @@ private fun GoalHeroCard(
                                 text = goal.title,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = Color(0xFF7A3000),
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -583,7 +623,7 @@ private fun GoalHeroCard(
                             Text(
                                 text = "LKR ${String.format("%,d", goal.currentAmount.toInt())} / LKR ${String.format("%,d", goal.targetAmount.toInt())}",
                                 fontSize = 14.sp,
-                                color = Color.White.copy(alpha = 0.75f),
+                                color = Color(0xFF7A3000).copy(alpha = 0.75f),
                                 modifier = Modifier.padding(top = 6.dp),
                             )
 
@@ -624,8 +664,8 @@ private fun GoalHeroCard(
                                         .size(if (selected) 8.dp else 6.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            if (selected) Color.White
-                                            else Color.White.copy(alpha = 0.4f),
+                                            if (selected) Color(0xFF7A3000)
+                                            else Color(0xFF7A3000).copy(alpha = 0.3f),
                                         ),
                                 )
                             }
@@ -649,12 +689,12 @@ private fun MiniStat(label: String, value: String) {
             text = value,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = Color(0xFF7A3000),
         )
         Text(
             text = label,
             fontSize = 10.sp,
-            color = Color.White.copy(alpha = 0.6f),
+            color = Color(0xFF7A3000).copy(alpha = 0.6f),
         )
     }
 }

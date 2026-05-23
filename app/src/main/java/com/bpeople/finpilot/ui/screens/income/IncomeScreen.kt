@@ -13,6 +13,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -66,6 +67,11 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -76,6 +82,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -103,9 +110,12 @@ import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.GlassTheme
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import kotlin.math.max
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -235,32 +245,16 @@ fun IncomeScreen(
     }
     val trendData = remember(state.entries) { computeIncomeMonthlyTrend(state.entries) }
 
-    val groupedByDate = remember(displayEntries) {
+    val listState = rememberLazyListState()
+    var currentPage by remember { mutableIntStateOf(0) }
+    val pageSize = 10
+    LaunchedEffect(displayEntries) { currentPage = 0 }
+    val totalPages = max(1, (displayEntries.size + pageSize - 1) / pageSize)
+    val pagedEntries = remember(displayEntries, currentPage) {
         displayEntries
             .sortedByDescending { it.date?.seconds ?: 0L }
-            .groupBy { dateLabel(it.date?.toDate()?.time ?: 0L) }
-            .entries.toList()
-    }
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(listState, state.hasMore, state.isLoadingMore, state.isLoading, displayEntries.size) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            if (totalItems == 0) {
-                false
-            } else {
-                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                lastVisibleIndex >= totalItems - 4
-            }
-        }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                if (state.hasMore && !state.isLoadingMore && !state.isLoading) {
-                    viewModel.loadNextPage()
-                }
-            }
+            .drop(currentPage * pageSize)
+            .take(pageSize)
     }
 
     Scaffold(
@@ -312,37 +306,12 @@ fun IncomeScreen(
                 contentPadding = PaddingValues(bottom = 88.dp),
             ) {
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "My Income",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = GlassTheme.TextPrimary,
-                            letterSpacing = (-0.5).sp,
-                        )
-                        IconButton(onClick = { showAddSheet = true }) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = "Add Income",
-                                tint = GlassTheme.TextPrimary,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-                item {
                     GlassIncomeHeader(
                         monthTotal = monthTotal,
                         recurringTotal = recurringTotal,
                         nonRecurringTotal = nonRecurringTotal,
                         entryCount = monthEntries.size,
+                        onAddClick = { showAddSheet = true },
                     )
                 }
 
@@ -357,7 +326,7 @@ fun IncomeScreen(
 
                 item {
                     GlassIncomeSourceFilterBar(
-                        sources = listOf("All") + IncomeViewModel.SOURCES,
+                        sources = listOf("All") + state.availableSources,
                         selected = selectedSourceFilter,
                         onSelect = { selectedSourceFilter = it },
                         modifier = Modifier.padding(vertical = 4.dp),
@@ -381,17 +350,27 @@ fun IncomeScreen(
                     return@LazyColumn
                 }
 
-                groupedByDate.forEach { (label, entries) ->
-                    stickyHeader(key = "header_$label") {
-                        GlassDateHeader(label = label)
-                    }
-                    items(entries, key = { it.id }) { entry ->
-                        GlassSwipeableIncomeRow(
-                            entry = entry,
-                            onDelete = { viewModel.deleteIncome(entry) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp),
-                        )
-                    }
+                item {
+                    IncomeHistoryTable(
+                        entries = pagedEntries,
+                        onDelete = { entry -> viewModel.deleteIncome(entry) },
+                    )
+                }
+
+                item {
+                    IncomeHistoryPaginationBar(
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        hasMore = state.hasMore,
+                        isLoadingMore = state.isLoadingMore,
+                        onPreviousPage = { currentPage-- },
+                        onNextPage = {
+                            currentPage++
+                            if (currentPage >= totalPages - 1 && state.hasMore && !state.isLoadingMore) {
+                                viewModel.loadNextPage()
+                            }
+                        },
+                    )
                 }
 
                 item {
@@ -399,37 +378,6 @@ fun IncomeScreen(
                         trendData = trendData,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
-                }
-
-                if (state.isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                color = GlassTheme.Orange,
-                                strokeWidth = 2.5.dp,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                }
-
-                if (!state.hasMore && displayEntries.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "No more income entries",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            color = GlassTheme.TextHint,
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
                 }
             }
 
@@ -478,50 +426,74 @@ private fun GlassIncomeHeader(
     recurringTotal: Double,
     nonRecurringTotal: Double,
     entryCount: Int,
+    onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawCircle(
-                    color = Color(0x2EFF6B00),
-                    radius = 220.dp.toPx(),
-                    center = Offset(size.width * 0.92f, -60.dp.toPx()),
-                )
-                drawCircle(
-                    color = Color(0x1A534AB7),
-                    radius = 150.dp.toPx(),
-                    center = Offset(size.width * 0.05f, size.height * 0.7f),
-                )
-            }
-            .padding(top = 16.dp, bottom = 32.dp, start = 24.dp, end = 24.dp),
     ) {
+        DynamicHeaderBackground(
+            patternType = "income",
+            modifier = Modifier.matchParentSize().clip(wavyBottomShape())
+        )
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding(),
         ) {
-            Text(
-                "THIS MONTH'S INCOME",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 2.sp,
-                color = GlassTheme.TextHint,
-            )
-            Text(
-                formatLKRFull(monthTotal),
-                fontSize = 44.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = GlassTheme.TextPrimary,
-                letterSpacing = (-1.5).sp,
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GlassIncomeBadge("${formatLKRShort(recurringTotal)} recurring")
-                GlassIncomeBadge("${formatLKRShort(nonRecurringTotal)} other")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "My Income",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GlassTheme.TextPrimary,
+                    letterSpacing = (-0.5).sp,
+                )
+                IconButton(onClick = onAddClick) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = "Add Income",
+                        tint = GlassTheme.TextPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
-            GlassIncomeBadge("$entryCount entries")
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "THIS MONTH'S INCOME",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 2.sp,
+                    color = GlassTheme.TextHint,
+                )
+                Text(
+                    formatLKRFull(monthTotal),
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GlassTheme.TextPrimary,
+                    letterSpacing = (-1.5).sp,
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassIncomeBadge("${formatLKRShort(recurringTotal)} recurring")
+                    GlassIncomeBadge("${formatLKRShort(nonRecurringTotal)} other")
+                }
+                GlassIncomeBadge("$entryCount entries")
+            }
+            Spacer(modifier = Modifier.height(36.dp))
         }
     }
 }
@@ -539,96 +511,84 @@ private fun GlassIncomeBadge(text: String) {
     }
 }
 
+// ── Income History Table ──────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GlassDateHeader(label: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(GlassTheme.BgStart, Color.Transparent)
-                )
-            )
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        Text(
-            label.uppercase(),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-            color = GlassTheme.TextHint,
-        )
-    }
-}
-
-@Composable
-private fun GlassSwipeableIncomeRow(
-    entry: IncomeEntry,
-    onDelete: () -> Unit,
+private fun IncomeHistoryTable(
+    entries: List<IncomeEntry>,
+    onDelete: (IncomeEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            when (it) {
-                SwipeToDismissBoxValue.EndToStart -> { onDelete(); true }
-                else -> false
-            }
-        },
-        positionalThreshold = { it * 0.40f },
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            val isDelete = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
-            val bgColor = if (isDelete) Color(0x33EF4444) else Color.Transparent
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(bgColor)
-                    .border(1.dp, if (isDelete) Color(0x59EF4444) else Color.Transparent, RoundedCornerShape(18.dp))
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                if (isDelete) {
-                    androidx.compose.material3.Icon(Icons.Default.Delete, null, tint = GlassTheme.Danger, modifier = Modifier.size(20.dp))
+    if (entries.isEmpty()) return
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassTheme.GlassBg),
+        border = BorderStroke(1.dp, GlassTheme.GlassBorderLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            entries.forEachIndexed { index, entry ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = {
+                        if (it == SwipeToDismissBoxValue.EndToStart) { onDelete(entry); true }
+                        else false
+                    },
+                    positionalThreshold = { it * 0.40f },
+                )
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        val isDelete = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(if (isDelete) Color(0x33EF4444) else Color.Transparent)
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            if (isDelete) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = GlassTheme.Danger,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    IncomeTableRow(entry = entry)
+                }
+                if (index < entries.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = GlassTheme.GlassBorder,
+                    )
                 }
             }
-        },
-        modifier = modifier,
-    ) {
-        GlassIncomeItem(entry)
+        }
     }
 }
 
 @Composable
-private fun GlassIncomeItem(entry: IncomeEntry, modifier: Modifier = Modifier) {
-    val accent = sourceColor(entry.source)
+private fun IncomeTableRow(entry: IncomeEntry, modifier: Modifier = Modifier) {
     val dateFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
             .background(GlassTheme.GlassBg)
-            .border(1.dp, GlassTheme.GlassBorderLight, RoundedCornerShape(18.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(accent.copy(alpha = 0.15f))
-                .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            androidx.compose.material3.Icon(sourceIcon(entry.source), null, tint = accent, modifier = Modifier.size(20.dp))
-        }
-
-        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 entry.label?.takeIf { it.isNotBlank() } ?: entry.source,
                 fontSize = 14.sp,
@@ -638,16 +598,25 @@ private fun GlassIncomeItem(entry: IncomeEntry, modifier: Modifier = Modifier) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                entry.date?.toDate()?.let { dateFormat.format(it) } ?: "",
+                entry.source,
                 fontSize = 11.sp,
                 color = GlassTheme.TextHint,
             )
         }
-
-        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            entry.date?.toDate()?.let { dateFormat.format(it) } ?: "",
+            fontSize = 11.sp,
+            color = GlassTheme.TextHint,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 "+${entry.currencyOriginal} ${"%.2f".format(entry.amountOriginal)}",
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = GlassTheme.Success,
             )
@@ -658,6 +627,85 @@ private fun GlassIncomeItem(entry: IncomeEntry, modifier: Modifier = Modifier) {
                     color = GlassTheme.TextHint,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun IncomeHistoryPaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val canGoPrev = currentPage > 0
+        val canGoNext = currentPage < totalPages - 1 || hasMore
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoPrev) GlassTheme.GlassSurface else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoPrev) GlassTheme.GlassBorder else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoPrev) { onPreviousPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous page",
+                tint = if (canGoPrev) GlassTheme.TextPrimary else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        if (isLoadingMore) {
+            CircularProgressIndicator(
+                color = GlassTheme.Orange,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Text(
+                text = "Page ${currentPage + 1} of ${if (hasMore && currentPage >= totalPages - 1) "${totalPages}+" else "$totalPages"}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GlassTheme.TextHint,
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoNext && !isLoadingMore) GlassTheme.GlassSurface else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoNext && !isLoadingMore) GlassTheme.GlassBorder else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoNext && !isLoadingMore) { onNextPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next page",
+                tint = if (canGoNext && !isLoadingMore) GlassTheme.TextPrimary else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
@@ -1115,7 +1163,7 @@ private fun AddIncomeFormSheet(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                IncomeViewModel.SOURCES.forEach { src ->
+                state.availableSources.forEach { src ->
                     val isSelected = state.source == src
                     val bg by animateColorAsState(
                         if (isSelected) GlassTheme.Orange else GlassTheme.GlassBg,

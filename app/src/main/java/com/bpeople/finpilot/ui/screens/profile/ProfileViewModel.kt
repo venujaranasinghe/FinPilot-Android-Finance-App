@@ -105,6 +105,22 @@ class ProfileViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            userRepository.observeIncomeSources().collect { maps ->
+                if (maps.isNotEmpty()) {
+                    val sources = maps.map { m ->
+                        IncomeSource(
+                            id = m["id"] as? String ?: "",
+                            label = m["label"] as? String ?: "",
+                            icon = m["icon"] as? String ?: "💰",
+                            isActive = m["isActive"] as? Boolean ?: true,
+                        )
+                    }.filter { it.id.isNotBlank() }
+                    _uiState.value = _uiState.value.copy(incomeSources = sources)
+                }
+            }
+        }
+
+        viewModelScope.launch {
             combine(
                 incomeRepository.observeIncome(),
                 expenseRepository.observeExpenses(),
@@ -183,11 +199,22 @@ class ProfileViewModel @Inject constructor(
             if (it.id == id) it.copy(isActive = !it.isActive) else it
         }
         _uiState.value = _uiState.value.copy(incomeSources = updated)
+        persistIncomeSources(updated)
     }
 
     fun addIncomeSource(source: IncomeSource) {
         val updated = _uiState.value.incomeSources + source
         _uiState.value = _uiState.value.copy(incomeSources = updated)
+        persistIncomeSources(updated)
+    }
+
+    private fun persistIncomeSources(sources: List<IncomeSource>) {
+        viewModelScope.launch {
+            val maps = sources.map { s ->
+                mapOf("id" to s.id, "label" to s.label, "icon" to s.icon, "isActive" to s.isActive)
+            }
+            userRepository.updateIncomeSources(maps)
+        }
     }
 
     fun setNotifySalaryReminder(v: Boolean) { _uiState.value = _uiState.value.copy(notifySalaryReminder = v) }

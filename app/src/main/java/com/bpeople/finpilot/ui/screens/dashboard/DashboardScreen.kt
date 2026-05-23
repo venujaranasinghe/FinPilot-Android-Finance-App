@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -46,16 +47,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.rounded.AccountBalance
-import androidx.compose.material.icons.rounded.Work
-import androidx.compose.material.icons.rounded.PhoneAndroid
-import androidx.compose.material.icons.rounded.CurrencyBitcoin
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,6 +64,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -108,12 +106,21 @@ import com.bpeople.finpilot.R
 import com.bpeople.finpilot.data.model.Goal
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
+import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
+import com.bpeople.finpilot.ui.components.wavyBottomShape
 import com.bpeople.finpilot.ui.theme.ExpenseRed
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import com.bpeople.finpilot.ui.theme.IncomeGreen
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.delay
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -265,11 +272,20 @@ fun DashboardScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onDeleteTransaction: (id: String, isExpense: Boolean) -> Unit = { _, _ -> },
 ) {
     var isRefreshing by remember { mutableStateOf(false) }
     val pullState = rememberPullToRefreshState()
 
     var activeCardIndex by remember { mutableIntStateOf(0) }
+
+    var currentPage by remember { mutableIntStateOf(0) }
+    val pageSize = 10
+    LaunchedEffect(state.recentTransactions.size) { currentPage = 0 }
+    val totalPages = max(1, (state.recentTransactions.size + pageSize - 1) / pageSize)
+    val pagedTransactions = remember(state.recentTransactions, currentPage) {
+        state.recentTransactions.drop(currentPage * pageSize).take(pageSize)
+    }
 
     LaunchedEffect(isRefreshing) {
         if (!isRefreshing) return@LaunchedEffect
@@ -374,111 +390,141 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 100.dp)
                         ) {
-                    // Header Section
+                    // Header and Balance Section with Wavy Orange/Yellow Background
                     item {
-                        DashboardHeader(
-                            userName = userName,
-                            onNavigateToNotifications = onNavigateToNotifications,
-                        )
-                    }
-
-                    // Balance Section
-                    item {
-                        val activeCard = cards.getOrNull(activeCardIndex)
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = activeCard?.label ?: "Your balance",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF97316)
+                            DynamicHeaderBackground(
+                                patternType = "dashboard",
+                                modifier = Modifier.matchParentSize().clip(wavyBottomShape())
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .statusBarsPadding()
                             ) {
-                                Box(
+                                // Customized DashboardHeader with dark glassmorphic text & icons
+                                Row(
                                     modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(surfaceColor())
-                                        .border(0.8.dp, borderStrokeColor(), CircleShape)
-                                        .clickable {
-                                            activeCardIndex = (activeCardIndex - 1).mod(cards.size)
-                                        },
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.KeyboardArrowLeft,
-                                        contentDescription = "Previous Card",
-                                        tint = textPrimaryColor(),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                StyledBalance(
-                                    amount = activeCard?.amount ?: state.netPosition
-                                )
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(surfaceColor())
-                                        .border(0.8.dp, borderStrokeColor(), CircleShape)
-                                        .clickable {
-                                            activeCardIndex = (activeCardIndex + 1).mod(cards.size)
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.KeyboardArrowRight,
-                                        contentDescription = "Next Card",
-                                        tint = textPrimaryColor(),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            // Pagination dots
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                cards.forEachIndexed { i, _ ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(if (i == activeCardIndex) 8.dp else 5.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (i == activeCardIndex) Color(0xFFF97316)
-                                                else Color(0xFFF97316).copy(alpha = 0.3f)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        StyledAvatar(name = "lay", size = 42.dp)
+                                        Column {
+                                            Text(
+                                                text = "Hello,",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF0F172A).copy(alpha = 0.6f)
                                             )
-                                    )
+                                            Text(
+                                                text = "${userName.ifBlank { "Lay" }}!",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF0F172A)
+                                            )
+                                        }
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // Notification bell
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color.White.copy(alpha = 0.5f))
+                                                .border(0.8.dp, Color(0x1A0F172A), RoundedCornerShape(12.dp))
+                                                .clickable { onNavigateToNotifications() },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Notifications,
+                                                contentDescription = "Notifications",
+                                                tint = Color(0xFF0F172A),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(Color(0xFFF97316), CircleShape)
+                                                    .border(1.5.dp, Color.White, CircleShape)
+                                                    .align(Alignment.TopEnd)
+                                                    .offset(x = (-3).dp, y = 3.dp)
+                                            )
+                                        }
+
+                                        // Grid menu
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color.White.copy(alpha = 0.5f))
+                                                .border(0.8.dp, Color(0x1A0F172A), RoundedCornerShape(12.dp))
+                                                .clickable { },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            // Render custom grid icon with dark theme color
+                                            Column(
+                                                modifier = Modifier.size(16.dp),
+                                                verticalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF0F172A), RoundedCornerShape(1.5.dp)))
+                                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF0F172A), RoundedCornerShape(1.5.dp)))
+                                                }
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF0F172A), RoundedCornerShape(1.5.dp)))
+                                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF0F172A), RoundedCornerShape(1.5.dp)))
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+
+                                // Bank cards on top of wavy background
+                                FinanceCardStackSection(
+                                    cards = cards,
+                                    activeCardIndex = activeCardIndex,
+                                    onCardChanged = { newIndex -> activeCardIndex = newIndex },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                                )
+                                Spacer(modifier = Modifier.height(36.dp))
+
                             }
                         }
                     }
 
-                    // Overlapping Swipable Card Stack
+                    // Monthly Overview Bar Chart
                     item {
-                        FinanceCardStackSection(
-                            cards = cards,
-                            activeCardIndex = activeCardIndex,
-                            onCardChanged = { newIndex -> activeCardIndex = newIndex },
+                        MonthlyOverviewChart(
+                            state = state,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp)
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
+                        )
+                    }
+
+                    item {
+                        CategoryDistributionPieChart(
+                            state = state,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
                         )
                     }
 
@@ -533,42 +579,33 @@ fun DashboardScreen(
                             }
                         }
                     } else {
-                        items(state.recentTransactions) { tx ->
-                            TransactionItem(tx = tx)
+                        item {
+                            TransactionHistoryTable(
+                                transactions = pagedTransactions,
+                                onDelete = onDeleteTransaction,
+                            )
+                        }
+                        item {
+                            TransactionHistoryPaginationBar(
+                                currentPage = currentPage,
+                                totalPages = totalPages,
+                                onPreviousPage = { currentPage-- },
+                                onNextPage = { currentPage++ },
+                            )
                         }
                     }
 
-                    // Monthly Overview Bar Chart (from top-left of sample UI)
+                    // Smart Insights Banner
                     item {
-                        MonthlyOverviewChart(
+                        SmartInsightsBanner(
                             state = state,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp)
+                                .padding(vertical = 8.dp)
                         )
                     }
 
-                    item {
-                        CategoryDistributionPieChart(
-                            state = state,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                        )
-                    }
 
-                    // Quick action shortcuts
-                    item {
-                        QuickActionsSection(
-                            onAddGoal = onNavigateToGoals,
-                            onAddIncome = onNavigateToIncome,
-                            onAddExpense = onAddExpense,
-                            onOpenTransactions = onNavigateToTransactions,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp)
-                        )
-                    }
                         }
                     }
 
@@ -843,58 +880,35 @@ private fun TransactionItem(
     tx: DashboardViewModel.RecentTransaction
 ) {
     val dateStr = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(tx.dateMillis)
-    val methodColor = surfaceVariantColor()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .padding(horizontal = 20.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(surfaceColor())
-            .border(0.8.dp, borderStrokeColor(), RoundedCornerShape(16.dp))
-            .padding(12.dp),
+            .border(0.8.dp, borderStrokeColor(), RoundedCornerShape(12.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.weight(1f)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(methodColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when {
-                        tx.title.contains("Salary", true) -> Icons.Rounded.AccountBalance
-                        tx.title.contains("Food", true) -> Icons.Default.Restaurant
-                        tx.title.contains("Car", true) || tx.title.contains("Transport", true) -> Icons.Default.DirectionsCar
-                        tx.title.contains("Rent", true) || tx.title.contains("Home", true) -> Icons.Default.Home
-                        tx.title.contains("Sub", true) || tx.title.contains("Spotify", true) -> Icons.Default.PlayArrow
-                        else -> Icons.Default.AttachMoney
-                    },
-                    contentDescription = null,
-                    tint = textPrimaryColor(),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = tx.title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textPrimaryColor()
-                )
-                Text(
-                    text = tx.subtitle.ifBlank { dateStr },
-                    fontSize = 11.sp,
-                    color = textSecondaryColor()
-                )
-            }
+            Text(
+                text = tx.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textPrimaryColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = tx.subtitle.ifBlank { dateStr },
+                fontSize = 11.sp,
+                color = textSecondaryColor()
+            )
         }
 
         // Amount side
@@ -908,8 +922,198 @@ private fun TransactionItem(
             text = "$sign $amountFormatted",
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = if (tx.isExpense) textPrimaryColor() else IncomeGreen
+            color = if (tx.isExpense) ExpenseRed else IncomeGreen
         )
+    }
+}
+
+// ── Transaction History Table ─────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransactionHistoryTable(
+    transactions: List<DashboardViewModel.RecentTransaction>,
+    onDelete: (id: String, isExpense: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (transactions.isEmpty()) return
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor()),
+        border = BorderStroke(0.8.dp, borderStrokeColor()),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            transactions.forEachIndexed { index, tx ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = {
+                        if (it == SwipeToDismissBoxValue.EndToStart) {
+                            onDelete(tx.id, tx.isExpense)
+                            true
+                        } else false
+                    },
+                    positionalThreshold = { it * 0.40f },
+                )
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        val isDelete = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(if (isDelete) Color(0x33EF4444) else Color.Transparent)
+                                .padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            if (isDelete) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    TransactionTableRow(tx = tx)
+                }
+                if (index < transactions.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = borderStrokeColor(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionTableRow(
+    tx: DashboardViewModel.RecentTransaction,
+    modifier: Modifier = Modifier,
+) {
+    val dateStr = remember(tx.dateMillis) {
+        SimpleDateFormat("dd MMM", Locale.getDefault()).format(tx.dateMillis)
+    }
+    val sign = if (tx.isExpense) "−" else "+"
+    val amountFormatted = if (tx.amount.absoluteValue >= 1_000)
+        "LKR %,.0f".format(tx.amount.absoluteValue)
+    else
+        "LKR %,.2f".format(tx.amount.absoluteValue)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(surfaceColor())
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = tx.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textPrimaryColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = tx.subtitle.ifBlank { dateStr },
+                fontSize = 11.sp,
+                color = textSecondaryColor(),
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = dateStr,
+            fontSize = 11.sp,
+            color = textSecondaryColor(),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "$sign $amountFormatted",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = textPrimaryColor(),
+        )
+    }
+}
+
+@Composable
+private fun TransactionHistoryPaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val canGoPrev = currentPage > 0
+        val canGoNext = currentPage < totalPages - 1
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoPrev) surfaceColor() else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoPrev) borderStrokeColor() else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoPrev) { onPreviousPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous page",
+                tint = if (canGoPrev) textPrimaryColor() else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        Text(
+            text = "Page ${currentPage + 1} of $totalPages",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = textSecondaryColor(),
+        )
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (canGoNext) surfaceColor() else Color.Transparent)
+                .border(
+                    0.8.dp,
+                    if (canGoNext) borderStrokeColor() else Color.Transparent,
+                    CircleShape,
+                )
+                .clickable(enabled = canGoNext) { onNextPage() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next page",
+                tint = if (canGoNext) textPrimaryColor() else Color.Transparent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -1534,67 +1738,294 @@ private fun IncomeSourcesBreakdown(
     }
 }
 
-private data class QuickAction(
-    val title: String,
+
+
+// ── Smart Insights Banner ─────────────────────────────────────────────────────
+private enum class InsightType { Positive, Warning, Alert, Info }
+
+private data class SmartInsight(
+    val message: String,
+    val detail: String,
+    val type: InsightType,
     val icon: ImageVector,
-    val onClick: () -> Unit,
 )
 
-// ── Quick Actions Row ────────────────────────────────────────────────────────
-@Composable
-private fun QuickActionsSection(
-    onAddGoal: () -> Unit,
-    onAddIncome: () -> Unit,
-    onAddExpense: () -> Unit,
-    onOpenTransactions: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val actions = remember(onAddGoal, onAddIncome, onAddExpense, onOpenTransactions) {
-        listOf(
-            QuickAction("Goal", Icons.Default.Flag, onAddGoal),
-            QuickAction("Income", Icons.Default.AttachMoney, onAddIncome),
-            QuickAction("Expense", Icons.Default.ReceiptLong, onAddExpense),
-            QuickAction("History", Icons.Default.Home, onOpenTransactions),
+private fun buildSmartInsights(state: DashboardViewModel.DashboardUiState): List<SmartInsight> {
+    val insights = mutableListOf<SmartInsight>()
+
+    // Category change insights
+    for (cat in state.topCategoryInsights) {
+        when {
+            cat.changePercentage >= 30.0 -> insights.add(
+                SmartInsight(
+                    message = "${cat.category} spending up ${cat.changePercentage.roundToInt()}%",
+                    detail = "Compared to last month. Consider reviewing your ${cat.category.lowercase()} budget.",
+                    type = InsightType.Warning,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                )
+            )
+            cat.changePercentage <= -20.0 -> insights.add(
+                SmartInsight(
+                    message = "${cat.category} spending down ${(-cat.changePercentage).roundToInt()}%",
+                    detail = "Great job reducing ${cat.category.lowercase()} costs vs last month.",
+                    type = InsightType.Positive,
+                    icon = Icons.AutoMirrored.Filled.TrendingDown,
+                )
+            )
+            cat.sharePercentage >= 40.0 -> insights.add(
+                SmartInsight(
+                    message = "${cat.category} is ${cat.sharePercentage.roundToInt()}% of expenses",
+                    detail = "Your biggest category this month. Consider setting a spending limit.",
+                    type = InsightType.Warning,
+                    icon = Icons.Default.PieChart,
+                )
+            )
+        }
+    }
+
+    // Goal progress
+    state.activeGoal?.let { goal ->
+        val pct = (state.goalProgressPercent * 100).roundToInt()
+        when {
+            pct >= 80 -> insights.add(
+                SmartInsight(
+                    message = "Almost there on \"${goal.title}\"!",
+                    detail = "You're $pct% toward your goal. Keep the momentum!",
+                    type = InsightType.Positive,
+                    icon = Icons.Default.Flag,
+                )
+            )
+            pct >= 40 -> insights.add(
+                SmartInsight(
+                    message = "\"${goal.title}\" is $pct% complete",
+                    detail = "Need LKR ${"%,.0f".format(state.monthlyRequired)}/month to stay on track.",
+                    type = InsightType.Info,
+                    icon = Icons.Default.Flag,
+                )
+            )
+            else -> insights.add(
+                SmartInsight(
+                    message = "\"${goal.title}\" needs attention",
+                    detail = "Only $pct% reached. Contribute LKR ${"%,.0f".format(state.monthlyRequired)} this month.",
+                    type = InsightType.Info,
+                    icon = Icons.Default.Flag,
+                )
+            )
+        }
+    }
+
+    // Month-over-month expense spike
+    state.monthOverMonthComparisons.firstOrNull { it.label == "Expenses" }?.let { comp ->
+        if (comp.changePercentage >= 25.0) {
+            insights.add(
+                SmartInsight(
+                    message = "Expenses up ${comp.changePercentage.roundToInt()}% this month",
+                    detail = "Spending rose significantly. Review recent transactions to find the cause.",
+                    type = InsightType.Alert,
+                    icon = Icons.Default.ReceiptLong,
+                )
+            )
+        }
+    }
+
+    // Income growth
+    state.monthOverMonthComparisons.firstOrNull { it.label == "Income" }?.let { comp ->
+        if (comp.changePercentage >= 10.0) {
+            insights.add(
+                SmartInsight(
+                    message = "Income grew ${comp.changePercentage.roundToInt()}% this month",
+                    detail = "Your earnings increased vs last month. Consider allocating the extra to savings.",
+                    type = InsightType.Positive,
+                    icon = Icons.Default.AttachMoney,
+                )
+            )
+        }
+    }
+
+    // High fixed costs
+    if (state.fixedCostsPercentage >= 55.0) {
+        insights.add(
+            SmartInsight(
+                message = "${state.fixedCostsPercentage.roundToInt()}% of spending is recurring",
+                detail = "High fixed costs reduce flexibility. Audit subscriptions and recurring bills.",
+                type = InsightType.Warning,
+                icon = Icons.Default.Refresh,
+            )
         )
     }
 
-    Column(modifier = modifier) {
-        Text(
-            text = "Quick actions",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = textPrimaryColor(),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-        )
+    // Net balance direction
+    state.monthOverMonthComparisons.firstOrNull { it.label == "Net Balance" }?.let { comp ->
+        when {
+            comp.changePercentage >= 15.0 -> insights.add(
+                SmartInsight(
+                    message = "Net balance up ${comp.changePercentage.roundToInt()}% vs last month",
+                    detail = "You saved more than last month. Excellent financial discipline!",
+                    type = InsightType.Positive,
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                )
+            )
+            comp.changePercentage <= -15.0 -> insights.add(
+                SmartInsight(
+                    message = "Net balance dropped ${(-comp.changePercentage).roundToInt()}%",
+                    detail = "Your savings ratio fell this month. Consider trimming discretionary spend.",
+                    type = InsightType.Alert,
+                    icon = Icons.AutoMirrored.Filled.TrendingDown,
+                )
+            )
+        }
+    }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    // Fallback tip
+    state.didYouKnowInsight?.let { tip ->
+        if (insights.size < 2 && insights.none { it.detail == tip }) {
+            insights.add(
+                SmartInsight(
+                    message = "Did you know?",
+                    detail = tip.removePrefix("Did you know? "),
+                    type = InsightType.Info,
+                    icon = Icons.Default.Lightbulb,
+                )
+            )
+        }
+    }
+
+    return insights.take(5)
+}
+
+@Composable
+private fun SmartInsightsBanner(
+    state: DashboardViewModel.DashboardUiState,
+    modifier: Modifier = Modifier,
+) {
+    val insights = remember(state) { buildSmartInsights(state) }
+    if (insights.isEmpty()) return
+
+    val pagerState = rememberPagerState { insights.size }
+
+    LaunchedEffect(pagerState) {
+        while (true) {
+            delay(4_000L)
+            val next = (pagerState.currentPage + 1) % insights.size
+            pagerState.animateScrollToPage(next)
+        }
+    }
+
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            items(actions) { action ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+            Text(
+                text = "Smart insights",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = textPrimaryColor()
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF7C3AED).copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "AI",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF7C3AED)
+                )
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            pageSpacing = 12.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            SmartInsightCard(insight = insights[page])
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            insights.forEachIndexed { i, _ ->
+                val isSelected = i == pagerState.currentPage
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(surfaceColor())
-                        .border(0.8.dp, borderStrokeColor(), RoundedCornerShape(12.dp))
-                        .clickable { action.onClick() }
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Icon(
-                        imageVector = action.icon,
-                        contentDescription = action.title,
-                        tint = Color(0xFFF97316),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = action.title,
-                        fontSize = 11.sp,
-                        color = textSecondaryColor(),
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                        .padding(horizontal = 3.dp)
+                        .size(width = if (isSelected) 20.dp else 6.dp, height = 6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            if (isSelected) Color(0xFF7C3AED)
+                            else Color(0xFF7C3AED).copy(alpha = 0.25f)
+                        )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun SmartInsightCard(insight: SmartInsight) {
+    val gradientColors = when (insight.type) {
+        InsightType.Positive -> listOf(Color(0xFF16A34A), Color(0xFF4ADE80))
+        InsightType.Warning  -> listOf(Color(0xFFD97706), Color(0xFFFBBF24))
+        InsightType.Alert    -> listOf(Color(0xFFDC2626), Color(0xFFFCA5A5))
+        InsightType.Info     -> listOf(Color(0xFF7C3AED), Color(0xFFA78BFA))
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(gradientColors))
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.22f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = insight.icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = insight.message,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = insight.detail,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
