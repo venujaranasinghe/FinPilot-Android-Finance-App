@@ -2,14 +2,6 @@
 
 package com.bpeople.finpilot.ui.screens.profile
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +16,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,15 +27,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -60,9 +44,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -78,10 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -151,23 +129,10 @@ fun ProfileScreen(
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
     onUpdateDisplayName: (String) -> Unit,
-    onDeleteAccount: () -> Unit = {},
-    onExportCsv: () -> Unit = {},
-    onClearCache: () -> Unit = {},
-    onSetUsdEnabled: (Boolean) -> Unit = {},
-    onSetUsdtEnabled: (Boolean) -> Unit = {},
-    onSetAutoConvert: (Boolean) -> Unit = {},
     onToggleIncomeSource: (String) -> Unit = {},
     onAddIncomeSource: (IncomeSource) -> Unit = {},
-    onNotifySalaryReminder: (Boolean) -> Unit = {},
-    onNotifyWeeklySummary: (Boolean) -> Unit = {},
-    onNotifyGoalMilestone: (Boolean) -> Unit = {},
-    onNotifyBudgetOverspend: (Boolean) -> Unit = {},
-    onBudgetThreshold: (String) -> Unit = {},
-    onDarkMode: (Boolean) -> Unit = {},
 ) {
     var showEditNameDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showAddSourceSheet by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -179,16 +144,6 @@ fun ProfileScreen(
             onConfirm = { newName ->
                 onUpdateDisplayName(newName)
                 showEditNameDialog = false
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        DeleteAccountDialog(
-            onDismiss = { showDeleteDialog = false },
-            onConfirm = {
-                showDeleteDialog = false
-                onDeleteAccount()
             }
         )
     }
@@ -224,21 +179,8 @@ fun ProfileScreen(
                     ProfileHeader(
                         name = displayName,
                         email = email,
-                        onEditName = { showEditNameDialog = true }
-                    )
-                }
-
-                // Currency Settings
-                item {
-                    SectionLabel("Currency Settings")
-                    CurrencySettingsCard(
-                        usdEnabled = uiState.usdEnabled,
-                        usdtEnabled = uiState.usdtEnabled,
-                        autoConvert = uiState.autoConvert,
-                        rateLastUpdated = uiState.rateLastUpdated,
-                        onUsdToggle = onSetUsdEnabled,
-                        onUsdtToggle = onSetUsdtEnabled,
-                        onAutoConvertToggle = onSetAutoConvert,
+                        onEditName = { showEditNameDialog = true },
+                        onNavigateToSettings = onNavigateToSettings,
                     )
                 }
 
@@ -252,41 +194,11 @@ fun ProfileScreen(
                     )
                 }
 
-                // Notifications
-                item {
-                    SectionLabel("Notifications")
-                    NotificationPreferencesCard(
-                        salaryReminder = uiState.notifySalaryReminder,
-                        weeklySummary = uiState.notifyWeeklySummary,
-                        goalMilestone = uiState.notifyGoalMilestone,
-                        budgetOverspend = uiState.notifyBudgetOverspend,
-                        budgetThreshold = uiState.budgetOverspendThreshold,
-                        onSalaryReminder = onNotifySalaryReminder,
-                        onWeeklySummary = onNotifyWeeklySummary,
-                        onGoalMilestone = onNotifyGoalMilestone,
-                        onBudgetOverspend = onNotifyBudgetOverspend,
-                        onThresholdChange = onBudgetThreshold,
-                    )
-                }
-
-                // App Settings
-                item {
-                    SectionLabel("App Settings")
-                    AppSettingsCard(
-                        darkMode = uiState.darkModeEnabled,
-                        onDarkMode = onDarkMode,
-                        onNavigateToSettings = onNavigateToSettings,
-                        onExportCsv = onExportCsv,
-                        onClearCache = onClearCache,
-                    )
-                }
-
                 // Account
                 item {
                     SectionLabel("Account")
                     DangerZoneCard(
                         onSignOut = onLogout,
-                        onDeleteAccount = { showDeleteDialog = true }
                     )
                 }
             }
@@ -313,6 +225,7 @@ private fun ProfileHeader(
     name: String?,
     email: String?,
     onEditName: () -> Unit,
+    onNavigateToSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -338,20 +251,38 @@ private fun ProfileHeader(
                 )
             }
 
-            IconButton(
-                onClick = onEditName,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(glassBgColor())
-                    .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
-            ) {
-                Icon(
-                    Icons.Rounded.Edit,
-                    contentDescription = "Edit Profile",
-                    tint = textPrimaryColor(),
-                    modifier = Modifier.size(20.dp),
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = onNavigateToSettings,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(glassBgColor())
+                        .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
+                ) {
+                    Icon(
+                        Icons.Rounded.Settings,
+                        contentDescription = "Settings",
+                        tint = textPrimaryColor(),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+
+                IconButton(
+                    onClick = onEditName,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(glassBgColor())
+                        .border(0.8.dp, borderColor(), RoundedCornerShape(13.dp)),
+                ) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = "Edit Profile",
+                        tint = textPrimaryColor(),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
 
@@ -410,78 +341,6 @@ private fun ProfileHeader(
                 }
             }
         }
-    }
-}
-
-// ─── Currency Settings ───────────────────────────────────────────────────────
-
-@Composable
-private fun CurrencySettingsCard(
-    usdEnabled: Boolean,
-    usdtEnabled: Boolean,
-    autoConvert: Boolean,
-    rateLastUpdated: String,
-    onUsdToggle: (Boolean) -> Unit,
-    onUsdtToggle: (Boolean) -> Unit,
-    onAutoConvertToggle: (Boolean) -> Unit,
-) {
-    GlassCard {
-        CurrencyRow(flag = "🇱🇰", label = "LKR — Sri Lankan Rupee", isPrimary = true)
-        HorizontalDivider(color = borderColor())
-        Text(
-            "Secondary Currencies",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = textHintColor(),
-            modifier = Modifier.padding(vertical = 12.dp)
-        )
-        CurrencyToggleRow(flag = "🇺🇸", label = "USD — US Dollar", enabled = usdEnabled, onToggle = onUsdToggle)
-        Spacer(modifier = Modifier.height(8.dp))
-        CurrencyToggleRow(flag = "💵", label = "USDT — Tether", enabled = usdtEnabled, onToggle = onUsdtToggle)
-
-        HorizontalDivider(color = borderColor(), modifier = Modifier.padding(vertical = 12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Auto-convert using live rates",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textPrimaryColor()
-                )
-                Text(
-                    text = rateLastUpdated,
-                    fontSize = 11.sp,
-                    color = textHintColor()
-                )
-            }
-            OrangeSwitch(checked = autoConvert, onCheckedChange = onAutoConvertToggle)
-        }
-    }
-}
-
-@Composable
-private fun CurrencyRow(flag: String, label: String, isPrimary: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(flag, fontSize = 22.sp)
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = textPrimaryColor())
-            if (isPrimary) Text("Primary", fontSize = 11.sp, color = OrangeMain, fontWeight = FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
-private fun CurrencyToggleRow(flag: String, label: String, enabled: Boolean, onToggle: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(flag, fontSize = 18.sp)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp, color = textPrimaryColor())
-        OrangeSwitch(checked = enabled, onCheckedChange = onToggle)
     }
 }
 
@@ -551,145 +410,11 @@ private fun ActiveChip(active: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ─── Notification Preferences ────────────────────────────────────────────────
-
-@Composable
-private fun NotificationPreferencesCard(
-    salaryReminder: Boolean,
-    weeklySummary: Boolean,
-    goalMilestone: Boolean,
-    budgetOverspend: Boolean,
-    budgetThreshold: String,
-    onSalaryReminder: (Boolean) -> Unit,
-    onWeeklySummary: (Boolean) -> Unit,
-    onGoalMilestone: (Boolean) -> Unit,
-    onBudgetOverspend: (Boolean) -> Unit,
-    onThresholdChange: (String) -> Unit,
-) {
-    GlassCard {
-        NotifRow("Salary reminder", "25th of every month", salaryReminder, onSalaryReminder)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-        NotifRow("Weekly spend summary", "Every Sunday", weeklySummary, onWeeklySummary)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-        NotifRow("Goal milestone alerts", "At 25%, 50%, 75%", goalMilestone, onGoalMilestone)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-        NotifRow("Budget overspend alert", "When spend exceeds threshold", budgetOverspend, onBudgetOverspend)
-        if (budgetOverspend) {
-            Spacer(modifier = Modifier.height(10.dp))
-            OutlinedTextField(
-                value = budgetThreshold,
-                onValueChange = { onThresholdChange(it.filter { c -> c.isDigit() }) },
-                label = { Text("Threshold (LKR)", fontSize = 12.sp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = OrangeMain,
-                    focusedLabelColor = OrangeMain,
-                    cursorColor = OrangeMain,
-                    unfocusedTextColor = textPrimaryColor(),
-                    focusedTextColor = textPrimaryColor(),
-                ),
-                shape = RoundedCornerShape(12.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun NotifRow(title: String, subtitle: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = textPrimaryColor())
-            Text(subtitle, fontSize = 11.sp, color = textHintColor())
-        }
-        OrangeSwitch(checked = checked, onCheckedChange = onChecked)
-    }
-}
-
-// ─── App Settings ────────────────────────────────────────────────────────────
-
-@Composable
-private fun AppSettingsCard(
-    darkMode: Boolean,
-    onDarkMode: (Boolean) -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onExportCsv: () -> Unit,
-    onClearCache: () -> Unit,
-) {
-    GlassCard {
-        SettingsRow(Icons.Rounded.Settings, "Preferences", "Notifications, security & more", onClick = onNavigateToSettings)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(OrangeMain.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.DarkMode, contentDescription = null, tint = OrangeMain, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Dark Mode", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = textPrimaryColor())
-                Text("Toggle dark / light theme", fontSize = 11.sp, color = textHintColor())
-            }
-            OrangeSwitch(checked = darkMode, onCheckedChange = onDarkMode)
-        }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-        SettingsRow(Icons.Rounded.FileDownload, "Export to CSV", "Download all transactions", onClick = onExportCsv)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-        SettingsRow(Icons.Rounded.Storage, "Clear Cache", "Free up local storage", onClick = onClearCache)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = borderColor())
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(surfaceVariantColor()),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Info, contentDescription = null, tint = textHintColor(), modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text("App Version", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = textPrimaryColor())
-                Text("1.0.0 (build 1)", fontSize = 11.sp, color = textHintColor())
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsRow(
-    icon: ImageVector,
-    label: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(OrangeMain.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = OrangeMain, modifier = Modifier.size(20.dp))
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = textPrimaryColor())
-            Text(subtitle, fontSize = 11.sp, color = textHintColor())
-        }
-        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = textHintColor(), modifier = Modifier.size(18.dp))
-    }
-}
-
 // ─── Danger Zone ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun DangerZoneCard(
     onSignOut: () -> Unit,
-    onDeleteAccount: () -> Unit,
 ) {
     GlassCard {
         OutlinedButton(
@@ -702,14 +427,6 @@ private fun DangerZoneCard(
             Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text("Sign Out", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        TextButton(onClick = onDeleteAccount, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Rounded.Delete, contentDescription = null, tint = ExpenseRed, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("Delete Account", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -742,173 +459,6 @@ private fun SectionLabel(text: String) {
         color = textSecondaryColor(),
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )
-}
-
-@Composable
-private fun OrangeSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true) {
-    val isDark = isSystemInDarkTheme()
-    val animProgress by animateFloatAsState(
-        targetValue = if (checked) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "switch_anim"
-    )
-
-    val trackWidth = 52.dp
-    val trackHeight = 32.dp
-    val thumbSize = 28.dp
-    val thumbPadding = 2.dp
-    val density = LocalDensity.current
-
-    val thumbOffsetPx = with(density) {
-        (thumbPadding).toPx() + animProgress * (trackWidth - thumbSize - thumbPadding * 2).toPx()
-    }
-
-    Box(
-        modifier = Modifier
-            .size(width = trackWidth, height = trackHeight)
-            .clip(RoundedCornerShape(50))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = { onCheckedChange(!checked) }
-            ),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        // Track background with glass effect
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = if (checked) {
-                        Brush.horizontalGradient(
-                            colors = if (isDark) {
-                                listOf(
-                                    Color(0xFF1A3A2A).copy(alpha = 0.6f),
-                                    Color(0xFF0D2818).copy(alpha = 0.6f),
-                                )
-                            } else {
-                                listOf(
-                                    Color(0xFFE8F5E9).copy(alpha = 0.6f),
-                                    Color(0xFFC8E6C9).copy(alpha = 0.6f),
-                                )
-                            }
-                        )
-                    } else {
-                        Brush.horizontalGradient(
-                            colors = if (isDark) {
-                                listOf(
-                                    Color(0xFF2C2C2E).copy(alpha = 0.6f),
-                                    Color(0xFF1C1C1E).copy(alpha = 0.6f),
-                                )
-                            } else {
-                                listOf(
-                                    Color(0xFFE5E5EA).copy(alpha = 0.6f),
-                                    Color(0xFFD1D1D6).copy(alpha = 0.6f),
-                                )
-                            }
-                        )
-                    }
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.horizontalGradient(
-                        colors = if (isDark) {
-                            listOf(
-                                Color(0x40FFFFFF),
-                                Color(0x15FFFFFF),
-                            )
-                        } else {
-                            listOf(
-                                Color(0x30FFFFFF),
-                                Color(0x10FFFFFF),
-                            )
-                        }
-                    ),
-                    shape = RoundedCornerShape(50)
-                )
-        )
-
-        // Inner shadow/top highlight
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .align(Alignment.TopCenter)
-                .padding(horizontal = 4.dp)
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            if (isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.5f),
-                            Color.Transparent,
-                        )
-                    )
-                )
-        )
-
-        // Thumb with glass effect
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(thumbOffsetPx.roundToInt(), 0) }
-                .padding(thumbPadding)
-                .size(thumbSize)
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = if (isDark) {
-                            listOf(
-                                Color(0xFFEEEEEE),
-                                Color(0xFFDDDDDD),
-                            )
-                        } else {
-                            listOf(
-                                Color.White,
-                                Color(0xFFF5F5F5),
-                            )
-                        }
-                    )
-                )
-                .border(
-                    width = 0.5.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0x33FFFFFF),
-                            Color(0x00FFFFFF),
-                        )
-                    ),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            // Thumb inner shadow
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(3.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = if (checked) {
-                                listOf(
-                                    if (isDark) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.5f),
-                                    Color.Transparent,
-                                )
-                            } else {
-                                listOf(
-                                    Color.Transparent,
-                                    Color.Transparent,
-                                )
-                            }
-                        )
-                    )
-            )
-        }
-
-    }
 }
 
 private fun initialsFrom(name: String?, email: String?): String {
@@ -952,30 +502,6 @@ fun EditNameDialog(currentName: String, onDismiss: () -> Unit, onConfirm: (Strin
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onConfirm(name.trim()) }) {
                 Text("Save", color = OrangeMain, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
-}
-
-@Composable
-private fun DeleteAccountDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = surfaceColor(),
-        title = { Text("Delete Account?", fontWeight = FontWeight.Bold, color = textPrimaryColor()) },
-        text = {
-            Text(
-                "This action is permanent. All your data will be erased and cannot be recovered.",
-                color = textSecondaryColor()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Delete Forever", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
