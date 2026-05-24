@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.bpeople.finpilot.ui.screens.notifications
 
 import androidx.compose.animation.AnimatedContent
@@ -31,7 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -49,9 +50,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,7 +67,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,9 +80,7 @@ import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.NotificationCard
 import com.bpeople.finpilot.ui.components.NotificationEmptyState
 import com.bpeople.finpilot.ui.components.NotificationFilterChips
-import com.bpeople.finpilot.ui.components.NotificationPreferencesSection
 import com.bpeople.finpilot.ui.components.NotificationSummaryCard
-import com.bpeople.finpilot.ui.components.NotificationsDisabledBanner
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
 import kotlinx.coroutines.launch
 
@@ -122,23 +121,17 @@ fun NotificationsScreen(
     val state by viewModel.uiState.collectAsState()
 
     NotificationsScreenContent(
-        state                  = state,
-        onNavigateBack         = onNavigateBack,
-        onNavigateToDashboard  = onNavigateToDashboard,
-        onNavigateToIncome     = onNavigateToIncome,
-        onNavigateToGoals      = onNavigateToGoals,
-        onNavigateToProfile    = onNavigateToProfile,
-        onDismiss              = viewModel::dismissNotification,
-        onDismissAll           = viewModel::dismissAll,
-        onMarkRead             = viewModel::markNotificationRead,
-        onMarkAllRead          = viewModel::markAllRead,
-        onFilterSelected       = viewModel::setActiveFilter,
-        onSalaryToggle         = viewModel::setSalaryReminderEnabled,
-        onWeeklyToggle         = viewModel::setWeeklySummaryEnabled,
-        onMilestoneToggle      = viewModel::setGoalMilestoneEnabled,
-        onBudgetToggle         = viewModel::setBudgetOverspendEnabled,
-        onBudgetThresholdInput = viewModel::updateBudgetThresholdInput,
-        onBudgetThresholdDone  = viewModel::commitBudgetThreshold,
+        state                 = state,
+        onNavigateBack        = onNavigateBack,
+        onNavigateToDashboard = onNavigateToDashboard,
+        onNavigateToIncome    = onNavigateToIncome,
+        onNavigateToGoals     = onNavigateToGoals,
+        onNavigateToProfile   = onNavigateToProfile,
+        onDismiss             = viewModel::dismissNotification,
+        onDismissAll          = viewModel::dismissAll,
+        onMarkRead            = viewModel::markNotificationRead,
+        onMarkAllRead         = viewModel::markAllRead,
+        onFilterSelected      = viewModel::setActiveFilter,
     )
 }
 
@@ -148,21 +141,23 @@ fun NotificationsScreen(
  * Stateless, testable content layer for the Notifications screen.
  *
  * Layout layers (back to front):
- *  1. Vertical gradient background matching the app's global glass theme.
+ *  1. Vertical gradient background (dark: near-black; light: off-white).
  *  2. Three ambient radial glow blobs drawn on a [Canvas].
- *  3. [LazyColumn] with all notification sections.
- *  4. [FinPilotBottomNavBar] anchored to [Alignment.BottomCenter].
+ *  3. Material3 [TopAppBar] in the Scaffold's topBar slot — handles status-bar
+ *     insets automatically so the title is never hidden behind the phone's
+ *     status bar.
+ *  4. [LazyColumn] with all notification sections, padded by Scaffold's pv.
+ *  5. [FinPilotBottomNavBar] anchored to [Alignment.BottomCenter].
  *
  * Sections (in scroll order):
- *  - [NotificationsTopBar] — title, back button, mark-all-read action
- *  - Accent divider
  *  - [NotificationSummaryCard] — totals: all / unread / urgent / milestones
- *  - [NotificationsDisabledBanner] — shown when every category is disabled
  *  - [NotificationFilterChips] — horizontal type-filter strip
  *  - Notification list — one [NotificationCard] per item
- *  - [NotificationEmptyState] — shown when no notifications match
- *  - [NotificationPreferencesSection] — toggles + budget threshold
- *  - Spacer for bottom-nav clearance
+ *  - [NotificationEmptyState] — shown when no notifications match the filter
+ *  - Bottom spacer for bottom-nav clearance
+ *
+ * Note: notification preferences (toggle switches, budget threshold) live in
+ * the Settings screen, not here.
  */
 @Composable
 fun NotificationsScreenContent(
@@ -177,20 +172,11 @@ fun NotificationsScreenContent(
     onMarkRead: (String) -> Unit = {},
     onMarkAllRead: () -> Unit = {},
     onFilterSelected: (NotificationType?) -> Unit = {},
-    onSalaryToggle: (Boolean) -> Unit = {},
-    onWeeklyToggle: (Boolean) -> Unit = {},
-    onMilestoneToggle: (Boolean) -> Unit = {},
-    onBudgetToggle: (Boolean) -> Unit = {},
-    onBudgetThresholdInput: (String) -> Unit = {},
-    onBudgetThresholdDone: () -> Unit = {},
 ) {
-    val isDark = isSystemInDarkTheme()
-    val scope  = rememberCoroutineScope()
+    val isDark       = isSystemInDarkTheme()
+    val scope        = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
-    val listState = rememberLazyListState()
-
-    // Derived: scroll elevation for header shadow
-    val isScrolled by remember { derivedStateOf { listState.firstVisibleItemScrollOffset > 0 || listState.firstVisibleItemIndex > 0 } }
+    val listState    = rememberLazyListState()
 
     // ── Background gradient ───────────────────────────────────────────────────
     val bgGradient = if (isDark) {
@@ -210,17 +196,41 @@ fun NotificationsScreenContent(
         .groupingBy { it.type }
         .eachCount()
 
-    // ── All-disabled banner flag ──────────────────────────────────────────────
-    val allDisabled = with(state.prefs) {
-        !salaryReminderEnabled && !weeklySummaryEnabled &&
-        !goalMilestoneEnabled  && !budgetOverspendEnabled
-    }
+    // ── Top app bar colour — adapts to dark / light theme ────────────────────
+    // Dark  → near-black surface with orange tint border
+    // Light → pure white surface with orange tint border
+    val topBarContainerColor = if (isDark) Color(0xFF0D0D0D) else Color(0xFFFFFFFF)
+    val topBarOnColor        = if (isDark) Color(0xFFF5F5F5) else Color(0xFF1F2937)
 
     Scaffold(
+        // Zero contentWindowInsets so the gradient fills edge-to-edge.
+        // The TopAppBar in topBar slot manages its own statusBarsPadding internally.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(hostState = snackbarHost) },
-        containerColor = Color.Transparent,
+        containerColor      = Color.Transparent,
+        snackbarHost        = { SnackbarHost(hostState = snackbarHost) },
+        topBar = {
+            NotificationsTopAppBar(
+                unreadCount          = unreadCount,
+                topBarContainerColor = topBarContainerColor,
+                topBarOnColor        = topBarOnColor,
+                onNavigateBack       = onNavigateBack,
+                onMarkAllRead        = {
+                    onMarkAllRead()
+                    scope.launch {
+                        snackbarHost.showSnackbar("All notifications marked as read")
+                    }
+                },
+                onDismissAll         = {
+                    onDismissAll()
+                    scope.launch {
+                        snackbarHost.showSnackbar("All notifications cleared")
+                    }
+                },
+            )
+        },
     ) { pv ->
+        // pv.top = topBar height (which already includes the status bar height
+        // because TopAppBar adds statusBarsPadding internally).
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -231,7 +241,10 @@ fun NotificationsScreenContent(
                 // Top-right orange glow
                 drawCircle(
                     brush  = Brush.radialGradient(
-                        colors = listOf(ScreenOrange.copy(alpha = if (isDark) 0.22f else 0.14f), Color.Transparent),
+                        colors = listOf(
+                            ScreenOrange.copy(alpha = if (isDark) 0.22f else 0.14f),
+                            Color.Transparent,
+                        ),
                         center = Offset(size.width * 0.88f, size.height * 0.06f),
                         radius = 260.dp.toPx(),
                     ),
@@ -241,7 +254,10 @@ fun NotificationsScreenContent(
                 // Mid-left amber glow
                 drawCircle(
                     brush  = Brush.radialGradient(
-                        colors = listOf(ScreenAmber.copy(alpha = if (isDark) 0.13f else 0.07f), Color.Transparent),
+                        colors = listOf(
+                            ScreenAmber.copy(alpha = if (isDark) 0.13f else 0.07f),
+                            Color.Transparent,
+                        ),
                         center = Offset(size.width * 0.08f, size.height * 0.40f),
                         radius = 210.dp.toPx(),
                     ),
@@ -251,7 +267,10 @@ fun NotificationsScreenContent(
                 // Bottom-center teal glow
                 drawCircle(
                     brush  = Brush.radialGradient(
-                        colors = listOf(ScreenTeal.copy(alpha = if (isDark) 0.10f else 0.06f), Color.Transparent),
+                        colors = listOf(
+                            ScreenTeal.copy(alpha = if (isDark) 0.10f else 0.06f),
+                            Color.Transparent,
+                        ),
                         center = Offset(size.width * 0.5f, size.height * 0.86f),
                         radius = 200.dp.toPx(),
                     ),
@@ -262,35 +281,14 @@ fun NotificationsScreenContent(
 
             // ── Main scrollable content ───────────────────────────────────────
             LazyColumn(
-                state         = listState,
-                modifier      = Modifier
+                state          = listState,
+                modifier       = Modifier
                     .fillMaxSize()
-                    .padding(pv),
+                    .padding(pv),      // pushes content below TopAppBar
                 contentPadding = PaddingValues(bottom = 120.dp),
             ) {
 
-                // ─ 1. Top bar ─────────────────────────────────────────────────
-                item(key = "topbar") {
-                    NotificationsTopBar(
-                        unreadCount     = unreadCount,
-                        isScrolled      = isScrolled,
-                        onNavigateBack  = onNavigateBack,
-                        onMarkAllRead   = {
-                            onMarkAllRead()
-                            scope.launch {
-                                snackbarHost.showSnackbar("All notifications marked as read")
-                            }
-                        },
-                        onDismissAll    = {
-                            onDismissAll()
-                            scope.launch {
-                                snackbarHost.showSnackbar("All notifications cleared")
-                            }
-                        },
-                    )
-                }
-
-                // ─ 2. Summary card ────────────────────────────────────────────
+                // ─ 1. Summary card ─────────────────────────────────────────────
                 item(key = "summary") {
                     NotificationSummaryCard(
                         totalCount     = totalCount,
@@ -298,34 +296,30 @@ fun NotificationsScreenContent(
                         urgentCount    = urgentCount,
                         milestoneCount = milestoneCount,
                         onMarkAllRead  = onMarkAllRead,
-                        modifier       = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier       = Modifier.padding(
+                            start  = 16.dp,
+                            end    = 16.dp,
+                            top    = 12.dp,
+                            bottom = 8.dp,
+                        ),
                     )
                 }
 
-                // ─ 3. All-disabled banner ─────────────────────────────────────
-                item(key = "disabled_banner") {
-                    AnimatedVisibility(
-                        visible = allDisabled,
-                        enter = fadeIn(tween(300)) + slideInVertically { -it / 2 },
-                        exit  = fadeOut(tween(300)) + slideOutVertically { -it / 2 },
-                    ) {
-                        NotificationsDisabledBanner(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-
-                // ─ 4. Filter chips ────────────────────────────────────────────
+                // ─ 2. Filter chips ─────────────────────────────────────────────
                 item(key = "filters") {
                     NotificationFilterChips(
                         activeFilter     = state.activeFilter,
                         counts           = typeCounts,
                         onFilterSelected = onFilterSelected,
-                        modifier         = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+                        modifier         = Modifier.padding(
+                            start  = 16.dp,
+                            end    = 16.dp,
+                            bottom = 4.dp,
+                        ),
                     )
                 }
 
-                // ─ 5. Loading skeleton / empty state ─────────────────────────
+                // ─ 3. Loading skeleton / empty state / cards ───────────────────
                 if (state.isLoading) {
                     items(count = 4, key = { "skeleton_$it" }) {
                         NotificationLoadingSkeleton(
@@ -334,12 +328,16 @@ fun NotificationsScreenContent(
                     }
                 } else if (state.notifications.isEmpty()) {
                     item(key = "empty") {
-                        val headline = if (state.activeFilter != null)
+                        val headline = if (state.activeFilter != null) {
                             "No ${state.activeFilter.name.lowercase().replace('_', ' ')} notifications"
-                        else "You're all caught up!"
-                        val subtitle = if (state.activeFilter != null)
+                        } else {
+                            "You're all caught up!"
+                        }
+                        val subtitle = if (state.activeFilter != null) {
                             "Try a different filter or wait for new activity."
-                        else "New alerts will appear here when your finances trigger a rule."
+                        } else {
+                            "New alerts will appear here when your finances trigger a rule."
+                        }
                         NotificationEmptyState(
                             headline = headline,
                             subtitle = subtitle,
@@ -347,7 +345,7 @@ fun NotificationsScreenContent(
                         )
                     }
                 } else {
-                    // ─ 6. Notification cards ──────────────────────────────────
+                    // ─ 4. Notification cards ─────────────────────────────────
                     itemsIndexed(
                         items = state.notifications,
                         key   = { _, item -> item.id },
@@ -368,63 +366,7 @@ fun NotificationsScreenContent(
                     }
                 }
 
-                // ─ 7. Section divider ─────────────────────────────────────────
-                item(key = "divider") {
-                    NotificationsSectionDivider(
-                        label    = "Notification Settings",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-
-                // ─ 8. Preferences section ─────────────────────────────────────
-                item(key = "preferences") {
-                    NotificationPreferencesSection(
-                        salaryEnabled     = state.prefs.salaryReminderEnabled,
-                        weeklyEnabled     = state.prefs.weeklySummaryEnabled,
-                        milestoneEnabled  = state.prefs.goalMilestoneEnabled,
-                        budgetEnabled     = state.prefs.budgetOverspendEnabled,
-                        budgetThreshold   = state.budgetThresholdInput,
-                        onSalaryToggle    = onSalaryToggle,
-                        onWeeklyToggle    = onWeeklyToggle,
-                        onMilestoneToggle = onMilestoneToggle,
-                        onBudgetToggle    = onBudgetToggle,
-                        onThresholdChange = onBudgetThresholdInput,
-                        onThresholdCommit = onBudgetThresholdDone,
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-
-                // ─ 9. Budget stats summary ────────────────────────────────────
-                item(key = "budget_stats") {
-                    NotificationsBudgetStats(
-                        thisMonthExpenses = state.thisMonthExpenses,
-                        thisWeekExpenses  = state.thisWeekExpenses,
-                        thisWeekIncome    = state.thisWeekIncome,
-                        budgetThreshold   = state.prefs.budgetThreshold,
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-
-                // ─ 10. Active goals milestone overview ────────────────────────
-                if (state.activeGoals.isNotEmpty()) {
-                    item(key = "goals_header") {
-                        NotificationsSectionDivider(
-                            label    = "Goal Progress Overview",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
-                    }
-                    itemsIndexed(
-                        items = state.activeGoals,
-                        key   = { _, g -> "goal_${g.goal.id}" },
-                    ) { _, goalSummary ->
-                        NotificationsGoalProgressRow(
-                            summary  = goalSummary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-                        )
-                    }
-                }
-
-                // ─ 11. Bottom spacer ──────────────────────────────────────────
+                // ─ 5. Bottom spacer ────────────────────────────────────────────
                 item(key = "bottom_spacer") {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -432,121 +374,115 @@ fun NotificationsScreenContent(
 
             // ── Bottom navigation bar overlay ─────────────────────────────────
             FinPilotBottomNavBar(
-                currentTab              = NavTab.HOME,
-                onNavigateToDashboard   = onNavigateToDashboard,
+                currentTab               = NavTab.HOME,
+                onNavigateToDashboard    = onNavigateToDashboard,
                 onNavigateToTransactions = onNavigateToIncome,
-                onNavigateToGoals       = onNavigateToGoals,
-                onNavigateToProfile     = onNavigateToProfile,
-                modifier                = Modifier.align(Alignment.BottomCenter),
+                onNavigateToGoals        = onNavigateToGoals,
+                onNavigateToProfile      = onNavigateToProfile,
+                modifier                 = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
 }
 
-// ── Top bar ───────────────────────────────────────────────────────────────────
+// ── Top app bar ───────────────────────────────────────────────────────────────
 
 /**
- * Sticky glassmorphism header for the Notifications screen.
+ * Material3 [TopAppBar] styled to match FinPilot's glassmorphism theme.
  *
- * Shows:
- *  - Back arrow (left)
- *  - "Notifications" title with an optional orange unread badge (center)
- *  - Mark-all-read icon (right)
- *  - Clear-all icon (right, secondary)
- *  - Gradient accent divider along the bottom edge
+ * The Scaffold places this composable in its `topBar` slot, which means
+ * Material3 automatically adds [WindowInsets.statusBars] padding inside
+ * the TopAppBar — the title is never hidden behind the phone's status bar.
  *
- * @param unreadCount    Number of unread notifications — drives the live badge.
- * @param isScrolled     When true a slightly more opaque glass fill is applied
- *                       to visually separate the header from the scroll content.
- * @param onNavigateBack Called when the back arrow is tapped.
- * @param onMarkAllRead  Called when the ✓✓ icon is tapped.
- * @param onDismissAll   Called when the sweep icon is tapped.
+ * Colour adapts to dark / light theme:
+ *  - **Dark**  → near-black container (`#0D0D0D`), near-white text
+ *  - **Light** → pure-white container, dark-grey text
+ *
+ * The orange brand accent is applied consistently to the bell icon, the live
+ * unread badge, and the gradient rule painted below the bar.
+ *
+ * @param unreadCount          Number of unread notifications; drives the badge.
+ * @param topBarContainerColor Surface colour of the bar (varies by theme).
+ * @param topBarOnColor        Text/icon colour on the bar surface.
+ * @param onNavigateBack       Called when the leading back arrow is tapped.
+ * @param onMarkAllRead        Called when the "mark all read" icon is tapped.
+ * @param onDismissAll         Called when the "clear all" icon is tapped.
  */
 @Composable
-private fun NotificationsTopBar(
+private fun NotificationsTopAppBar(
     unreadCount: Int,
-    isScrolled: Boolean,
+    topBarContainerColor: Color,
+    topBarOnColor: Color,
     onNavigateBack: () -> Unit,
     onMarkAllRead: () -> Unit,
     onDismissAll: () -> Unit,
 ) {
     val isDark = isSystemInDarkTheme()
-    val fillAlpha = if (isScrolled) {
-        if (isDark) 0.20f else 0.15f
-    } else {
-        if (isDark) 0.10f else 0.08f
-    }
-    val borderColor = if (isDark) ScreenOrange.copy(alpha = 0.16f) else ScreenOrange.copy(alpha = 0.22f)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(ScreenOrange.copy(alpha = fillAlpha))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment   = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            // Back button
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Go back",
-                    tint               = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
-            // Title + unread badge
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector        = Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint               = ScreenOrange,
-                    modifier           = Modifier.size(22.dp),
-                )
-                Text(
-                    text       = "Notifications",
-                    fontSize   = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onSurface,
-                )
-                // Live unread count badge
-                AnimatedContent(
-                    targetState = unreadCount,
-                    transitionSpec = {
-                        slideInVertically { -it } togetherWith slideOutVertically { it }
-                    },
-                    label = "unread_badge",
-                ) { count ->
-                    if (count > 0) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(ScreenOrange)
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text       = if (count > 99) "99+" else count.toString(),
-                                fontSize   = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = Color.White,
-                                textAlign  = TextAlign.Center,
-                            )
+        TopAppBar(
+            // Leading: back navigation
+            navigationIcon = {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Go back",
+                        tint               = topBarOnColor,
+                    )
+                }
+            },
+            // Centre: bell icon + title + live unread badge
+            title = {
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint               = ScreenOrange,
+                        modifier           = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text       = "Notifications",
+                        fontSize   = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = topBarOnColor,
+                    )
+                    // Animated unread badge — slides in/out as count changes
+                    AnimatedContent(
+                        targetState = unreadCount,
+                        transitionSpec = {
+                            slideInVertically { -it } togetherWith slideOutVertically { it }
+                        },
+                        label = "unread_badge",
+                    ) { count ->
+                        if (count > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(ScreenOrange)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text       = if (count > 99) "99+" else count.toString(),
+                                    fontSize   = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = Color.White,
+                                    textAlign  = TextAlign.Center,
+                                )
+                            }
+                        } else {
+                            // Keep layout stable when there are no unread items
+                            Spacer(modifier = Modifier.width(0.dp))
                         }
                     }
                 }
-            }
-
-            // Action buttons (mark-all-read + clear-all)
-            Row {
-                IconButton(
-                    onClick  = onMarkAllRead,
-                    modifier = Modifier.size(40.dp),
-                ) {
+            },
+            // Trailing: mark-all-read + clear-all
+            actions = {
+                IconButton(onClick = onMarkAllRead) {
                     Icon(
                         imageVector        = Icons.Default.DoneAll,
                         contentDescription = "Mark all as read",
@@ -554,28 +490,36 @@ private fun NotificationsTopBar(
                         modifier           = Modifier.size(20.dp),
                     )
                 }
-                IconButton(
-                    onClick  = onDismissAll,
-                    modifier = Modifier.size(40.dp),
-                ) {
+                IconButton(onClick = onDismissAll) {
                     Icon(
                         imageVector        = Icons.Default.DeleteSweep,
                         contentDescription = "Clear all notifications",
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
+                        tint               = topBarOnColor.copy(alpha = 0.60f),
                         modifier           = Modifier.size(20.dp),
                     )
                 }
-            }
-        }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor         = topBarContainerColor,
+                titleContentColor      = topBarOnColor,
+                navigationIconContentColor = topBarOnColor,
+                actionIconContentColor     = topBarOnColor,
+            ),
+        )
 
-        // Gradient accent rule
+        // Thin orange gradient rule underneath the top bar — dark and light
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(1.5.dp)
+                .height(2.dp)
                 .background(
                     Brush.horizontalGradient(
-                        listOf(ScreenOrange, ScreenOrangeGlow, ScreenAmber, Color.Transparent),
+                        listOf(
+                            ScreenOrange.copy(alpha = if (isDark) 0.80f else 0.60f),
+                            ScreenOrangeGlow.copy(alpha = if (isDark) 0.50f else 0.35f),
+                            ScreenAmber.copy(alpha = if (isDark) 0.30f else 0.20f),
+                            Color.Transparent,
+                        ),
                     ),
                 ),
         )
@@ -587,12 +531,13 @@ private fun NotificationsTopBar(
 /**
  * Shimmer-style placeholder shown while notifications load on first launch.
  *
- * Renders a rounded rectangle that pulses between two alpha values using
- * [rememberInfiniteTransition], matching the shape of a real [NotificationCard].
+ * Pulses between two alpha values to signal activity without showing stale
+ * content.  The rounded-rectangle shape matches a real [NotificationCard] so
+ * the layout shift is minimal once real data arrives.
  */
 @Composable
 private fun NotificationLoadingSkeleton(modifier: Modifier = Modifier) {
-    val isDark  = isSystemInDarkTheme()
+    val isDark    = isSystemInDarkTheme()
     val baseAlpha = if (isDark) 0.08f else 0.06f
     val shimAlpha = if (isDark) 0.18f else 0.13f
 
@@ -617,342 +562,6 @@ private fun NotificationLoadingSkeleton(modifier: Modifier = Modifier) {
     )
 }
 
-// ── Section divider ───────────────────────────────────────────────────────────
-
-/**
- * Labelled horizontal divider separating major sections in the scroll list.
- *
- * Renders a left-aligned section label with a fading horizontal rule extending
- * to the right, styled to match the app's glass theme.
- *
- * @param label    Text displayed to the left of the rule.
- * @param modifier Optional layout modifier.
- */
-@Composable
-private fun NotificationsSectionDivider(label: String, modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
-    Row(
-        modifier          = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text       = label,
-            fontSize   = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
-            letterSpacing = 0.8.sp,
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            ScreenOrange.copy(alpha = if (isDark) 0.35f else 0.25f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-    }
-}
-
-// ── Budget stats card ─────────────────────────────────────────────────────────
-
-/**
- * Glassmorphism card displaying three key financial stats used by the
- * notifications engine: this month's spend, this week's spend, and this
- * week's income, alongside the configured budget threshold.
- *
- * A thin progress bar visualises how close the current month's spend is to
- * the threshold; it glows red when over budget.
- *
- * @param thisMonthExpenses Running LKR total of expenses in the current month.
- * @param thisWeekExpenses  Running LKR total of expenses in the last 7 days.
- * @param thisWeekIncome    Running LKR total of income in the last 7 days.
- * @param budgetThreshold   Configured monthly overspend threshold in LKR.
- * @param modifier          Optional layout modifier.
- */
-@Composable
-private fun NotificationsBudgetStats(
-    thisMonthExpenses: Double,
-    thisWeekExpenses: Double,
-    thisWeekIncome: Double,
-    budgetThreshold: Double,
-    modifier: Modifier = Modifier,
-) {
-    val isDark  = isSystemInDarkTheme()
-    val isOver  = thisMonthExpenses > budgetThreshold
-    val progress = if (budgetThreshold > 0.0) {
-        (thisMonthExpenses / budgetThreshold).coerceIn(0.0, 1.5).toFloat()
-    } else 1f
-
-    val barColor = when {
-        progress >= 1.0f -> ScreenRed
-        progress >= 0.75f -> ScreenAmber
-        else              -> ScreenTeal
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue  = progress.coerceIn(0f, 1f),
-        animationSpec = tween(1000),
-        label        = "budget_progress",
-    )
-
-    // Glass card style
-    val glassFill   = ScreenOrange.copy(alpha = if (isDark) 0.09f else 0.06f)
-    val borderColor = ScreenOrange.copy(alpha = if (isDark) 0.18f else 0.14f)
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, borderColor, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        // Header
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically,
-        ) {
-            Text(
-                text       = "Budget Snapshot",
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.onSurface,
-            )
-            if (isOver) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(ScreenRed.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text       = "⚠️ Over budget",
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = ScreenRed,
-                    )
-                }
-            }
-        }
-
-        // Three stat rows
-        NotificationStatRow(
-            label  = "This month's spend",
-            value  = formatLKR(thisMonthExpenses),
-            tint   = if (isOver) ScreenRed else MaterialTheme.colorScheme.onSurface,
-        )
-        NotificationStatRow(
-            label  = "This week's spend",
-            value  = formatLKR(thisWeekExpenses),
-            tint   = MaterialTheme.colorScheme.onSurface,
-        )
-        NotificationStatRow(
-            label  = "This week's income",
-            value  = formatLKR(thisWeekIncome),
-            tint   = Color(0xFF10B981),
-        )
-        NotificationStatRow(
-            label  = "Budget threshold",
-            value  = formatLKR(budgetThreshold),
-            tint   = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        // Progress bar
-        val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text     = "Monthly budget used",
-                    fontSize = 11.sp,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                )
-                Text(
-                    text     = "${(progress * 100).toInt().coerceAtMost(999)}%",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color    = barColor,
-                )
-            }
-            Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
-                val radius = size.height / 2f
-                // Track
-                drawRoundRect(
-                    color        = trackColor,
-                    cornerRadius = CornerRadius(radius),
-                )
-                // Fill
-                if (animatedProgress > 0f) {
-                    drawRoundRect(
-                        brush        = Brush.horizontalGradient(
-                            listOf(barColor.copy(alpha = 0.80f), barColor),
-                            endX = size.width * animatedProgress,
-                        ),
-                        size         = Size(size.width * animatedProgress, size.height),
-                        cornerRadius = CornerRadius(radius),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** Single key–value stat row used inside [NotificationsBudgetStats]. */
-@Composable
-private fun NotificationStatRow(label: String, value: String, tint: Color) {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        Text(
-            text     = label,
-            fontSize = 13.sp,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text       = value,
-            fontSize   = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = tint,
-        )
-    }
-}
-
-// ── Goal progress row ─────────────────────────────────────────────────────────
-
-/**
- * Compact goal progress row for the goal overview section at the bottom of the
- * notifications screen.
- *
- * Shows the goal title, an animated progress bar, the milestone chips that have
- * been reached, and the remaining amount.
- *
- * @param summary  [NotificationsViewModel.GoalProgressSummary] for one goal.
- * @param modifier Optional layout modifier.
- */
-@Composable
-private fun NotificationsGoalProgressRow(
-    summary: NotificationsViewModel.GoalProgressSummary,
-    modifier: Modifier = Modifier,
-) {
-    val isDark = isSystemInDarkTheme()
-    val glassFill   = ScreenIndigo.copy(alpha = if (isDark) 0.08f else 0.05f)
-    val borderColor = ScreenIndigo.copy(alpha = if (isDark) 0.20f else 0.14f)
-
-    val animProgress by animateFloatAsState(
-        targetValue   = summary.progressPercent.coerceIn(0f, 1f),
-        animationSpec = tween(900),
-        label         = "goal_prog_${summary.goal.id}",
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(glassFill)
-            .border(0.8.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Goal title + percentage
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically,
-        ) {
-            Text(
-                text       = summary.goal.title,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onSurface,
-                modifier   = Modifier.weight(1f),
-                maxLines   = 1,
-                overflow   = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text       = "${(summary.progressPercent * 100).toInt()}%",
-                fontSize   = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color      = ScreenIndigo,
-            )
-        }
-
-        // Progress bar
-        Canvas(modifier = Modifier.fillMaxWidth().height(6.dp)) {
-            val radius = size.height / 2f
-            drawRoundRect(
-                color        = Color.White.copy(alpha = if (isDark) 0.06f else 0.40f),
-                cornerRadius = CornerRadius(radius),
-            )
-            if (animProgress > 0f) {
-                drawRoundRect(
-                    brush        = Brush.horizontalGradient(
-                        listOf(ScreenIndigo, ScreenTeal),
-                        endX = size.width * animProgress,
-                    ),
-                    size         = Size(size.width * animProgress, size.height),
-                    cornerRadius = CornerRadius(radius),
-                )
-            }
-        }
-
-        // Milestone chips
-        if (summary.milestonesReached.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                summary.milestonesReached.forEach { m ->
-                    val chipColor = when (m) {
-                        25   -> ScreenAmber
-                        50   -> ScreenIndigo
-                        75   -> Color(0xFF8B5CF6)
-                        else -> ScreenTeal
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(chipColor.copy(alpha = 0.18f))
-                            .border(0.6.dp, chipColor.copy(alpha = 0.50f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text       = "🎯 $m%",
-                            fontSize   = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = chipColor,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Remaining amount
-        Text(
-            text     = "Remaining: ${formatLKR(summary.remaining)}",
-            fontSize = 12.sp,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-        )
-    }
-}
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-
-private fun formatLKR(amount: Double): String = when {
-    amount >= 1_000_000 -> "LKR %.2fM".format(amount / 1_000_000)
-    amount >= 1_000     -> "LKR %.1fK".format(amount / 1_000)
-    else                -> "LKR %.0f".format(amount)
-}
-
 // ── Previews ──────────────────────────────────────────────────────────────────
 
 @Preview(name = "Notifications — Dark", showBackground = true, backgroundColor = 0xFF000000)
@@ -961,21 +570,13 @@ private fun PreviewNotificationsScreenDark() {
     FinPilotTheme(darkTheme = true) {
         NotificationsScreenContent(
             state = NotificationsViewModel.NotificationsUiState(
-                isLoading = false,
-                unreadCount = 3,
+                isLoading        = false,
+                unreadCount      = 3,
                 allNotifications = previewNotifications(),
                 notifications    = previewNotifications(),
-                thisMonthExpenses = 8_500.0,
-                thisWeekExpenses  = 2_100.0,
-                thisWeekIncome    = 15_000.0,
-                prefs = NotificationsRepository.NotificationPreferences(
-                    salaryReminderEnabled  = true,
-                    weeklySummaryEnabled   = true,
-                    goalMilestoneEnabled   = false,
-                    budgetOverspendEnabled = true,
-                    budgetThreshold        = 10_000.0,
+                prefs            = NotificationsRepository.NotificationPreferences(
+                    budgetThreshold = 10_000.0,
                 ),
-                budgetThresholdInput = "10000",
             ),
         )
     }
@@ -987,17 +588,13 @@ private fun PreviewNotificationsScreenLight() {
     FinPilotTheme(darkTheme = false) {
         NotificationsScreenContent(
             state = NotificationsViewModel.NotificationsUiState(
-                isLoading = false,
-                unreadCount = 1,
+                isLoading        = false,
+                unreadCount      = 1,
                 allNotifications = previewNotifications(),
                 notifications    = previewNotifications().take(2),
-                thisMonthExpenses = 12_000.0,
-                thisWeekExpenses  = 3_200.0,
-                thisWeekIncome    = 18_000.0,
-                prefs = NotificationsRepository.NotificationPreferences(
+                prefs            = NotificationsRepository.NotificationPreferences(
                     budgetThreshold = 10_000.0,
                 ),
-                budgetThresholdInput = "10000",
             ),
         )
     }
