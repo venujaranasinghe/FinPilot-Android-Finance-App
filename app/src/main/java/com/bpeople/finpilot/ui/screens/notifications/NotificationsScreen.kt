@@ -16,7 +16,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -79,10 +79,10 @@ import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.NotificationCard
 import com.bpeople.finpilot.ui.components.NotificationEmptyState
 import com.bpeople.finpilot.ui.components.NotificationFilterChips
-import com.bpeople.finpilot.ui.components.NotificationPreferencesSection
 import com.bpeople.finpilot.ui.components.NotificationSummaryCard
 import com.bpeople.finpilot.ui.components.NotificationsDisabledBanner
 import com.bpeople.finpilot.ui.theme.FinPilotTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import kotlinx.coroutines.launch
 
 // ── Private colour constants ──────────────────────────────────────────────────
@@ -133,12 +133,6 @@ fun NotificationsScreen(
         onMarkRead             = viewModel::markNotificationRead,
         onMarkAllRead          = viewModel::markAllRead,
         onFilterSelected       = viewModel::setActiveFilter,
-        onSalaryToggle         = viewModel::setSalaryReminderEnabled,
-        onWeeklyToggle         = viewModel::setWeeklySummaryEnabled,
-        onMilestoneToggle      = viewModel::setGoalMilestoneEnabled,
-        onBudgetToggle         = viewModel::setBudgetOverspendEnabled,
-        onBudgetThresholdInput = viewModel::updateBudgetThresholdInput,
-        onBudgetThresholdDone  = viewModel::commitBudgetThreshold,
     )
 }
 
@@ -161,7 +155,7 @@ fun NotificationsScreen(
  *  - [NotificationFilterChips] — horizontal type-filter strip
  *  - Notification list — one [NotificationCard] per item
  *  - [NotificationEmptyState] — shown when no notifications match
- *  - [NotificationPreferencesSection] — toggles + budget threshold
+ *  - Budget snapshot card and goal progress rows
  *  - Spacer for bottom-nav clearance
  */
 @Composable
@@ -177,14 +171,8 @@ fun NotificationsScreenContent(
     onMarkRead: (String) -> Unit = {},
     onMarkAllRead: () -> Unit = {},
     onFilterSelected: (NotificationType?) -> Unit = {},
-    onSalaryToggle: (Boolean) -> Unit = {},
-    onWeeklyToggle: (Boolean) -> Unit = {},
-    onMilestoneToggle: (Boolean) -> Unit = {},
-    onBudgetToggle: (Boolean) -> Unit = {},
-    onBudgetThresholdInput: (String) -> Unit = {},
-    onBudgetThresholdDone: () -> Unit = {},
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     val scope  = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
@@ -368,33 +356,7 @@ fun NotificationsScreenContent(
                     }
                 }
 
-                // ─ 7. Section divider ─────────────────────────────────────────
-                item(key = "divider") {
-                    NotificationsSectionDivider(
-                        label    = "Notification Settings",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-
-                // ─ 8. Preferences section ─────────────────────────────────────
-                item(key = "preferences") {
-                    NotificationPreferencesSection(
-                        salaryEnabled     = state.prefs.salaryReminderEnabled,
-                        weeklyEnabled     = state.prefs.weeklySummaryEnabled,
-                        milestoneEnabled  = state.prefs.goalMilestoneEnabled,
-                        budgetEnabled     = state.prefs.budgetOverspendEnabled,
-                        budgetThreshold   = state.budgetThresholdInput,
-                        onSalaryToggle    = onSalaryToggle,
-                        onWeeklyToggle    = onWeeklyToggle,
-                        onMilestoneToggle = onMilestoneToggle,
-                        onBudgetToggle    = onBudgetToggle,
-                        onThresholdChange = onBudgetThresholdInput,
-                        onThresholdCommit = onBudgetThresholdDone,
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-
-                // ─ 9. Budget stats summary ────────────────────────────────────
+                // ─ 7. Budget stats summary ───────────────────────────────────
                 item(key = "budget_stats") {
                     NotificationsBudgetStats(
                         thisMonthExpenses = state.thisMonthExpenses,
@@ -405,7 +367,7 @@ fun NotificationsScreenContent(
                     )
                 }
 
-                // ─ 10. Active goals milestone overview ────────────────────────
+                // ─ 8. Active goals milestone overview ─────────────────────────
                 if (state.activeGoals.isNotEmpty()) {
                     item(key = "goals_header") {
                         NotificationsSectionDivider(
@@ -424,7 +386,7 @@ fun NotificationsScreenContent(
                     }
                 }
 
-                // ─ 11. Bottom spacer ──────────────────────────────────────────
+                // ─ 9. Bottom spacer ───────────────────────────────────────────
                 item(key = "bottom_spacer") {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -470,19 +432,32 @@ private fun NotificationsTopBar(
     onMarkAllRead: () -> Unit,
     onDismissAll: () -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val fillAlpha = if (isScrolled) {
-        if (isDark) 0.20f else 0.15f
+    val isDark = LocalAppDarkTheme.current
+    val topBarBrush = if (isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                Color(0xFF0A0500).copy(alpha = if (isScrolled) 0.98f else 0.92f),
+                Color(0xFF1A0800).copy(alpha = if (isScrolled) 0.95f else 0.88f),
+            )
+        )
     } else {
-        if (isDark) 0.10f else 0.08f
+        Brush.horizontalGradient(
+            listOf(
+                Color(0xFFFFFFFF).copy(alpha = if (isScrolled) 0.98f else 0.92f),
+                Color(0xFFFFF0E0).copy(alpha = if (isScrolled) 0.95f else 0.88f),
+            )
+        )
     }
-    val borderColor = if (isDark) ScreenOrange.copy(alpha = 0.16f) else ScreenOrange.copy(alpha = 0.22f)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(ScreenOrange.copy(alpha = fillAlpha))
+                .background(topBarBrush)
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment   = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -592,7 +567,7 @@ private fun NotificationsTopBar(
  */
 @Composable
 private fun NotificationLoadingSkeleton(modifier: Modifier = Modifier) {
-    val isDark  = isSystemInDarkTheme()
+    val isDark  = LocalAppDarkTheme.current
     val baseAlpha = if (isDark) 0.08f else 0.06f
     val shimAlpha = if (isDark) 0.18f else 0.13f
 
@@ -630,7 +605,7 @@ private fun NotificationLoadingSkeleton(modifier: Modifier = Modifier) {
  */
 @Composable
 private fun NotificationsSectionDivider(label: String, modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     Row(
         modifier          = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -683,7 +658,7 @@ private fun NotificationsBudgetStats(
     budgetThreshold: Double,
     modifier: Modifier = Modifier,
 ) {
-    val isDark  = isSystemInDarkTheme()
+    val isDark  = LocalAppDarkTheme.current
     val isOver  = thisMonthExpenses > budgetThreshold
     val progress = if (budgetThreshold > 0.0) {
         (thisMonthExpenses / budgetThreshold).coerceIn(0.0, 1.5).toFloat()
@@ -846,7 +821,7 @@ private fun NotificationsGoalProgressRow(
     summary: NotificationsViewModel.GoalProgressSummary,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     val glassFill   = ScreenIndigo.copy(alpha = if (isDark) 0.08f else 0.05f)
     val borderColor = ScreenIndigo.copy(alpha = if (isDark) 0.20f else 0.14f)
 
