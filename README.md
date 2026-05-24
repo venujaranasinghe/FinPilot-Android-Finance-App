@@ -142,12 +142,20 @@ Routes:
 - auth/register
 - auth/forgot_password
 - auth/verify_email
+- pin/setup
+- pin/entry
 - dashboard
+- income
 - income/add
 - expense/add
 - goal/{goalId}
+- transactions
+- notifications
 - profile
 - profile/settings
+- freelance
+- crypto_pnl
+- subscriptions
 
 ## 7. Data Model Contracts
 
