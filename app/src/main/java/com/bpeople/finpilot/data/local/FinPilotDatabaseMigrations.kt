@@ -24,8 +24,40 @@ object FinPilotDatabaseMigrations {
         }
     }
 
+    val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS room_crypto_holdings (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    userId TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    quantity REAL NOT NULL,
+                    buyPriceLKR REAL NOT NULL,
+                    currentPriceLKR REAL NOT NULL,
+                    note TEXT NOT NULL,
+                    purchasedAtMillis INTEGER
+                )""".trimIndent()
+            )
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS room_subscriptions (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    userId TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    amountLKR REAL NOT NULL,
+                    billingCycle TEXT NOT NULL,
+                    nextBillingMillis INTEGER NOT NULL,
+                    isActive INTEGER NOT NULL,
+                    category TEXT NOT NULL,
+                    note TEXT NOT NULL
+                )""".trimIndent()
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2,
+        MIGRATION_2_3,
     )
 }
 

@@ -14,10 +14,12 @@ import androidx.room.Room
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.bpeople.finpilot.data.local.FinPilotDatabase
 import com.bpeople.finpilot.data.local.FinPilotDatabaseMigrations
+import com.bpeople.finpilot.data.local.dao.CryptoDao
 import com.bpeople.finpilot.data.local.dao.IncomeDao
 import com.bpeople.finpilot.data.local.dao.ExpenseDao
 import com.bpeople.finpilot.data.local.dao.GoalDao
 import com.bpeople.finpilot.data.local.dao.FreelanceProjectDao
+import com.bpeople.finpilot.data.local.dao.SubscriptionDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -59,4 +61,10 @@ object AppModule {
 
     @Provides
     fun provideProjectDao(db: FinPilotDatabase): FreelanceProjectDao = db.freelanceProjectDao()
+
+    @Provides
+    fun provideCryptoDao(db: FinPilotDatabase): CryptoDao = db.cryptoDao()
+
+    @Provides
+    fun provideSubscriptionDao(db: FinPilotDatabase): SubscriptionDao = db.subscriptionDao()
 }
