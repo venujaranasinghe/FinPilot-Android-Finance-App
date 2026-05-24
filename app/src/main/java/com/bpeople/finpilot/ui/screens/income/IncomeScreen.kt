@@ -988,8 +988,9 @@ private fun AddIncomeFormSheet(
             text = {
                 val updatedText = state.exchangeRateLastUpdatedMillis
                     ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                val sourceLabel = state.exchangeRateSource?.let { " via $it" } ?: ""
                 Text(
-                    "Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText)?",
+                    "Use 1 ${state.currencyOriginal} = LKR ${state.exchangeRate} (updated $updatedText$sourceLabel)?",
                     color = GlassTheme.TextSecondary,
                 )
             },
@@ -1132,10 +1133,11 @@ private fun AddIncomeFormSheet(
                 val updatedText = state.exchangeRateLastUpdatedMillis
                     ?.let { rateFormat.format(Date(it)) } ?: "unknown"
                 Text(
-                    text = if (state.exchangeRateAvailable)
+                    text = if (state.exchangeRateAvailable) {
                         "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText" +
-                            if (state.exchangeRateIsStale) " · stale" else ""
-                    else "Rate unavailable",
+                            (if (state.exchangeRateIsStale) " · stale" else "") +
+                            (state.exchangeRateSource?.let { " · $it" } ?: "")
+                    } else "Rate unavailable — enter manually",
                     fontSize = 11.sp,
                     color = GlassTheme.TextSecondary,
                 )
