@@ -264,6 +264,7 @@ fun DashboardScreen(
     onNavigateToGoals: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onLogout: () -> Unit = {},
     onDeleteTransaction: (id: String, isExpense: Boolean) -> Unit = { _, _ -> },
 ) {
@@ -494,6 +495,9 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp, vertical = 12.dp)
+                        DashboardHeader(
+                            userName = userName,
+                            onNavigateToNotifications = onNavigateToNotifications,
                         )
                     }
 

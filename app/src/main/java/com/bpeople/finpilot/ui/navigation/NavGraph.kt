@@ -31,6 +31,8 @@ import com.bpeople.finpilot.ui.screens.profile.ProfileScreen
 import com.bpeople.finpilot.ui.screens.profile.ProfileViewModel
 import com.bpeople.finpilot.ui.screens.profile.SettingsScreen
 import com.bpeople.finpilot.ui.screens.profile.SettingsViewModel
+import com.bpeople.finpilot.ui.screens.notifications.NotificationsScreen
+import com.bpeople.finpilot.ui.screens.notifications.NotificationsViewModel
 import com.bpeople.finpilot.ui.screens.transactions.TransactionScreen
 import com.bpeople.finpilot.ui.screens.transactions.TransactionViewModel
 
@@ -191,6 +193,10 @@ fun FinPilotNavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(NavRoutes.Settings.route)
+                },
+  
+                onNavigateToNotifications = {
+                    navController.navigate(NavRoutes.Notifications.route)
                 },
                 onLogout = {
                     authViewModel.signOut()
@@ -385,6 +391,28 @@ fun FinPilotNavGraph(
                 onNotifyBudgetOverspend = settingsViewModel::setNotifyBudgetOverspend,
                 onBudgetThreshold = settingsViewModel::setBudgetOverspendThreshold,
                 onClearCache = settingsViewModel::onClearCache,
+            )
+        }
+
+        composable(NavRoutes.Notifications.route) {
+            val notificationsViewModel: NotificationsViewModel = hiltViewModel()
+            NotificationsScreen(
+                viewModel = notificationsViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDashboard = {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.Dashboard.route) { inclusive = false }
+                    }
+                },
+                onNavigateToIncome = {
+                    navController.navigate(NavRoutes.Income.route)
+                },
+                onNavigateToGoals = {
+                    navController.navigate(NavRoutes.GoalTracker.createRoute())
+                },
+                onNavigateToProfile = {
+                    navController.navigate(NavRoutes.Profile.route)
+                },
             )
         }
     }
