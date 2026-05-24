@@ -1,4 +1,4 @@
-package com.bpeople.finpilot.ui.screens.dashboard
+﻿package com.bpeople.finpilot.ui.screens.dashboard
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -125,7 +125,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-// ── Color Theme Mappings ──────────────────────────────────────────────────────
+// â”€â”€ Color Theme Mappings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun surfaceColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF1E1E24) else Color(0xFFFFFFFF)
 
@@ -141,7 +141,7 @@ private fun textSecondaryColor(): Color = if (LocalAppDarkTheme.current) Color(0
 @Composable
 private fun borderStrokeColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF323242) else Color(0xFFE8E6F0)
 
-// ── Custom Gradient Avatars ───────────────────────────────────────────────────
+// â”€â”€ Custom Gradient Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun StyledAvatar(
     name: String?,
@@ -174,7 +174,7 @@ private fun StyledAvatar(
     }
 }
 
-// ── Superscript Amount Formatting (LKR) ──────────────────────────────────────
+// â”€â”€ Superscript Amount Formatting (LKR) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun StyledBalance(
     amount: Double,
@@ -216,7 +216,7 @@ private fun StyledBalance(
     }
 }
 
-// ── Finance Card Data Model ───────────────────────────────────────────────────
+// â”€â”€ Finance Card Data Model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 private data class FinanceCard(
     val id: String,
     val label: String,
@@ -227,7 +227,7 @@ private data class FinanceCard(
     val textColor: Color = Color.White
 )
 
-// ── Custom Grid Icon (Mockup grid icon) ───────────────────────────────────────
+// â”€â”€ Custom Grid Icon (Mockup grid icon) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun GridIcon(modifier: Modifier = Modifier) {
     Column(
@@ -251,7 +251,7 @@ private fun GridIcon(modifier: Modifier = Modifier) {
     }
 }
 
-// ── Main Composable Screen ────────────────────────────────────────────────────
+// â”€â”€ Main Composable Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -638,7 +638,7 @@ fun DashboardScreen(
             }
 }
 
-// ── Header Section ────────────────────────────────────────────────────────────
+// â”€â”€ Header Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun DashboardHeader(
     userName: String,
@@ -722,7 +722,7 @@ private fun DashboardHeader(
     }
 }
 
-// ── Finance Overlapping Cards Stack ──────────────────────────────────────────
+// â”€â”€ Finance Overlapping Cards Stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun FinanceCardStackSection(
     cards: List<FinanceCard>,
@@ -892,7 +892,7 @@ private fun FinanceCardStackSection(
     }
 }
 
-// ── Transaction Item Composable ───────────────────────────────────────────────
+// â”€â”€ Transaction Item Composable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun TransactionItem(
     tx: DashboardViewModel.RecentTransaction
@@ -945,7 +945,7 @@ private fun TransactionItem(
     }
 }
 
-// ── Transaction History Table ─────────────────────────────────────────────────
+// â”€â”€ Transaction History Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TransactionHistoryTable(
@@ -1019,7 +1019,7 @@ private fun TransactionTableRow(
     val dateStr = remember(tx.dateMillis) {
         SimpleDateFormat("dd MMM", Locale.getDefault()).format(tx.dateMillis)
     }
-    val sign = if (tx.isExpense) "−" else "+"
+    val sign = if (tx.isExpense) "âˆ’" else "+"
     val amountFormatted = if (tx.amount.absoluteValue >= 1_000)
         "LKR %,.0f".format(tx.amount.absoluteValue)
     else
@@ -1141,7 +1141,7 @@ private data class MonthlyBarEntry(
     val isSelected: Boolean,
 )
 
-// ── Monthly Comparison Bar Chart (Real Analytics) ───────────────────────────
+// â”€â”€ Monthly Comparison Bar Chart (Real Analytics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun MonthlyOverviewChart(
     state: DashboardViewModel.DashboardUiState,
@@ -1374,7 +1374,7 @@ private fun BarItem(
     }
 }
 
-// ── Category Distribution Pie Chart (Real Analytics) ────────────────────────
+// â”€â”€ Category Distribution Pie Chart (Real Analytics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun CategoryDistributionPieChart(
     state: DashboardViewModel.DashboardUiState,
@@ -1408,307 +1408,7 @@ private fun CategoryDistributionPieChart(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-// ── Section 2: Hero Balance Card ─────────────────────────────────────────────
-@Composable
-private fun HeroBalanceCard(
-    totalBalance: Double,
-    monthlyIncome: Double,
-    monthlyExpenses: Double,
-    balanceVisible: Boolean,
-    onToggleVisibility: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val animCounter = remember { Animatable(0f) }
-    LaunchedEffect(totalBalance) {
-        animCounter.snapTo(0f)
-        animCounter.animateTo(1f, animationSpec = tween(1200))
-    }
-    val displayBalance = totalBalance * animCounter.value
-
-    // Hero card always uses dark theme aesthetic for better contrast
-    val heroBg = Color(0xFF1F2937)
-    val heroTextColor = Color.White
-
-    Card(
-        modifier = modifier.fillMaxWidth().height(200.dp),
-        shape = RoundedCornerShape(28.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = heroBg),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.05f),
-                    radius = 130.dp.toPx(),
-                    center = Offset(size.width * 0.90f, size.height * 0.12f),
-                )
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.03f),
-                    radius = 80.dp.toPx(),
-                    center = Offset(size.width * 0.80f, size.height * 0.65f),
-                )
-            }
-
-            Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Total Balance",
-                        fontSize = 13.sp,
-                        color = heroTextColor.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.Medium,
-                    )
-                    IconButton(onClick = onToggleVisibility, modifier = Modifier.size(24.dp)) {
-                        Icon(
-                            imageVector = if (balanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = null,
-                            tint = heroTextColor.copy(alpha = 0.85f),
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-
-                Text(
-                    text = if (balanceVisible) formatLKRFull(displayBalance) else "LKR ●●●●●",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = heroTextColor,
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MiniStatChip(label = "Income", value = formatLKR(monthlyIncome), isPositive = true)
-                    MiniStatChip(label = "Expenses", value = formatLKR(monthlyExpenses), isPositive = false)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniStatChip(label: String, value: String, isPositive: Boolean) {
-    val bg = if (isPositive) Color(0xFF10B981).copy(alpha = 0.22f) else Color(0xFFEF4444).copy(alpha = 0.22f)
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Icon(
-            imageVector = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(13.dp),
-        )
-        Text(
-            text = "$label: $value",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
-    }
-}
-
-// ── Section 3: Quick Actions ──────────────────────────────────────────────────
-@Composable
-private fun QuickActionsRow(
-    onAddIncome: () -> Unit,
-    onAddExpense: () -> Unit,
-    onGoals: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(surfaceColor())
-            .border(0.8.dp, borderColor(), RoundedCornerShape(20.dp)),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            QuickActionButton(
-                icon = Icons.AutoMirrored.Filled.TrendingUp,
-                label = "Add Income",
-                onClick = onAddIncome,
-            )
-            QuickActionButton(
-                icon = Icons.AutoMirrored.Filled.TrendingDown,
-                label = "Add Expense",
-                onClick = onAddExpense,
-            )
-            QuickActionButton(
-                icon = Icons.AutoMirrored.Filled.CompareArrows,
-                label = "Transfer",
-                onClick = {},
-            )
-            QuickActionButton(
-                icon = Icons.Default.EmojiEvents,
-                label = "Goals",
-                onClick = onGoals,
-            )
-        }
-    }
-}
-
-@Composable
-private fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    var pressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
-        label = "qa_scale",
-    )
-
-    val iconColor = textPrimaryColor()
-    val iconBg = surfaceVariantColor()
-    val iconBorder = borderColor()
-
-    Column(
-        modifier = Modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { pressed = true; onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(iconBg)
-                .border(0.8.dp, iconBorder, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = label, tint = iconColor, modifier = Modifier.size(24.dp))
-        }
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = textSecondaryColor(),
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
-    }
-}
-
-// ── Section 4: Spending Overview Chart ───────────────────────────────────────
-@Composable
-private fun SpendingOverviewChart(
-    expensesByCategory: Map<String, Double>,
-    totalExpenses: Double,
-) {
-    SectionRowHeader(title = "Spending Overview", actionLabel = "This month")
-
-    if (expensesByCategory.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-            Text("No spending data yet", fontSize = 13.sp, color = textSecondaryColor(), textAlign = TextAlign.Center)
-        }
-        return
-    }
-
-    val sorted = expensesByCategory.entries.sortedByDescending { it.value }
-    val maxVal = sorted.firstOrNull()?.value ?: 1.0
-    val barCount = sorted.size.coerceAtMost(6)
-    val bars = sorted.take(barCount)
-    val axisLineColor = if (isSystemInDarkTheme()) DarkBorder else MaterialTheme.colorScheme.outline
-    val barColor = if (isSystemInDarkTheme()) GlassBlueSoft else GlassBlue
-
-    Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-        val barW = (size.width - 32.dp.toPx()) / barCount
-        val maxHeight = size.height - 28.dp.toPx()
-
-        bars.forEachIndexed { i, (_, value) ->
-            val ratio = (value / maxVal).toFloat().coerceIn(0f, 1f)
-            val barHeight = maxHeight * ratio
-            val left = 16.dp.toPx() + i * barW + barW * 0.2f
-            val right = left + barW * 0.6f
-            val top = maxHeight - barHeight
-            val bottom = maxHeight
-
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(left, top),
-                size = Size(right - left, barHeight),
-                cornerRadius = CornerRadius(6.dp.toPx()),
-            )
-        }
-
-        drawLine(
-            color = axisLineColor,
-            start = Offset(16.dp.toPx(), maxHeight),
-            end = Offset(size.width - 16.dp.toPx(), maxHeight),
-            strokeWidth = 1.dp.toPx(),
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceAround
-    ) {
-        sorted.take(barCount).forEach { (category, _) ->
-            Text(
-                text = category.take(5),
-                fontSize = 9.sp,
-                color = textSecondaryColor(),
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            "TOTAL SPENT",
-            fontSize = 10.sp,
-            color = textSecondaryColor(),
-            letterSpacing = 1.sp
-        )
-        Text(
-            text = formatLKRFull(totalExpenses),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = ExpenseRed
-        )
-    }
-}
-
-// ── Section 5: Income Sources Breakdown ──────────────────────────────────────
-// ── Section 5: Income Sources Breakdown (Alternative with Custom Donut) ──────
-@Composable
-private fun IncomeSourcesBreakdown(
-    incomeBreakdown: Map<String, Double>,
-    onViewAll: () -> Unit,
-) {
-    SectionRowHeader(title = "Income Sources", actionLabel = "View all ->", onAction = onViewAll)
-
-    val total = incomeBreakdown.values.sum().coerceAtLeast(1.0)
-    val sorted = incomeBreakdown.entries.sortedByDescending { it.value }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+            // Donut chart
             Box(
                 modifier = Modifier.size(124.dp),
                 contentAlignment = Alignment.Center
@@ -1757,6 +1457,7 @@ private fun IncomeSourcesBreakdown(
                 }
             }
 
+            // Legend column
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1772,7 +1473,6 @@ private fun IncomeSourcesBreakdown(
                     fontSize = 12.sp,
                     color = textSecondaryColor(),
                 )
-
                 if (categories.isEmpty()) {
                     Text(
                         text = "No category data yet",
@@ -1819,7 +1519,8 @@ private fun IncomeSourcesBreakdown(
     }
 }
 
-// ── Income vs Expense Ratio Card ─────────────────────────────────────────────
+
+// â”€â”€ Income vs Expense Ratio Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun IncomeExpenseRatioCard(
     state: DashboardViewModel.DashboardUiState,
@@ -1969,7 +1670,7 @@ private fun IncomeExpenseRatioCard(
     }
 }
 
-// ── View All Transactions Button ─────────────────────────────────────────────
+// â”€â”€ View All Transactions Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun ViewAllTransactionsButton(
     onClick: () -> Unit,
@@ -2012,7 +1713,7 @@ private fun ViewAllTransactionsButton(
     }
 }
 
-// ── Smart Insights Banner ─────────────────────────────────────────────────────
+// â”€â”€ Smart Insights Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 private enum class InsightType { Positive, Warning, Alert, Info }
 
 private data class SmartInsight(
@@ -2303,7 +2004,7 @@ private fun SmartInsightCard(insight: SmartInsight) {
     }
 }
 
-// ── Compose Preview ──────────────────────────────────────────────────────────
+// â”€â”€ Compose Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Preview(showBackground = true, name = "Dashboard Preview")
 @Composable
 private fun DashboardRedesignPreview() {

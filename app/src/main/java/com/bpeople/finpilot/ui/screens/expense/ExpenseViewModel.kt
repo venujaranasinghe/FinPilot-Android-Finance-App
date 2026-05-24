@@ -221,14 +221,19 @@ class ExpenseViewModel @Inject constructor(
         _expenseState.update { current ->
             val rate = exchangeRatesRepository.rateToLkr(latestRatesSnapshot, value)
             val rateAvailable = value == "LKR" || rate != null
+            val resolvedRate = when {
+                value == "LKR" -> formatRate(1.0)
+                rate != null   -> formatRate(rate)
+                else           -> ""
+            }
             val updated = current.copy(
                 currency = value,
-                exchangeRate = formatRate(rate ?: 1.0),
+                exchangeRate = resolvedRate,
                 exchangeRateAvailable = rateAvailable,
                 exchangeRateConfirmed = value == "LKR",
                 errorMessage = null,
             )
-            updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+            updated.copy(amountLkrPreview = if (rateAvailable) calculateAmountLkr(updated) else 0.0)
         }
     }
 
@@ -305,7 +310,7 @@ class ExpenseViewModel @Inject constructor(
                         isRecurring = false,
                         isLoading = false,
                         errorMessage = null,
-                        insightMessage = buildGoalInsight(amount, it.activeGoal),
+                        insightMessage = buildGoalInsight(baseAmount, it.activeGoal),
                         exchangeRateConfirmed = true,
                         showRateConfirmation = false,
                         isSubmitted = true,

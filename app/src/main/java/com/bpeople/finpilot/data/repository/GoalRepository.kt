@@ -3,6 +3,7 @@ package com.bpeople.finpilot.data.repository
 import com.bpeople.finpilot.data.model.Goal
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import java.util.Date
@@ -45,6 +46,22 @@ class GoalRepository @Inject constructor(
         val collection = firestore.collection("users").document(uid).collection("goals")
         val payload = goal.copy(id = id, userId = uid)
         collection.document(id).set(payload).await()
+    }
+
+    /**
+     * Atomically increments the goal's [currentAmount] field in Firestore using
+     * [FieldValue.increment] — eliminates the read-then-write race condition that
+     * arises when two devices log savings concurrently.
+     */
+    suspend fun incrementGoalAmount(goalId: String, amount: Double) {
+        val uid = auth.currentUser?.uid ?: return
+        firestore
+            .collection("users")
+            .document(uid)
+            .collection("goals")
+            .document(goalId)
+            .update("currentAmount", FieldValue.increment(amount))
+            .await()
     }
 
     suspend fun logSavingsEntry(goalId: String, amount: Double) {
