@@ -4,14 +4,11 @@ import com.bpeople.finpilot.data.model.IncomeEntry
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,30 +18,58 @@ class IncomeRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
 ) {
-    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _incomeEntries = MutableStateFlow<List<IncomeEntry>>(emptyList())
     private val _isLoading = MutableStateFlow(false)
-    private val _hasMore = MutableStateFlow(true)
+    private val _hasMore = MutableStateFlow(false)
     private var lastDocument: DocumentSnapshot? = null
     private val PAGE_SIZE = 15
+    private var listenerRegistration: ListenerRegistration? = null
 
     init {
         val initialUid = auth.currentUser?.uid
         if (!initialUid.isNullOrBlank()) {
-            repositoryScope.launch {
-                resetAndLoadFirstPage(initialUid)
-            }
+            attachRealtimeListener(initialUid)
         }
         auth.addAuthStateListener { firebaseAuth ->
             val uid = firebaseAuth.currentUser?.uid
-            repositoryScope.launch {
-                if (uid.isNullOrBlank()) {
-                    clearPagination()
-                } else {
-                    resetAndLoadFirstPage(uid)
-                }
+            if (uid.isNullOrBlank()) {
+                listenerRegistration?.remove()
+                listenerRegistration = null
+                clearPagination()
+            } else {
+                attachRealtimeListener(uid)
             }
         }
+    }
+
+    /**
+     * Attaches a real-time Firestore snapshot listener so that any change to the
+     * income collection (add, edit, delete from any device or the console) is
+     * reflected immediately in [observeIncome] — satisfying the assignment's
+     * real-time-dashboard requirement.
+     */
+    private fun attachRealtimeListener(uid: String) {
+        listenerRegistration?.remove()
+        _isLoading.value = true
+        listenerRegistration = firestore
+            .collection("users")
+            .document(uid)
+            .collection("income")
+            .orderBy("date", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    _isLoading.value = false
+                    return@addSnapshotListener
+                }
+                _incomeEntries.value = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(IncomeEntry::class.java)?.copy(
+                        id = if (doc.id.isNotBlank()) doc.id else "",
+                        userId = uid,
+                    )
+                }
+                _hasMore.value = false   // all entries are loaded by the listener
+                _isLoading.value = false
+            }
     }
 
     fun observeIncome(): Flow<List<IncomeEntry>> = _incomeEntries.asStateFlow()

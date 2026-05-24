@@ -92,9 +92,15 @@ class DashboardViewModel @Inject constructor(
         val incomeBreakdown = buildIncomeBreakdown(incomes)
         val expensesByCategory = buildExpensesByCategory(expenses)
 
-        val fixedCosts = expenses.filter { it.isRecurring }.sumOf { it.amount }
-        val fixedPercentage = if (totalExpenses > 0) (fixedCosts / totalExpenses * 100) else 0.0
-        val discretionaryPercentage = if (totalExpenses > 0) 100.0 - fixedPercentage else 0.0
+        val monthRanges = buildMonthRanges()
+        val currentMonthExpensesFiltered = expenses.filterExpenseByRange(
+            monthRanges.currentMonthStartMillis,
+            monthRanges.nextMonthStartMillis,
+        )
+        val currentMonthExpenseTotalForRatio = currentMonthExpensesFiltered.sumOf { it.amount }
+        val fixedCosts = currentMonthExpensesFiltered.filter { it.isRecurring }.sumOf { it.amount }
+        val fixedPercentage = if (currentMonthExpenseTotalForRatio > 0) (fixedCosts / currentMonthExpenseTotalForRatio * 100) else 0.0
+        val discretionaryPercentage = if (currentMonthExpenseTotalForRatio > 0) 100.0 - fixedPercentage else 0.0
 
         val progressPercent = if (activeGoal != null && activeGoal.targetAmount > 0.0) {
             (activeGoal.currentAmount / activeGoal.targetAmount).coerceIn(0.0, 1.0).toFloat()
@@ -102,7 +108,6 @@ class DashboardViewModel @Inject constructor(
             0f
         }
 
-        val monthRanges = buildMonthRanges()
         val recentTransactions = buildRecentTransactions(incomes = incomes, expenses = expenses)
 
         val currentMonthIncome = incomes.sumIncomeForRange(

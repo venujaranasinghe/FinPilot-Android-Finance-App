@@ -204,11 +204,10 @@ class GoalViewModel @Inject constructor(
      */
     fun logSavings(goalId: String, amount: Double) {
         viewModelScope.launch {
-            val goal = _goalState.value.allGoals.firstOrNull { it.id == goalId }
-            if (goal != null && amount > 0) {
-                val updated = goal.copy(currentAmount = goal.currentAmount + amount)
-                goalRepository.upsertGoal(updated)
-                // Persist individual log entry — the flow above will pick up the change
+            if (amount > 0) {
+                // Atomic server-side increment — avoids race condition when multiple
+                // devices log savings at the same time (no read-then-write).
+                goalRepository.incrementGoalAmount(goalId, amount)
                 goalRepository.logSavingsEntry(goalId, amount)
             }
         }
