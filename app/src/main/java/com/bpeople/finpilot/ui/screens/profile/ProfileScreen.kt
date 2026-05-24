@@ -25,11 +25,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.CurrencyBitcoin
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -135,6 +139,9 @@ fun ProfileScreen(
     onUpdateDisplayName: (String) -> Unit,
     onToggleIncomeSource: (String) -> Unit = {},
     onAddIncomeSource: (IncomeSource) -> Unit = {},
+    onNavigateToFreelance: () -> Unit = {},
+    onNavigateToCrypto: () -> Unit = {},
+    onNavigateToSubscriptions: () -> Unit = {},
 ) {
     var showEditNameDialog by rememberSaveable { mutableStateOf(false) }
     var showAddSourceSheet by rememberSaveable { mutableStateOf(false) }
@@ -195,6 +202,16 @@ fun ProfileScreen(
                         sources = uiState.incomeSources,
                         onToggle = onToggleIncomeSource,
                         onAddNew = { showAddSourceSheet = true }
+                    )
+                }
+
+                // Tools
+                item {
+                    SectionLabel("Tools")
+                    ToolsCard(
+                        onFreelance = onNavigateToFreelance,
+                        onCrypto = onNavigateToCrypto,
+                        onSubscriptions = onNavigateToSubscriptions,
                     )
                 }
 
@@ -406,6 +423,95 @@ private fun ActiveChip(active: Boolean, onClick: () -> Unit) {
             fontWeight = FontWeight.Bold,
             color = textColor,
         )
+    }
+}
+
+// ─── Tools Card ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun ToolsCard(
+    onFreelance: () -> Unit,
+    onCrypto: () -> Unit,
+    onSubscriptions: () -> Unit,
+) {
+    val isDark = LocalAppDarkTheme.current
+    val surfCol = if (isDark) DarkSurface else Color.White
+    val borderCol = if (isDark) DarkBorder else Color(0xFFE5E7EB)
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = surfCol),
+        border = BorderStroke(0.7.dp, borderCol),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            ToolRow(
+                icon = Icons.Rounded.Business,
+                label = "Freelance Projects",
+                subtitle = "Track clients & payments",
+                color = Color(0xFFF97316),
+                onClick = onFreelance,
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 20.dp),
+                color = borderCol, thickness = 0.5.dp)
+            ToolRow(
+                icon = Icons.Rounded.CurrencyBitcoin,
+                label = "Crypto P&L",
+                subtitle = "Track holdings & returns",
+                color = Color(0xFF8B5CF6),
+                onClick = onCrypto,
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 20.dp),
+                color = borderCol, thickness = 0.5.dp)
+            ToolRow(
+                icon = Icons.Rounded.Subscriptions,
+                label = "Subscriptions",
+                subtitle = "Manage recurring costs",
+                color = Color(0xFF14B8A6),
+                onClick = onSubscriptions,
+            )
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+}
+
+@Composable
+private fun ToolRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    subtitle: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(color.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = if (LocalAppDarkTheme.current) DarkTextPrimary else Color(0xFF1F2937))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = if (LocalAppDarkTheme.current) DarkTextSecondary else Color(0xFF4B5563))
+        }
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(18.dp))
     }
 }
 

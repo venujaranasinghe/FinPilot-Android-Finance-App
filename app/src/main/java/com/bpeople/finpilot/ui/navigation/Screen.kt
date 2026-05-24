@@ -20,4 +20,7 @@ sealed class NavRoutes(val route: String) {
     object Settings : NavRoutes("profile/settings")
     object Income : NavRoutes("income")
     object Notifications : NavRoutes("notifications")
+    object FreelanceProjects : NavRoutes("freelance")
+    object CryptoPnl : NavRoutes("crypto_pnl")
+    object Subscriptions : NavRoutes("subscriptions")
 }

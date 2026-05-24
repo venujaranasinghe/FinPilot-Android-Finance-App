@@ -35,6 +35,12 @@ import com.bpeople.finpilot.ui.screens.notifications.NotificationsScreen
 import com.bpeople.finpilot.ui.screens.notifications.NotificationsViewModel
 import com.bpeople.finpilot.ui.screens.transactions.TransactionScreen
 import com.bpeople.finpilot.ui.screens.transactions.TransactionViewModel
+import com.bpeople.finpilot.ui.screens.freelance.FreelanceProjectScreen
+import com.bpeople.finpilot.ui.screens.freelance.FreelanceProjectViewModel
+import com.bpeople.finpilot.ui.screens.crypto.CryptoPnlScreen
+import com.bpeople.finpilot.ui.screens.crypto.CryptoPnlViewModel
+import com.bpeople.finpilot.ui.screens.subscription.SubscriptionScreen
+import com.bpeople.finpilot.ui.screens.subscription.SubscriptionViewModel
 
 @Composable
 fun FinPilotNavGraph(
@@ -359,6 +365,15 @@ fun FinPilotNavGraph(
                 onUpdateDisplayName = profileViewModel::updateDisplayName,
                 onToggleIncomeSource = profileViewModel::toggleIncomeSource,
                 onAddIncomeSource = profileViewModel::addIncomeSource,
+                onNavigateToFreelance = {
+                    navController.navigate(NavRoutes.FreelanceProjects.route)
+                },
+                onNavigateToCrypto = {
+                    navController.navigate(NavRoutes.CryptoPnl.route)
+                },
+                onNavigateToSubscriptions = {
+                    navController.navigate(NavRoutes.Subscriptions.route)
+                },
             )
         }
 
@@ -412,6 +427,24 @@ fun FinPilotNavGraph(
                 onNavigateToProfile = {
                     navController.navigate(NavRoutes.Profile.route)
                 },
+            )
+        }
+
+        composable(NavRoutes.FreelanceProjects.route) {
+            FreelanceProjectScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.CryptoPnl.route) {
+            CryptoPnlScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.Subscriptions.route) {
+            SubscriptionScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }
