@@ -637,7 +637,7 @@ private fun AddIncomeSourceSheet(
 private fun ProfileScreenPreview() {
     FinPilotTheme {
         ProfileScreen(
-            displayName = "Venujan Aranasinghe",
+            displayName = "Venujan Anandakumar",
             email = "venujan@example.com",
             uiState = ProfileUiState(),
             onNavigateToDashboard = {},
