@@ -54,6 +54,7 @@ class IncomeViewModel @Inject constructor(
         val exchangeRateAvailable: Boolean = true,
         val exchangeRateConfirmed: Boolean = true,
         val exchangeRateManualOverride: Boolean = false,
+        val exchangeRateSource: String? = null,
         val showRateConfirmation: Boolean = false,
         val isRefreshingRates: Boolean = false,
         val dateMillis: Long = System.currentTimeMillis(),
@@ -129,12 +130,25 @@ class IncomeViewModel @Inject constructor(
                     val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
                     val confirmed = if (current.currencyOriginal == "LKR") true
                     else if (rateChanged) false else current.exchangeRateConfirmed
+                    val isCrypto = current.currencyOriginal in CRYPTO_CURRENCIES
+                    val lastUpdated = when {
+                        current.currencyOriginal == "LKR" -> null
+                        isCrypto -> snapshot.cryptoRatesLastUpdatedMillis
+                        else -> snapshot.lastUpdatedMillis.takeIf { it > 0 }
+                    }
+                    val isStale = if (isCrypto) snapshot.cryptoRatesIsStale else snapshot.isStale
+                    val source = when {
+                        current.currencyOriginal == "LKR" -> null
+                        isCrypto -> "CoinGecko"
+                        else -> null
+                    }
                     val updated = current.copy(
                         exchangeRate = exchangeRateValue,
-                        exchangeRateLastUpdatedMillis = snapshot.lastUpdatedMillis.takeIf { it > 0 },
-                        exchangeRateIsStale = snapshot.isStale,
+                        exchangeRateLastUpdatedMillis = lastUpdated,
+                        exchangeRateIsStale = isStale,
                         exchangeRateAvailable = rateAvailable,
                         exchangeRateConfirmed = confirmed,
+                        exchangeRateSource = source,
                     )
                     updated.copy(amountLkrPreview = calculateAmountLkr(updated))
                 }
@@ -186,9 +200,15 @@ class IncomeViewModel @Inject constructor(
     }
 
     fun onCurrencyChange(value: String) {
+        val isCrypto = value in CRYPTO_CURRENCIES
         _incomeState.update { current ->
             val rate = exchangeRatesRepository.rateToLkr(latestRatesSnapshot, value)
             val rateAvailable = value == "LKR" || rate != null
+            val source = when {
+                value == "LKR" -> null
+                isCrypto -> "CoinGecko"
+                else -> null
+            }
             val updated = current.copy(
                 currencyOriginal = value,
                 exchangeRate = when {
@@ -199,9 +219,17 @@ class IncomeViewModel @Inject constructor(
                 exchangeRateAvailable = rateAvailable,
                 exchangeRateConfirmed = value == "LKR",
                 exchangeRateManualOverride = false,
+                exchangeRateSource = source,
                 errorMessage = null,
             )
             updated.copy(amountLkrPreview = calculateAmountLkr(updated))
+        }
+        // Trigger a CoinGecko refresh when a crypto currency is selected so the
+        // rate is populated immediately even if the cache is empty.
+        if (isCrypto) {
+            viewModelScope.launch {
+                exchangeRatesRepository.refreshCryptoPricesIfNeeded()
+            }
         }
     }
 
@@ -354,6 +382,7 @@ class IncomeViewModel @Inject constructor(
                         exchangeRateAvailable = true,
                         exchangeRateConfirmed = true,
                         exchangeRateManualOverride = false,
+                        exchangeRateSource = null,
                         showRateConfirmation = false,
                         label = "",
                         projectRef = "",
@@ -388,6 +417,7 @@ class IncomeViewModel @Inject constructor(
                 exchangeRateConfirmed = true,
                 exchangeRateManualOverride = false,
                 showRateConfirmation = false,
+                exchangeRateSource = null,
                 label = "",
                 projectRef = "",
                 errorMessage = null,
@@ -476,6 +506,7 @@ class IncomeViewModel @Inject constructor(
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
         val CURRENCIES = listOf("LKR", "USD", "USDT", "ETH")
+        val CRYPTO_CURRENCIES = setOf("USDT", "ETH")
         val INCOME_TYPES = listOf("Recurring", "One-off", "Variable")
         val INCOME_TYPE_KEYS = mapOf(
             "One-off" to "ONE_OFF",
