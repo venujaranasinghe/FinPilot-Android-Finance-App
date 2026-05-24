@@ -40,8 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
-import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.GlassTheme
+import com.bpeople.finpilot.ui.components.LocalCurrentGlassTheme
+import com.bpeople.finpilot.ui.components.NavTab
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -57,6 +58,7 @@ fun AddExpenseScreen(
     onNavigateToProfile: () -> Unit,
     onExpenseAdded: (String) -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val state by viewModel.expenseState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -125,6 +127,7 @@ fun AddExpenseContent(
     onDismissRateConfirmation: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
@@ -562,6 +565,7 @@ private fun GlassAmountHeader(
     onCurrencyChange: (String) -> Unit,
     onRefreshRates: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -703,6 +707,7 @@ private fun GlassAmountHeader(
 
 @Composable
 private fun BasicAmountInput(value: String, onValueChange: (String) -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     // We use a BasicTextField for the zero-chrome look
     androidx.compose.foundation.text.BasicTextField(
         value = value,
@@ -740,6 +745,7 @@ private fun GlassFormSection(
     title: String,
     content: @Composable () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             title.uppercase(),
@@ -759,6 +765,7 @@ private fun GlassDateRow(
     context: android.content.Context,
     onDateChange: (Long) -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -820,6 +827,7 @@ private fun GlassDateRow(
 
 @Composable
 private fun GlassCategorySelector(selected: String, onSelected: (String) -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val cats = listOf(
         "Food" to Icons.Rounded.Restaurant,
         "Transport" to Icons.Rounded.DirectionsCar,
@@ -847,6 +855,7 @@ private fun GlassCategorySelector(selected: String, onSelected: (String) -> Unit
 
 @Composable
 private fun GlassPaymentSelector(selected: String, onSelected: (String) -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val methods = listOf(
         "Card" to Icons.Rounded.CreditCard,
         "Cash" to Icons.Rounded.Money,
@@ -877,6 +886,7 @@ fun GlassPill(
     accentColor: Color = GlassTheme.Orange,
     onClick: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val bg by animateColorAsState(
         if (isSelected) accentColor else GlassTheme.GlassBg,
         tween(220),
@@ -922,6 +932,7 @@ fun GlassPill(
 
 @Composable
 private fun GlassTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -944,6 +955,7 @@ private fun GlassTextField(value: String, onValueChange: (String) -> Unit, place
 
 @Composable
 fun GlassRecurringRow(isRecurring: Boolean, onRecurringChange: (Boolean) -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val bg by animateColorAsState(
         if (isRecurring) Color(0x1AFF6B00) else GlassTheme.GlassBg,
         tween(250),
@@ -1011,6 +1023,7 @@ fun GlassRecurringRow(isRecurring: Boolean, onRecurringChange: (Boolean) -> Unit
 
 @Composable
 fun GlassSaveButton(isLoading: Boolean, onClick: () -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Button(
         onClick = onClick,
         enabled = !isLoading,
@@ -1048,6 +1061,7 @@ private fun GlassExpenseHistory(
     onHistoryPaymentMethodFilterChange: (String?) -> Unit,
     onClearHistoryFilters: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val pageSize = 10
     var historyPage by remember { mutableStateOf(0) }
     val sorted = state.filteredEntries.sortedByDescending { it.date?.seconds ?: 0L }
@@ -1135,6 +1149,7 @@ private fun GlassExpenseHistory(
 
 @Composable
 private fun GlassExpenseHistoryItem(entry: ExpenseEntry) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val catColor = GlassTheme.categoryColor(entry.category)
 

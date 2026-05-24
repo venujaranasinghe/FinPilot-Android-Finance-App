@@ -35,6 +35,7 @@ import com.bpeople.finpilot.data.model.ExpenseEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.GlassTheme
+import com.bpeople.finpilot.ui.components.LocalCurrentGlassTheme
 import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
 import com.bpeople.finpilot.ui.components.wavyBottomShape
 import java.text.SimpleDateFormat
@@ -121,6 +122,7 @@ fun ExpenseScreen(
     onNavigateToSettings: () -> Unit = {},
     onExpenseAdded: (String) -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val state by viewModel.expenseState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -213,6 +215,7 @@ fun ExpenseListContent(
     onRefreshRates: () -> Unit,
     onLoadNextPage: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     // Add expense bottom sheet
     if (state.showAddSheet) {
         ModalBottomSheet(
@@ -466,6 +469,7 @@ private fun GlassExpenseHeader(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -538,6 +542,7 @@ private fun GlassExpenseHeader(
 
 @Composable
 private fun GlassHeroBadge(text: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -553,6 +558,7 @@ private fun GlassHeroBadge(text: String) {
 
 @Composable
 private fun GlassWarningBanner(percent: Int, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -590,6 +596,7 @@ private fun GlassDonutCard(
     onSegmentTap: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val total = data.sumOf { it.value }.coerceAtLeast(1.0)
 
     Column(
@@ -724,6 +731,7 @@ private fun GlassCategoryFilterBar(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -763,6 +771,7 @@ private fun GlassCategoryFilterBar(
 
 @Composable
 private fun GlassDateHeader(label: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -793,6 +802,7 @@ private fun GlassSwipeableRow(
     onDuplicate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = {
             when (it) {
@@ -842,6 +852,7 @@ private fun GlassSwipeableRow(
 
 @Composable
 private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val catColor = GlassTheme.categoryColor(entry.category)
     val isAutoDebit = entry.paymentMethod.contains("Auto", ignoreCase = true) || entry.isRecurring
 
@@ -911,6 +922,7 @@ private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier)
 
 @Composable
 private fun GlassPaymentChip(method: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val isAuto  = method.contains("Auto", ignoreCase = true)
     val isCard  = method.equals("Card", ignoreCase = true)
     val isCash  = method.equals("Cash", ignoreCase = true)
@@ -938,6 +950,7 @@ private fun GlassPaymentChip(method: String) {
 
 @Composable
 private fun GlassZombieSection(entries: List<ExpenseEntry>, modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     var expanded by rememberSaveable { mutableStateOf(true) }
 
     Column(
@@ -1042,6 +1055,7 @@ private fun GlassMonthlyTrend(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -1085,6 +1099,7 @@ private fun GlassMonthlyTrend(
 
 @Composable
 private fun GlassBarChart(trendData: List<MonthTrend>) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     if (trendData.isEmpty()) return
     val maxVal = trendData.maxOf { it.amount }.coerceAtLeast(1f)
     val highestIdx = trendData.indexOfFirst { it.amount == trendData.maxOf { m -> m.amount } }
@@ -1169,6 +1184,7 @@ private fun GlassBarChart(trendData: List<MonthTrend>) {
 
 @Composable
 private fun GlassShimmerCard(modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val transition = rememberInfiniteTransition(label = "shimmer")
     val shimX by transition.animateFloat(
         -1f, 2f,
@@ -1203,6 +1219,7 @@ private fun GlassShimmerCard(modifier: Modifier = Modifier) {
 
 @Composable
 private fun GlassEmptyState(category: String, onAddClick: () -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Column(
         modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1254,6 +1271,7 @@ private fun ExpenseHistoryTable(
     onDelete: (ExpenseEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     if (entries.isEmpty()) return
     Card(
         modifier = modifier
@@ -1312,6 +1330,7 @@ private fun ExpenseHistoryTable(
 
 @Composable
 private fun ExpenseTableRow(entry: ExpenseEntry, modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val dateFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val isAutoDebit = entry.paymentMethod.contains("Auto", ignoreCase = true) || entry.isRecurring
     Row(
@@ -1390,6 +1409,7 @@ private fun ExpenseHistoryPaginationBar(
     onNextPage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1484,6 +1504,7 @@ private fun GlassAddExpenseSheet(
     onRequestSubmit: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
@@ -1819,6 +1840,7 @@ private fun GlassAddExpenseSheet(
 
 @Composable
 private fun SheetLabel(text: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Text(
         text.uppercase(),
         fontSize = 10.sp,
@@ -1830,6 +1852,7 @@ private fun SheetLabel(text: String) {
 
 @Composable
 private fun GlassCategoryGrid(categories: List<String>, selected: String, onSelect: (String) -> Unit) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     categories.chunked(4).forEach { row ->
         Row(
             modifier = Modifier.fillMaxWidth(),

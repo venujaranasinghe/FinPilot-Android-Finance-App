@@ -15,7 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -91,8 +92,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -119,6 +118,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.delay
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import kotlin.math.absoluteValue
@@ -127,19 +127,19 @@ import kotlin.math.roundToInt
 
 // ── Color Theme Mappings ──────────────────────────────────────────────────────
 @Composable
-private fun surfaceColor(): Color = if (isSystemInDarkTheme()) Color(0xFF1E1E24) else Color(0xFFFFFFFF)
+private fun surfaceColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF1E1E24) else Color(0xFFFFFFFF)
 
 @Composable
-private fun surfaceVariantColor(): Color = if (isSystemInDarkTheme()) Color(0xFF2D2D37) else Color(0xFFF3F1F8)
+private fun surfaceVariantColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF2D2D37) else Color(0xFFF3F1F8)
 
 @Composable
-private fun textPrimaryColor(): Color = if (isSystemInDarkTheme()) Color(0xFFFFFFFF) else Color(0xFF1C1C24)
+private fun textPrimaryColor(): Color = if (LocalAppDarkTheme.current) Color(0xFFFFFFFF) else Color(0xFF1C1C24)
 
 @Composable
-private fun textSecondaryColor(): Color = if (isSystemInDarkTheme()) Color(0xFF9E9EB2) else Color(0xFF7A7A8E)
+private fun textSecondaryColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF9E9EB2) else Color(0xFF7A7A8E)
 
 @Composable
-private fun borderStrokeColor(): Color = if (isSystemInDarkTheme()) Color(0xFF323242) else Color(0xFFE8E6F0)
+private fun borderStrokeColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF323242) else Color(0xFFE8E6F0)
 
 // ── Custom Gradient Avatars ───────────────────────────────────────────────────
 @Composable
@@ -333,43 +333,13 @@ fun DashboardScreen(
         )
     }
 
-    val backgroundBrush = if (isSystemInDarkTheme()) {
+    val backgroundBrush = if (LocalAppDarkTheme.current) {
         Brush.verticalGradient(listOf(Color(0xFF0F0C1B), Color(0xFF05020A)))
     } else {
         Brush.verticalGradient(listOf(Color(0xFFF4EFFF), Color(0xFFFAF8FF)))
     }
 
-    val dashboardFontFamily = remember {
-        FontFamily(
-            Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
-            Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
-            Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
-            Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
-        )
-    }
-
-    val baseTypography = MaterialTheme.typography
-    val dashboardTypography = baseTypography.copy(
-        displayLarge = baseTypography.displayLarge.copy(fontFamily = dashboardFontFamily),
-        displayMedium = baseTypography.displayMedium.copy(fontFamily = dashboardFontFamily),
-        displaySmall = baseTypography.displaySmall.copy(fontFamily = dashboardFontFamily),
-        headlineLarge = baseTypography.headlineLarge.copy(fontFamily = dashboardFontFamily),
-        headlineMedium = baseTypography.headlineMedium.copy(fontFamily = dashboardFontFamily),
-        headlineSmall = baseTypography.headlineSmall.copy(fontFamily = dashboardFontFamily),
-        titleLarge = baseTypography.titleLarge.copy(fontFamily = dashboardFontFamily),
-        titleMedium = baseTypography.titleMedium.copy(fontFamily = dashboardFontFamily),
-        titleSmall = baseTypography.titleSmall.copy(fontFamily = dashboardFontFamily),
-        bodyLarge = baseTypography.bodyLarge.copy(fontFamily = dashboardFontFamily),
-        bodyMedium = baseTypography.bodyMedium.copy(fontFamily = dashboardFontFamily),
-        bodySmall = baseTypography.bodySmall.copy(fontFamily = dashboardFontFamily),
-        labelLarge = baseTypography.labelLarge.copy(fontFamily = dashboardFontFamily),
-        labelMedium = baseTypography.labelMedium.copy(fontFamily = dashboardFontFamily),
-        labelSmall = baseTypography.labelSmall.copy(fontFamily = dashboardFontFamily),
-    )
-
-    MaterialTheme(typography = dashboardTypography) {
-        ProvideTextStyle(LocalTextStyle.current.copy(fontFamily = dashboardFontFamily)) {
-            Scaffold(
+    Scaffold(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 containerColor = Color.Transparent
             ) { pv ->
@@ -500,7 +470,7 @@ fun DashboardScreen(
                                     onCardChanged = { newIndex -> activeCardIndex = newIndex },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                                        .padding(horizontal = 8.dp, vertical = 12.dp)
                                 )
                                 Spacer(modifier = Modifier.height(36.dp))
 
@@ -520,6 +490,15 @@ fun DashboardScreen(
 
                     item {
                         CategoryDistributionPieChart(
+                            state = state,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    item {
+                        IncomeExpenseRatioCard(
                             state = state,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -558,6 +537,28 @@ fun DashboardScreen(
                                     )
                                 }
                             }
+                            // "See all" navigation button
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onNavigateToTransactions() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = "See all",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFF97316)
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "View all transactions",
+                                    tint = Color(0xFFF97316),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
 
@@ -592,6 +593,9 @@ fun DashboardScreen(
                                 onNextPage = { currentPage++ },
                             )
                         }
+                        item {
+                            ViewAllTransactionsButton(onClick = onNavigateToTransactions)
+                        }
                     }
 
                     // Smart Insights Banner
@@ -622,8 +626,6 @@ fun DashboardScreen(
                     )
                 }
             }
-        }
-    }
 }
 
 // ── Header Section ────────────────────────────────────────────────────────────
@@ -711,8 +713,8 @@ private fun FinanceCardStackSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .padding(horizontal = 24.dp),
+            .height(280.dp)
+            .padding(horizontal = 8.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         cards.forEachIndexed { i, card ->
@@ -778,8 +780,8 @@ private fun FinanceCardStackSection(
                         rotationZ = rotation
                     }
                     .offset(x = offsetX, y = offsetY)
-                    .fillMaxWidth(0.92f)
-                    .height(185.dp)
+                    .fillMaxWidth(0.97f)
+                    .height(220.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(card.gradient)
                     .pointerInput(activeCardIndex) {
@@ -832,7 +834,7 @@ private fun FinanceCardStackSection(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(90.dp)
+                        .height(100.dp)
                         .background(Color.White.copy(alpha = 0.15f))
                         .border(
                             width = 0.5.dp,
@@ -1126,16 +1128,9 @@ private fun MonthlyOverviewChart(
     modifier: Modifier = Modifier
 ) {
     val comparisons = state.monthOverMonthComparisons
-    val bars = remember(comparisons) {
-        comparisons.mapIndexed { index, comparison ->
-            MonthlyBarEntry(
-                label = comparison.label,
-                amount = comparison.currentAmount,
-                isSelected = index == comparisons.maxByOrNull { it.currentAmount }?.let { comparisons.indexOf(it) }
-            )
-        }
+    val maxAmount = remember(comparisons) {
+        comparisons.maxOfOrNull { maxOf(it.currentAmount, it.previousAmount) }?.coerceAtLeast(1.0) ?: 1.0
     }
-    val maxAmount = bars.maxOfOrNull { it.amount }?.coerceAtLeast(1.0) ?: 1.0
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -1144,7 +1139,7 @@ private fun MonthlyOverviewChart(
         border = androidx.compose.foundation.BorderStroke(0.8.dp, borderStrokeColor())
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Chart header and badge
+            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1164,61 +1159,131 @@ private fun MonthlyOverviewChart(
                         color = textPrimaryColor()
                     )
                 }
-
-                val selected = comparisons.maxByOrNull { it.currentAmount }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(surfaceVariantColor())
-                        .border(0.8.dp, borderStrokeColor(), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = selected?.let { "LKR %,.0f".format(it.currentAmount) } ?: "No data",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = textPrimaryColor()
-                        )
-                        Text(
-                            text = selected?.let {
-                                val prefix = if (it.changePercentage >= 0) "↑" else "↓"
-                                "$prefix ${kotlin.math.abs(it.changePercentage).roundToInt()}% ${it.label}"
-                            } ?: "",
-                            fontSize = 10.sp,
-                            color = textSecondaryColor()
-                        )
+                // Net trend badge
+                val netComp = comparisons.firstOrNull {
+                    it.label.contains("Net", ignoreCase = true) || it.label.contains("Balance", ignoreCase = true)
+                } ?: comparisons.maxByOrNull { it.currentAmount }
+                netComp?.let { comp ->
+                    val isPositive = if (comp.increaseIsGood) comp.changePercentage >= 0 else comp.changePercentage < 0
+                    val badgeColor = if (isPositive) IncomeGreen else ExpenseRed
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(badgeColor.copy(alpha = 0.12f))
+                            .border(0.8.dp, badgeColor.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (comp.changePercentage >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                                contentDescription = null,
+                                tint = badgeColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "${kotlin.math.abs(comp.changePercentage).roundToInt()}%",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeColor
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Legend: current vs previous month
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Bottom
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
             ) {
-                if (bars.isEmpty()) {
-                    Text(
-                        text = "No analytics data yet",
-                        fontSize = 12.sp,
-                        color = textSecondaryColor(),
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
-                } else {
-                    bars.forEach { bar ->
-                        val ratio = (bar.amount / maxAmount).toFloat().coerceIn(0.12f, 1f)
-                        BarItem(
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFF97316)))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = state.currentMonthLabel, fontSize = 10.sp, color = textSecondaryColor())
+                Spacer(modifier = Modifier.width(14.dp))
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(borderStrokeColor()))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = state.previousMonthLabel, fontSize = 10.sp, color = textSecondaryColor())
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (comparisons.isEmpty()) {
+                Text(
+                    text = "No analytics data yet",
+                    fontSize = 12.sp,
+                    color = textSecondaryColor()
+                )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    comparisons.forEach { comparison ->
+                        val currentRatio = (comparison.currentAmount / maxAmount).toFloat().coerceIn(0.08f, 1f)
+                        val previousRatio = (comparison.previousAmount / maxAmount).toFloat().coerceIn(0.08f, 1f)
+                        val isPositiveChange = if (comparison.increaseIsGood) comparison.changePercentage >= 0 else comparison.changePercentage < 0
+                        val barColor = when {
+                            comparison.label.contains("Income", ignoreCase = true) -> IncomeGreen
+                            comparison.label.contains("Expense", ignoreCase = true) -> ExpenseRed
+                            else -> Color(0xFFF97316)
+                        }
+                        Column(
                             modifier = Modifier.weight(1f),
-                            label = bar.label,
-                            amount = bar.amount,
-                            heightRatio = ratio,
-                            isSelected = bar.isSelected
-                        )
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            val pct = comparison.changePercentage.roundToInt()
+                            Text(
+                                text = "${if (pct >= 0) "+" else ""}$pct%",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isPositiveChange) IncomeGreen else ExpenseRed
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // Grouped bars: previous (gray) left, current (colored) right
+                            Row(
+                                modifier = Modifier.fillMaxWidth(0.88f),
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(130.dp * previousRatio)
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                        .background(borderStrokeColor())
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(130.dp * currentRatio)
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(barColor, barColor.copy(alpha = 0.55f))
+                                            )
+                                        )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = comparison.label,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textSecondaryColor(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -1433,7 +1498,198 @@ private fun CategoryDistributionPieChart(
     }
 }
 
+// ── Income vs Expense Ratio Card ─────────────────────────────────────────────
+@Composable
+private fun IncomeExpenseRatioCard(
+    state: DashboardViewModel.DashboardUiState,
+    modifier: Modifier = Modifier
+) {
+    val income = state.totalIncome.coerceAtLeast(0.01)
+    val expenses = state.totalExpenses.coerceAtLeast(0.0)
+    val expenseRatio = (expenses / income).coerceIn(0.0, 1.0).toFloat()
+    val savingsRate = ((1.0 - expenseRatio.toDouble()) * 100).coerceIn(0.0, 100.0).roundToInt()
+    val savingsColor = when {
+        savingsRate >= 20 -> IncomeGreen
+        savingsRate > 0  -> Color(0xFFF97316)
+        else             -> ExpenseRed
+    }
+    val animatedExpenseRatio by animateFloatAsState(
+        targetValue = expenseRatio,
+        animationSpec = tween(durationMillis = 1000),
+        label = "expenseRatio"
+    )
 
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor()),
+        border = androidx.compose.foundation.BorderStroke(0.8.dp, borderStrokeColor())
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Savings Rate",
+                        fontSize = 13.sp,
+                        color = textSecondaryColor()
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Income vs Expenses",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textPrimaryColor()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(savingsColor.copy(alpha = 0.12f))
+                        .border(1.dp, savingsColor.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$savingsRate%",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = savingsColor
+                        )
+                        Text(
+                            text = "saved",
+                            fontSize = 8.sp,
+                            color = savingsColor.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Stacked ratio bar: expense (left/red) + savings (right/green)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(ExpenseRed.copy(alpha = 0.18f))
+            ) {
+                // Expense portion
+                if (animatedExpenseRatio > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedExpenseRatio)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(
+                                Brush.horizontalGradient(listOf(ExpenseRed.copy(alpha = 0.8f), ExpenseRed))
+                            )
+                    )
+                }
+                // Savings portion
+                if (animatedExpenseRatio < 1f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(1f - animatedExpenseRatio)
+                            .fillMaxHeight()
+                            .align(Alignment.CenterEnd)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(
+                                Brush.horizontalGradient(listOf(IncomeGreen, IncomeGreen.copy(alpha = 0.7f)))
+                            )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(ExpenseRed))
+                    Column {
+                        Text(text = "Expenses", fontSize = 10.sp, color = textSecondaryColor())
+                        Text(
+                            text = "LKR %,.0f".format(expenses),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ExpenseRed
+                        )
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "Income", fontSize = 10.sp, color = textSecondaryColor())
+                        Text(
+                            text = "LKR %,.0f".format(income),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = IncomeGreen
+                        )
+                    }
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(IncomeGreen))
+                }
+            }
+        }
+    }
+}
+
+// ── View All Transactions Button ─────────────────────────────────────────────
+@Composable
+private fun ViewAllTransactionsButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF97316).copy(alpha = 0.08f))
+            .border(1.dp, Color(0xFFF97316).copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ReceiptLong,
+                contentDescription = null,
+                tint = Color(0xFFF97316),
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "View Full Transaction History & Analytics",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFF97316)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = Color(0xFFF97316),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
 
 // ── Smart Insights Banner ─────────────────────────────────────────────────────
 private enum class InsightType { Positive, Warning, Alert, Info }

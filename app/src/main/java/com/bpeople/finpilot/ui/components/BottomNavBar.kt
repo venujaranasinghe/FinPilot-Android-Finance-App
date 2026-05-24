@@ -10,7 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,7 +127,7 @@ private data class NavBarColors(
 
 @Composable
 private fun darkModeColors(): NavBarColors {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     return if (isDark) {
         NavBarColors(
             activeTintLight = Color(0xFF1A1A1A),
@@ -165,7 +165,7 @@ fun FinPilotBottomNavBar(
     onNavigateToProfile:      () -> Unit = {},
     onNavigateToSettings:     () -> Unit = {},
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     val navBarColors = darkModeColors()
 
     val active = currentTab.resolved()
