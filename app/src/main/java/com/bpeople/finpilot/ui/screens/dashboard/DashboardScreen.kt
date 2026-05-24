@@ -144,37 +144,31 @@ private fun borderStrokeColor(): Color = if (LocalAppDarkTheme.current) Color(0x
 // ── Custom Gradient Avatars ───────────────────────────────────────────────────
 @Composable
 private fun StyledAvatar(
-    name: String,
+    name: String?,
     modifier: Modifier = Modifier,
-    size: androidx.compose.ui.unit.Dp = 48.dp,
-    isSelected: Boolean = false
+    size: androidx.compose.ui.unit.Dp = 48.dp
 ) {
-    val gradients = when (name.lowercase()) {
-        "lay" -> listOf(Color(0xFFEC4899), Color(0xFFEA580C))
-        "nina" -> listOf(Color(0xFFFBBF24), Color(0xFFF87171))
-        "kim" -> listOf(Color(0xFF38BDF8), Color(0xFF3B82F6))
-        "john" -> listOf(Color(0xFF34D399), Color(0xFF059669))
-        "nomaa" -> listOf(Color(0xFFFB7185), Color(0xFFE11D48))
-        else -> listOf(Color(0xFFFB923C), Color(0xFFF97316))
+    // Generate initials like the ProfileScreen
+    val initials = remember(name) {
+        val source = if (!name.isNullOrBlank()) name else "User"
+        val parts = source.trim().split(" ").filter { it.isNotBlank() }
+        val first = parts.getOrNull(0)?.firstOrNull()?.uppercaseChar() ?: 'U'
+        val second = parts.getOrNull(1)?.firstOrNull()?.uppercaseChar() ?: '\u0000'
+        if (second == '\u0000') "$first" else "$first$second"
     }
 
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) Color(0xFFF97316) else Color.White.copy(alpha = 0.5f),
-                shape = CircleShape
-            )
-            .background(Brush.linearGradient(gradients))
-            .padding(2.dp),
+            // Using the exact radial gradient from ProfileScreen
+            .background(Brush.radialGradient(listOf(Color(0xFFFF8C42), Color(0xFFFF6B00)))),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = name.take(1).uppercase(),
-            fontSize = (size.value * 0.45f).sp,
-            fontWeight = FontWeight.ExtraBold,
+            text = initials,
+            fontSize = (size.value * 0.35f).sp, // Scaled dynamically based on avatar size
+            fontWeight = FontWeight.Bold,
             color = Color.White
         )
     }
@@ -277,6 +271,21 @@ fun DashboardScreen(
     val pullState = rememberPullToRefreshState()
 
     var activeCardIndex by remember { mutableIntStateOf(0) }
+    val displayUserName = remember(userName) {
+        when {
+            userName.isBlank() -> "User"
+            userName.contains("@") -> {
+                // Extracts "venujan" from "venujan@example.com" and capitalizes it
+                userName.substringBefore("@")
+                    .replace('.', ' ')
+                    .split(" ")
+                    .joinToString(" ") { word ->
+                        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    }
+            }
+            else -> userName
+        }
+    }
 
     var currentPage by remember { mutableIntStateOf(0) }
     val pageSize = 10
@@ -386,7 +395,7 @@ fun DashboardScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        StyledAvatar(name = "lay", size = 42.dp)
+                                        StyledAvatar(name = userName, size = 42.dp)
                                         Column {
                                             Text(
                                                 text = "Hello,",
@@ -394,7 +403,7 @@ fun DashboardScreen(
                                                 color = Color(0xFF0F172A).copy(alpha = 0.6f)
                                             )
                                             Text(
-                                                text = "${userName.ifBlank { "Lay" }}!",
+                                                text = "$displayUserName!",
                                                 fontSize = 18.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF0F172A)
@@ -643,15 +652,22 @@ private fun DashboardHeader(userName: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            StyledAvatar(name = "lay", size = 42.dp)
+            StyledAvatar(name = userName, size = 42.dp)
             Column {
                 Text(
                     text = "Hello,",
                     fontSize = 13.sp,
                     color = textSecondaryColor()
                 )
+                val headerDisplayName = remember(userName) {
+                    if (userName.contains("@")) {
+                        userName.substringBefore("@").replace('.', ' ').split(" ")
+                            .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+                    } else userName.ifBlank { "User" }
+                }
+
                 Text(
-                    text = "${userName.ifBlank { "Lay" }}!",
+                    text = "$headerDisplayName!",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = textPrimaryColor()
