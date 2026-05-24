@@ -960,7 +960,6 @@ private fun AddIncomeFormSheet(
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
     val showExchange = state.currencyOriginal != "LKR"
-    val selectedDateLabel = remember(state.dateMillis) { dateFormat.format(Date(state.dateMillis)) }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         unfocusedContainerColor = GlassTheme.GlassSurface,
@@ -979,11 +978,7 @@ private fun AddIncomeFormSheet(
             containerColor = GlassTheme.GlassSurface,
             shape = RoundedCornerShape(24.dp),
             title = {
-                Text(
-                    "Confirm exchange rate",
-                    color = GlassTheme.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text("Confirm exchange rate", color = GlassTheme.TextPrimary, fontWeight = FontWeight.Bold)
             },
             text = {
                 val updatedText = state.exchangeRateLastUpdatedMillis
@@ -1015,7 +1010,7 @@ private fun AddIncomeFormSheet(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Drag handle
         Box(
@@ -1023,18 +1018,10 @@ private fun AddIncomeFormSheet(
                 .width(40.dp)
                 .height(4.dp)
                 .align(Alignment.CenterHorizontally)
-                .background(
-                    GlassTheme.TextSecondary.copy(alpha = 0.3f),
-                    RoundedCornerShape(2.dp),
-                ),
+                .background(GlassTheme.TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(2.dp)),
         )
 
-        Text(
-            text = "Add Income",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = GlassTheme.TextPrimary,
-        )
+        Text("Add Income", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GlassTheme.TextPrimary)
 
         // Error message
         if (state.errorMessage != null) {
@@ -1050,11 +1037,43 @@ private fun AddIncomeFormSheet(
             )
         }
 
-        // Amount field
+        // ── CURRENCY ──────────────────────────────────────────────────────────
+        Text("CURRENCY", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.5.sp, color = GlassTheme.TextHint)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            IncomeViewModel.CURRENCIES.forEach { cur ->
+                val isSelected = state.currencyOriginal == cur
+                val isCrypto = cur in IncomeViewModel.CRYPTO_CURRENCIES
+                val accentColor = if (isCrypto) Color(0xFF8B5CF6) else GlassTheme.Orange
+                val bg by animateColorAsState(
+                    if (isSelected) accentColor else GlassTheme.GlassSurface,
+                    tween(200), label = "cur_bg_$cur",
+                )
+                val tc by animateColorAsState(
+                    if (isSelected) Color.White else GlassTheme.TextSecondary,
+                    tween(200), label = "cur_tc_$cur",
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(bg)
+                        .border(1.dp, if (isSelected) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(24.dp))
+                        .clickable { onCurrencyChange(cur) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(cur, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = tc)
+                }
+            }
+        }
+
+        // ── AMOUNT ────────────────────────────────────────────────────────────
         OutlinedTextField(
             value = state.amountOriginal,
             onValueChange = onAmountChange,
-            label = { Text("Amount") },
+            label = { Text("Amount (${state.currencyOriginal})") },
             placeholder = { Text("0.00", color = GlassTheme.TextHint) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -1064,52 +1083,7 @@ private fun AddIncomeFormSheet(
             colors = fieldColors,
         )
 
-        // Currency row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(GlassTheme.GlassSurface)
-                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Currency",
-                    fontSize = 12.sp,
-                    color = GlassTheme.TextSecondary,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    state.currencyOriginal,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GlassTheme.TextPrimary,
-                )
-            }
-            var currencyExpanded by remember { mutableStateOf(false) }
-            Box {
-                TextButton(onClick = { currencyExpanded = true }) {
-                    Text("Change", color = GlassTheme.Orange, fontWeight = FontWeight.SemiBold)
-                }
-                DropdownMenu(
-                    expanded = currencyExpanded,
-                    onDismissRequest = { currencyExpanded = false },
-                    containerColor = GlassTheme.GlassSurface,
-                ) {
-                    IncomeViewModel.CURRENCIES.forEach { cur ->
-                        DropdownMenuItem(
-                            text = { Text(cur, color = GlassTheme.TextPrimary) },
-                            onClick = { onCurrencyChange(cur); currencyExpanded = false },
-                        )
-                    }
-                }
-            }
-        }
-
-        // Exchange rate info (non-LKR)
+        // ── EXCHANGE RATE (non-LKR) ───────────────────────────────────────────
         AnimatedVisibility(
             visible = showExchange,
             enter = fadeIn() + expandVertically(),
@@ -1118,39 +1092,35 @@ private fun AddIncomeFormSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(GlassTheme.OrangeDim)
-                    .border(1.dp, GlassTheme.Orange.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                    .padding(12.dp),
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GlassTheme.GlassSurface)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     "≈ LKR ${"%.2f".format(state.amountLkrPreview)}",
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = GlassTheme.Orange,
                 )
                 val updatedText = state.exchangeRateLastUpdatedMillis
                     ?.let { rateFormat.format(Date(it)) } ?: "unknown"
+                val staleSuffix = if (state.exchangeRateIsStale) " · stale" else ""
+                val srcSuffix = state.exchangeRateSource?.let { " · $it" } ?: ""
                 Text(
-                    text = if (state.exchangeRateAvailable) {
-                        "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText" +
-                            (if (state.exchangeRateIsStale) " · stale" else "") +
-                            (state.exchangeRateSource?.let { " · $it" } ?: "")
-                    } else "Rate unavailable — enter manually",
+                    text = if (state.exchangeRateAvailable)
+                        "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText$staleSuffix$srcSuffix"
+                    else "Rate unavailable — enter manually",
                     fontSize = 11.sp,
                     color = GlassTheme.TextSecondary,
                 )
                 TextButton(
                     onClick = onRefreshRates,
                     enabled = !state.isRefreshingRates,
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     if (state.isRefreshingRates) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp),
-                            strokeWidth = 1.5.dp,
-                            color = GlassTheme.Orange,
-                        )
+                        CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = GlassTheme.Orange)
                         Spacer(Modifier.width(4.dp))
                     }
                     Text("Refresh rates", fontSize = 12.sp, color = GlassTheme.Orange)
@@ -1158,116 +1128,59 @@ private fun AddIncomeFormSheet(
             }
         }
 
-        // Source selector
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(GlassTheme.GlassSurface)
-                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        // ── INCOME SOURCE ─────────────────────────────────────────────────────
+        Text("INCOME SOURCE", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.5.sp, color = GlassTheme.TextHint)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                "Income Source",
-                fontSize = 12.sp,
-                color = GlassTheme.TextSecondary,
-                fontWeight = FontWeight.Medium,
-            )
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                state.availableSources.forEach { src ->
-                    val isSelected = state.source == src
-                    val bg by animateColorAsState(
-                        if (isSelected) GlassTheme.Orange else GlassTheme.GlassBg,
-                        tween(200),
-                        label = "src_bg",
-                    )
-                    val tc by animateColorAsState(
-                        if (isSelected) Color.White else GlassTheme.TextSecondary,
-                        tween(200),
-                        label = "src_tc",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(bg)
-                            .border(
-                                1.dp,
-                                if (isSelected) Color.Transparent else GlassTheme.GlassBorder,
-                                RoundedCornerShape(20.dp),
-                            )
-                            .clickable { onSourceChange(src) }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(src, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = tc)
-                    }
+            state.availableSources.forEach { src ->
+                val isSelected = state.source == src
+                val bg by animateColorAsState(
+                    if (isSelected) GlassTheme.Orange else GlassTheme.GlassSurface,
+                    tween(200), label = "src_bg_$src",
+                )
+                val tc by animateColorAsState(
+                    if (isSelected) Color.White else GlassTheme.TextSecondary,
+                    tween(200), label = "src_tc_$src",
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(bg)
+                        .border(1.dp, if (isSelected) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(24.dp))
+                        .clickable { onSourceChange(src) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(src, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = tc)
                 }
             }
         }
 
-        // Income type selector
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(GlassTheme.GlassSurface)
-                .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                "Income Type",
-                fontSize = 12.sp,
-                color = GlassTheme.TextSecondary,
-                fontWeight = FontWeight.Medium,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                IncomeViewModel.INCOME_TYPES.forEach { type ->
-                    val isSelected = state.incomeType == type
-                    val bg by animateColorAsState(
-                        if (isSelected) GlassTheme.Orange else GlassTheme.GlassBg,
-                        tween(200),
-                        label = "type_bg",
-                    )
-                    val tc by animateColorAsState(
-                        if (isSelected) Color.White else GlassTheme.TextSecondary,
-                        tween(200),
-                        label = "type_tc",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(bg)
-                            .border(
-                                1.dp,
-                                if (isSelected) Color.Transparent else GlassTheme.GlassBorder,
-                                RoundedCornerShape(12.dp),
-                            )
-                            .clickable { onIncomeTypeChange(type) }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            type,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = tc,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+        // ── INCOME TYPE ───────────────────────────────────────────────────────
+        Text("INCOME TYPE", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.5.sp, color = GlassTheme.TextHint)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IncomeViewModel.INCOME_TYPES.forEach { type ->
+                val isSelected = state.incomeType == type
+                val bg by animateColorAsState(if (isSelected) GlassTheme.Orange else GlassTheme.GlassSurface, tween(200), label = "type_bg_$type")
+                val tc by animateColorAsState(if (isSelected) Color.White else GlassTheme.TextSecondary, tween(200), label = "type_tc_$type")
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(bg)
+                        .border(1.dp, if (isSelected) Color.Transparent else GlassTheme.GlassBorder, RoundedCornerShape(12.dp))
+                        .clickable { onIncomeTypeChange(type) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(type, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = tc, textAlign = TextAlign.Center)
                 }
             }
         }
 
-        // Note field
+        // ── NOTE ──────────────────────────────────────────────────────────────
         OutlinedTextField(
             value = state.label,
             onValueChange = onLabelChange,
@@ -1279,73 +1192,63 @@ private fun AddIncomeFormSheet(
             colors = fieldColors,
         )
 
-        // Date row
+        // ── DATE ──────────────────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(GlassTheme.GlassSurface)
                 .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Date",
-                    fontSize = 12.sp,
-                    color = GlassTheme.TextSecondary,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    selectedDateLabel,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GlassTheme.TextPrimary,
-                )
-            }
-            TextButton(
-                onClick = {
+                .clickable {
                     val cal = Calendar.getInstance().apply { timeInMillis = state.dateMillis }
                     DatePickerDialog(
                         context,
                         { _, year, month, day ->
                             val picked = Calendar.getInstance().apply {
-                                set(year, month, day, 0, 0, 0)
-                                set(Calendar.MILLISECOND, 0)
+                                set(year, month, day, 0, 0, 0); set(Calendar.MILLISECOND, 0)
                             }
                             onDateChange(picked.timeInMillis)
                         },
-                        cal.get(Calendar.YEAR),
-                        cal.get(Calendar.MONTH),
-                        cal.get(Calendar.DAY_OF_MONTH),
+                        cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH),
                     ).show()
-                },
+                }
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(GlassTheme.OrangeDim)
+                    .border(1.dp, GlassTheme.Orange.copy(alpha = 0.25f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
             ) {
-                Text("Change", color = GlassTheme.Orange, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = GlassTheme.Orange, modifier = Modifier.size(16.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Date", fontSize = 10.sp, color = GlassTheme.TextHint)
+                Text(
+                    remember(state.dateMillis) { dateFormat.format(Date(state.dateMillis)) },
+                    fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = GlassTheme.TextPrimary,
+                )
             }
         }
 
-        // Freelance project link
+        // ── FREELANCE PROJECT ─────────────────────────────────────────────────
         AnimatedVisibility(
             visible = state.source == "Freelance",
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
         ) {
-            IncomeProjectRow(
-                projects = state.projects,
-                selectedId = state.projectRef,
-                onSelect = onProjectRefChange,
-            )
+            IncomeProjectRow(projects = state.projects, selectedId = state.projectRef, onSelect = onProjectRefChange)
         }
 
-        // Submit button
+        // ── SAVE BUTTON ───────────────────────────────────────────────────────
         Button(
             onClick = onRequestSubmit,
             enabled = !state.isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = GlassTheme.Orange,
@@ -1353,13 +1256,11 @@ private fun AddIncomeFormSheet(
             ),
         ) {
             if (state.isLoading) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    color = Color.White,
-                    modifier = Modifier.size(22.dp),
-                )
+                CircularProgressIndicator(strokeWidth = 2.dp, color = Color.White, modifier = Modifier.size(22.dp))
             } else {
-                Text("Save Income", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Save Income", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
