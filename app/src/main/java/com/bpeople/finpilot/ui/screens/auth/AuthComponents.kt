@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -50,7 +50,7 @@ import com.bpeople.finpilot.ui.theme.SubtleText
 
 @Composable
 internal fun AuthBackground(content: @Composable BoxScope.() -> Unit) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -70,7 +70,7 @@ internal fun AuthBackground(content: @Composable BoxScope.() -> Unit) {
 
 @Composable
 internal fun BlobCanvas(modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
@@ -174,7 +174,7 @@ internal fun GlassCard(
     topCornersOnly: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     val shape = if (topCornersOnly)
         RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
     else
@@ -222,7 +222,7 @@ internal fun AuthTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -315,7 +315,7 @@ internal fun GoogleSignInButton(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     Box(
         modifier = modifier
             .height(56.dp)
