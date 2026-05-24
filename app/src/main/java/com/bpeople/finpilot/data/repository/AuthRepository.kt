@@ -74,8 +74,10 @@ class AuthRepository @Inject constructor(
                 try {
                     firestore.collection("users").document(user.uid).set(profile).await()
                 } catch (e: Exception) {
-                    // Even if firestore fails, we have the auth account. 
-                    // But we should probably know it failed.
+                    android.util.Log.e("AuthRepository", "Firestore profile write failed for uid=${user.uid}", e)
+                    return@withContext AuthResult.Error(
+                        "Account created but profile setup failed. Please try again."
+                    )
                 }
                 
                 user.sendEmailVerification().await()
