@@ -18,6 +18,8 @@ import com.bpeople.finpilot.ui.screens.auth.RegisterScreen
 import com.bpeople.finpilot.ui.screens.auth.SplashScreen
 import com.bpeople.finpilot.ui.screens.auth.VerifyEmailScreen
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardScreen
+import com.bpeople.finpilot.ui.screens.pin.PinScreen
+import com.bpeople.finpilot.ui.screens.pin.PinViewModel
 import com.bpeople.finpilot.ui.screens.dashboard.DashboardViewModel
 import com.bpeople.finpilot.ui.screens.expense.ExpenseScreen
 import com.bpeople.finpilot.ui.screens.expense.ExpenseViewModel
@@ -39,6 +41,8 @@ fun FinPilotNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
+    val pinViewModel: PinViewModel = hiltViewModel()
+    val hasPinSet by pinViewModel.hasPinSet.collectAsState()
 
     NavHost(
         navController = navController,
@@ -53,7 +57,8 @@ fun FinPilotNavGraph(
                     }
                 },
                 onNavigateToDashboard = {
-                    navController.navigate(NavRoutes.Dashboard.route) {
+                    val dest = if (hasPinSet) NavRoutes.PinEntry.route else NavRoutes.PinSetup.route
+                    navController.navigate(dest) {
                         popUpTo(NavRoutes.Splash.route) { inclusive = true }
                     }
                 },
@@ -64,7 +69,8 @@ fun FinPilotNavGraph(
             val currentUser by authViewModel.currentUser.collectAsState()
             LaunchedEffect(currentUser) {
                 if (currentUser != null) {
-                    navController.navigate(NavRoutes.Dashboard.route) {
+                    val dest = if (hasPinSet) NavRoutes.PinEntry.route else NavRoutes.PinSetup.route
+                    navController.navigate(dest) {
                         popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 }
@@ -76,7 +82,8 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Register.route)
                 },
                 onLoginSuccess = {
-                    navController.navigate(NavRoutes.Dashboard.route) {
+                    val dest = if (hasPinSet) NavRoutes.PinEntry.route else NavRoutes.PinSetup.route
+                    navController.navigate(dest) {
                         popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 },
@@ -119,6 +126,39 @@ fun FinPilotNavGraph(
                         popUpTo(NavRoutes.VerifyEmail.route) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(NavRoutes.PinSetup.route) {
+            val setupVm: PinViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { setupVm.initMode(PinViewModel.Mode.SETUP_ENTER) }
+            PinScreen(
+                viewModel = setupVm,
+                onPinVerified = {},
+                onPinSaved = {
+                    // If we came from Profile (change PIN flow), pop back to Profile;
+                    // otherwise go to Dashboard (first-time setup flow)
+                    val wentBack = navController.popBackStack(NavRoutes.Profile.route, inclusive = false)
+                    if (!wentBack) {
+                        navController.navigate(NavRoutes.Dashboard.route) {
+                            popUpTo(NavRoutes.PinSetup.route) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+
+        composable(NavRoutes.PinEntry.route) {
+            val entryVm: PinViewModel = hiltViewModel()
+            LaunchedEffect(Unit) { entryVm.initMode(PinViewModel.Mode.ENTRY) }
+            PinScreen(
+                viewModel = entryVm,
+                onPinVerified = {
+                    navController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.PinEntry.route) { inclusive = true }
+                    }
+                },
+                onPinSaved = {},
             )
         }
 
@@ -312,6 +352,9 @@ fun FinPilotNavGraph(
                     navController.navigate(NavRoutes.Login.route) {
                         popUpTo(NavRoutes.Profile.route) { inclusive = true }
                     }
+                },
+                onChangePin = {
+                    navController.navigate(NavRoutes.PinSetup.route)
                 },
                 onUpdateDisplayName = profileViewModel::updateDisplayName,
                 onToggleIncomeSource = profileViewModel::toggleIncomeSource,

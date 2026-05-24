@@ -38,7 +38,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -197,46 +197,46 @@ private val ExpenseCardBg = Color(0xFFFDE8E8)
 
 // ── Theme-aware color providers ────────────────────────────────────────────────
 @Composable
-private fun textPrimaryColor(): Color = if (isSystemInDarkTheme()) DarkTextPrimary else GlassTheme.TextPrimary
+private fun textPrimaryColor(): Color = if (LocalAppDarkTheme.current) DarkTextPrimary else GlassTheme.TextPrimary
 
 @Composable
-private fun textSecondaryColor(): Color = if (isSystemInDarkTheme()) DarkTextSecondary else GlassTheme.TextSecondary
+private fun textSecondaryColor(): Color = if (LocalAppDarkTheme.current) DarkTextSecondary else GlassTheme.TextSecondary
 
 @Composable
-private fun textHintColor(): Color = if (isSystemInDarkTheme()) DarkTextHint else GlassTheme.TextHint
+private fun textHintColor(): Color = if (LocalAppDarkTheme.current) DarkTextHint else GlassTheme.TextHint
 
 @Composable
-private fun glassBgColor(): Color = if (isSystemInDarkTheme()) DarkGlassBg else GlassTheme.GlassBg
+private fun glassBgColor(): Color = if (LocalAppDarkTheme.current) DarkGlassBg else GlassTheme.GlassBg
 
 @Composable
-private fun glassSurfaceColor(): Color = if (isSystemInDarkTheme()) DarkGlassSurface else GlassTheme.GlassSurface
+private fun glassSurfaceColor(): Color = if (LocalAppDarkTheme.current) DarkGlassSurface else GlassTheme.GlassSurface
 
 @Composable
-private fun glassBorderColor(): Color = if (isSystemInDarkTheme()) DarkGlassBorder else GlassTheme.GlassBorder
+private fun glassBorderColor(): Color = if (LocalAppDarkTheme.current) DarkGlassBorder else GlassTheme.GlassBorder
 
 @Composable
-private fun glassBorderLightColor(): Color = if (isSystemInDarkTheme()) DarkGlassBorderLight else GlassTheme.GlassBorderLight
+private fun glassBorderLightColor(): Color = if (LocalAppDarkTheme.current) DarkGlassBorderLight else GlassTheme.GlassBorderLight
 
 @Composable
-private fun orangeDimColor(): Color = if (isSystemInDarkTheme()) DarkOrangeDim else GlassTheme.OrangeDim
+private fun orangeDimColor(): Color = if (LocalAppDarkTheme.current) DarkOrangeDim else GlassTheme.OrangeDim
 
 @Composable
-private fun incomeSummaryBgColor(): Color = if (isSystemInDarkTheme()) DarkIncomeCardBg else IncomeCardBg
+private fun incomeSummaryBgColor(): Color = if (LocalAppDarkTheme.current) DarkIncomeCardBg else IncomeCardBg
 
 @Composable
-private fun expenseSummaryBgColor(): Color = if (isSystemInDarkTheme()) DarkExpenseCardBg else ExpenseCardBg
+private fun expenseSummaryBgColor(): Color = if (LocalAppDarkTheme.current) DarkExpenseCardBg else ExpenseCardBg
 
 @Composable
-private fun backgroundColor(): Color = if (isSystemInDarkTheme()) DarkBackground else GlassTheme.BgStart
+private fun backgroundColor(): Color = if (LocalAppDarkTheme.current) DarkBackground else GlassTheme.BgStart
 
 @Composable
-private fun backgroundMidColor(): Color = if (isSystemInDarkTheme()) DarkSurface else GlassTheme.BgMid
+private fun backgroundMidColor(): Color = if (LocalAppDarkTheme.current) DarkSurface else GlassTheme.BgMid
 
 @Composable
-private fun orbPurpleColor(): Color = if (isSystemInDarkTheme()) Color(0xFF8B5CF6).copy(alpha = 0.45f) else GlassTheme.OrbPurple
+private fun orbPurpleColor(): Color = if (LocalAppDarkTheme.current) Color(0xFF8B5CF6).copy(alpha = 0.45f) else GlassTheme.OrbPurple
 
 @Composable
-private fun orbOrangeColor(): Color = if (isSystemInDarkTheme()) Color(0xFFFF6B00).copy(alpha = 0.14f) else GlassTheme.OrbOrange
+private fun orbOrangeColor(): Color = if (LocalAppDarkTheme.current) Color(0xFFFF6B00).copy(alpha = 0.14f) else GlassTheme.OrbOrange
 
 // ── Donut palette ─────────────────────────────────────────────────────────────
 private val IncomePalette = listOf(
@@ -345,7 +345,7 @@ private fun Modifier.shimmerEffect(): Modifier {
 
 @Composable
 private fun ShimmerBox(modifier: Modifier = Modifier, height: Dp = 80.dp, cornerRadius: Dp = 12.dp) {
-    val shimmerColor = if (isSystemInDarkTheme()) DarkSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
+    val shimmerColor = if (LocalAppDarkTheme.current) DarkSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier = modifier
             .height(height)
@@ -783,7 +783,7 @@ private fun PeriodTabPill(
 ) {
     val periods = listOf(Period.WEEK to "Week", Period.MONTH to "Month", Period.YEAR to "Year")
     val density = LocalDensity.current
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
 
     // Track the center positions of each tab
     val tabCenters = remember { mutableStateListOf(0f, 0f, 0f) }
@@ -1271,7 +1271,7 @@ private fun GroupedBarChart(
     }
 
     val mutedLabelColor = textHintColor()
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
@@ -2125,7 +2125,7 @@ private fun TransactionTypeToggle(
     modifier: Modifier = Modifier,
 ) {
     val options = listOf("All", "Income", "Expenses")
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
     val primaryColor = textPrimaryColor()
     val secondaryColor = textSecondaryColor()
     val activeBg = if (isDark) DarkSurfaceVariant else Color.White.copy(alpha = 0.85f)

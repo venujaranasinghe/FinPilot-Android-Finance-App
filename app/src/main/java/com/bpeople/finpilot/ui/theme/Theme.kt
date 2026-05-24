@@ -6,9 +6,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalView
+import com.bpeople.finpilot.ui.components.DarkGlassThemeColors
+import com.bpeople.finpilot.ui.components.LightGlassThemeColors
+import com.bpeople.finpilot.ui.components.LocalCurrentGlassTheme
 import androidx.core.view.WindowCompat
+
+/** Provides the effective dark-mode flag (respects in-app override, not just system). */
+val LocalAppDarkTheme = compositionLocalOf { false }
 
 private val LightColorScheme = lightColorScheme(
     primary = md_light_primary,
@@ -92,6 +100,13 @@ fun FinPilotTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        content = {
+            CompositionLocalProvider(
+                LocalAppDarkTheme provides darkTheme,
+                LocalCurrentGlassTheme provides if (darkTheme) DarkGlassThemeColors else LightGlassThemeColors,
+            ) {
+                content()
+            }
+        }
     )
 }

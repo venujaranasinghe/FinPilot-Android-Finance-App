@@ -6,7 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.bpeople.finpilot.ui.theme.LocalAppDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -86,31 +87,31 @@ private val IncomeGreen = Color(0xFF10B981)
 private val ExpenseRed = Color(0xFFEF4444)
 
 @Composable
-private fun surfaceColor(): Color = if (isSystemInDarkTheme()) DarkSurface else Color.White
+private fun surfaceColor(): Color = if (LocalAppDarkTheme.current) DarkSurface else Color.White
 
 @Composable
-private fun surfaceVariantColor(): Color = if (isSystemInDarkTheme()) DarkSurfaceVariant else Color(0xFFF9FAFB)
+private fun surfaceVariantColor(): Color = if (LocalAppDarkTheme.current) DarkSurfaceVariant else Color(0xFFF9FAFB)
 
 @Composable
-private fun backgroundColor(): Color = if (isSystemInDarkTheme()) DarkBackground else Color(0xFFF9FAFB)
+private fun backgroundColor(): Color = if (LocalAppDarkTheme.current) DarkBackground else Color(0xFFF9FAFB)
 
 @Composable
-private fun borderColor(): Color = if (isSystemInDarkTheme()) DarkBorder else Color(0xFFE5E7EB)
+private fun borderColor(): Color = if (LocalAppDarkTheme.current) DarkBorder else Color(0xFFE5E7EB)
 
 @Composable
-private fun glassBgColor(): Color = if (isSystemInDarkTheme()) DarkGlassBg else Color.White
+private fun glassBgColor(): Color = if (LocalAppDarkTheme.current) DarkGlassBg else Color.White
 
 @Composable
-private fun glassBorderLightColor(): Color = if (isSystemInDarkTheme()) DarkGlassBorderLight else Color(0xFFE5E7EB).copy(alpha = 0.5f)
+private fun glassBorderLightColor(): Color = if (LocalAppDarkTheme.current) DarkGlassBorderLight else Color(0xFFE5E7EB).copy(alpha = 0.5f)
 
 @Composable
-private fun textPrimaryColor(): Color = if (isSystemInDarkTheme()) DarkTextPrimary else Color(0xFF1F2937)
+private fun textPrimaryColor(): Color = if (LocalAppDarkTheme.current) DarkTextPrimary else Color(0xFF1F2937)
 
 @Composable
-private fun textSecondaryColor(): Color = if (isSystemInDarkTheme()) DarkTextSecondary else Color(0xFF4B5563)
+private fun textSecondaryColor(): Color = if (LocalAppDarkTheme.current) DarkTextSecondary else Color(0xFF4B5563)
 
 @Composable
-private fun textHintColor(): Color = if (isSystemInDarkTheme()) DarkTextHint else Color(0xFF6B7280)
+private fun textHintColor(): Color = if (LocalAppDarkTheme.current) DarkTextHint else Color(0xFF6B7280)
 
 @Composable
 private fun heroBgColor(): Color = Color(0xFF1F2937)
@@ -130,6 +131,7 @@ fun ProfileScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
+    onChangePin: () -> Unit = {},
     onUpdateDisplayName: (String) -> Unit,
     onToggleIncomeSource: (String) -> Unit = {},
     onAddIncomeSource: (IncomeSource) -> Unit = {},
@@ -201,6 +203,7 @@ fun ProfileScreen(
                     SectionLabel("Account")
                     DangerZoneCard(
                         onSignOut = onLogout,
+                        onChangePin = onChangePin,
                     )
                 }
             }
@@ -364,16 +367,6 @@ private fun IncomeSourcesCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(OrangeMain.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(source.icon, fontSize = 18.sp)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     source.label,
                     modifier = Modifier.weight(1f),
@@ -421,10 +414,55 @@ private fun ActiveChip(active: Boolean, onClick: () -> Unit) {
 @Composable
 private fun DangerZoneCard(
     onSignOut: () -> Unit,
+    onChangePin: () -> Unit,
 ) {
+    var showSignOutDialog by remember { mutableStateOf(false) }
+
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            containerColor = surfaceColor(),
+            title = {
+                Text("Sign Out", fontWeight = FontWeight.Bold, color = textPrimaryColor())
+            },
+            text = {
+                Text(
+                    "Are you sure you want to sign out?",
+                    color = textSecondaryColor(),
+                    fontSize = 14.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSignOutDialog = false
+                    onSignOut()
+                }) {
+                    Text("Sign Out", color = ExpenseRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("Cancel", color = textSecondaryColor())
+                }
+            }
+        )
+    }
+
     GlassCard {
         OutlinedButton(
-            onClick = onSignOut,
+            onClick = onChangePin,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, OrangeMain),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = OrangeMain),
+        ) {
+            Icon(Icons.Rounded.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Change PIN", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { showSignOutDialog = true },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, ExpenseRed),

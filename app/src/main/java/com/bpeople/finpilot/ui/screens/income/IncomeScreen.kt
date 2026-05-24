@@ -109,6 +109,7 @@ import com.bpeople.finpilot.data.model.FreelanceProject
 import com.bpeople.finpilot.data.model.IncomeEntry
 import com.bpeople.finpilot.ui.components.FinPilotBottomNavBar
 import com.bpeople.finpilot.ui.components.GlassTheme
+import com.bpeople.finpilot.ui.components.LocalCurrentGlassTheme
 import com.bpeople.finpilot.ui.components.NavTab
 import com.bpeople.finpilot.ui.components.DynamicHeaderBackground
 import com.bpeople.finpilot.ui.components.wavyBottomShape
@@ -195,6 +196,7 @@ fun IncomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val state by viewModel.incomeState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddSheet by remember { mutableStateOf(false) }
@@ -429,6 +431,7 @@ private fun GlassIncomeHeader(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -500,6 +503,7 @@ private fun GlassIncomeHeader(
 
 @Composable
 private fun GlassIncomeBadge(text: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -519,6 +523,7 @@ private fun IncomeHistoryTable(
     onDelete: (IncomeEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     if (entries.isEmpty()) return
     Card(
         modifier = modifier
@@ -577,6 +582,7 @@ private fun IncomeHistoryTable(
 
 @Composable
 private fun IncomeTableRow(entry: IncomeEntry, modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val dateFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     Row(
         modifier = modifier
@@ -641,6 +647,7 @@ private fun IncomeHistoryPaginationBar(
     onNextPage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -712,6 +719,7 @@ private fun IncomeHistoryPaginationBar(
 
 @Composable
 private fun GlassShimmerCard(modifier: Modifier = Modifier) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val transition = rememberInfiniteTransition(label = "shimmer")
     val shimX by transition.animateFloat(
         -1f, 2f,
@@ -744,6 +752,7 @@ private fun GlassShimmerCard(modifier: Modifier = Modifier) {
 
 @Composable
 private fun GlassEmptyIncomeState(onAddClick: () -> Unit, selectedSourceFilter: String) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     androidx.compose.foundation.layout.Column(
         modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -779,6 +788,7 @@ private fun GlassIncomeSourceSummaryCard(
     sourceTotals: List<Map.Entry<String, Double>>,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val max = sourceTotals.maxOfOrNull { it.value }?.takeIf { it > 0 } ?: 1.0
     androidx.compose.foundation.layout.Column(
         modifier = modifier
@@ -834,6 +844,7 @@ private fun GlassIncomeSourceFilterBar(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -877,6 +888,7 @@ private fun GlassIncomeMonthlyTrend(
     trendData: List<IncomeMonthTrend>,
     modifier: Modifier = Modifier,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val maxValue = trendData.maxOfOrNull { it.amount }?.takeIf { it > 0f } ?: 1f
     androidx.compose.foundation.layout.Column(
         modifier = modifier
@@ -943,6 +955,7 @@ private fun AddIncomeFormSheet(
     onDismissRateConfirmation: () -> Unit,
     onRefreshRates: () -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rateFormat = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
@@ -1356,6 +1369,7 @@ private fun IncomeProjectRow(
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     var expanded by remember { mutableStateOf(false) }
     val selected = projects.firstOrNull { it.id == selectedId }
     val label = selected?.let { "${it.projectTitle} — ${it.clientName}" }
