@@ -1,5 +1,6 @@
 package com.bpeople.finpilot.ui.screens.subscription
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -72,40 +73,38 @@ fun SubscriptionScreen(
     }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = viewModel::openAddDialog,
-                containerColor = Teal,
+                containerColor = Orange,
                 contentColor = Color.White,
             ) { Icon(Icons.Default.Add, "Add Subscription") }
         },
     ) { pv ->
-        Box(modifier = Modifier.fillMaxSize().background(bgGradient)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(pv),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                item { SubTopBar(onNavigateBack = onNavigateBack, isDark = isDark) }
-                item { SubSummaryCard(state = state, isDark = isDark) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(pv),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            item { SubTopBar(onNavigateBack = onNavigateBack, isDark = isDark) }
+            item { SubSummaryCard(state = state, isDark = isDark) }
 
-                if (state.isLoading) {
-                    item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Teal)
-                    }}
-                } else if (state.subscriptions.isEmpty()) {
-                    item { SubEmptyState() }
-                } else {
-                    items(state.subscriptions, key = { it.id }) { sub ->
-                        SubscriptionCard(
-                            sub = sub, isDark = isDark,
-                            onEdit = { viewModel.openEditDialog(sub) },
-                            onDelete = { viewModel.deleteSub(sub.id) },
-                            onToggle = { viewModel.toggleActive(sub) },
-                        )
-                    }
+            if (state.isLoading) {
+                item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Orange)
+                }}
+            } else if (state.subscriptions.isEmpty()) {
+                item { SubEmptyState() }
+            } else {
+                items(state.subscriptions, key = { it.id }) { sub ->
+                    SubscriptionCard(
+                        sub = sub, isDark = isDark,
+                        onEdit = { viewModel.openEditDialog(sub) },
+                        onDelete = { viewModel.deleteSub(sub.id) },
+                        onToggle = { viewModel.toggleActive(sub) },
+                    )
                 }
             }
         }
@@ -116,28 +115,28 @@ fun SubscriptionScreen(
 
 @Composable
 private fun SubTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
-    val barBrush = if (isDark)
-        Brush.horizontalGradient(listOf(Color(0xFF000510).copy(0.95f), Color(0xFF000A10).copy(0.90f)))
-    else
-        Brush.horizontalGradient(listOf(Color(0xFFFFFFFF).copy(0.95f), Color(0xFFE0F7FA).copy(0.90f)))
-
     Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth().background(barBrush)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
                     tint = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(Modifier.width(4.dp))
-            Icon(Icons.Default.Subscriptions, null, tint = Teal, modifier = Modifier.size(22.dp))
+            Icon(Icons.Default.Subscriptions, null, tint = Orange, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(8.dp))
             Text("Subscriptions", fontSize = 20.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface)
         }
-        Box(modifier = Modifier.fillMaxWidth().height(1.5.dp).background(
-            Brush.horizontalGradient(listOf(Teal, Green, Indigo, Color.Transparent))
-        ))
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = 1.dp
+        )
     }
 }
 
@@ -145,25 +144,26 @@ private fun SubTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
 
 @Composable
 private fun SubSummaryCard(state: SubscriptionViewModel.UiState, isDark: Boolean) {
-    val glassFill = Teal.copy(alpha = if (isDark) 0.09f else 0.06f)
-    val border    = Teal.copy(alpha = if (isDark) 0.20f else 0.15f)
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Text("Subscription Overview", fontWeight = FontWeight.Bold, fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            SumCol("Monthly Cost", "LKR ${fmtLKR(state.monthlyTotal)}", Teal)
-            SumCol("Yearly Cost", "LKR ${fmtLKR(state.yearlyTotal)}", Orange)
-            SumCol("Active", "${state.active.size} / ${state.subscriptions.size}", Green)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Subscription Overview", fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                SumCol("Monthly Cost", "LKR ${fmtLKR(state.monthlyTotal)}", Orange)
+                SumCol("Yearly Cost", "LKR ${fmtLKR(state.yearlyTotal)}", Orange)
+                SumCol("Active", "${state.active.size} / ${state.subscriptions.size}", Green)
+            }
         }
     }
 }
@@ -186,54 +186,54 @@ private fun SubscriptionCard(
     onDelete: () -> Unit,
     onToggle: () -> Unit,
 ) {
-    val accentColor = categoryColor(sub.category)
-    val glassFill = accentColor.copy(alpha = if (isDark) 0.07f else 0.05f)
-    val border    = accentColor.copy(alpha = if (isDark) 0.20f else 0.14f)
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(sub.name, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
-                Text(sub.category, fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Switch(
-                checked = sub.isActive,
-                onCheckedChange = { onToggle() },
-                colors = SwitchDefaults.colors(
-                    checkedTrackColor = accentColor,
-                    checkedThumbColor = Color.White,
-                ),
-            )
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("LKR ${fmtLKR(sub.amountLKR)} / ${sub.billingCycle.lowercase()}",
-                    fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = accentColor)
-                if (sub.billingCycle != "MONTHLY") {
-                    Text("≈ LKR ${fmtLKR(sub.monthlyEquivalent)}/mo",
-                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(sub.name, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
+                    Text(sub.category, fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                Switch(
+                    checked = sub.isActive,
+                    onCheckedChange = { onToggle() },
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = Orange,
+                        checkedThumbColor = Color.White,
+                    ),
+                )
             }
-            Row {
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("LKR ${fmtLKR(sub.amountLKR)} / ${sub.billingCycle.lowercase()}",
+                        fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Orange)
+                    if (sub.billingCycle != "MONTHLY") {
+                        Text("≈ LKR ${fmtLKR(sub.monthlyEquivalent)}/mo",
+                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+                Row {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
@@ -318,7 +318,7 @@ private fun SubscriptionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text("Save", color = Teal, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onSave) { Text("Save", color = Orange, fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

@@ -31,8 +31,21 @@ private const val CRYPTO_CACHE_TTL_MILLIS = 60 * 60 * 1000L      // 1 hour for c
 
 /** CoinGecko coin IDs mapped to the currency symbol used in the app. */
 private val COINGECKO_COIN_IDS = mapOf(
-    "tether"   to "USDT",
-    "ethereum" to "ETH",
+    "tether"      to "USDT",
+    "ethereum"    to "ETH",
+    "bitcoin"     to "BTC",
+    "binancecoin" to "BNB",
+    "solana"      to "SOL",
+    "ripple"      to "XRP",
+    "cardano"     to "ADA",
+    "dogecoin"    to "DOGE",
+    "polkadot"    to "DOT",
+    "litecoin"    to "LTC",
+    "matic-network" to "MATIC",
+    "chainlink"   to "LINK",
+    "shiba-inu"   to "SHIB",
+    "tron"        to "TRX",
+    "avalanche-2" to "AVAX",
 )
 
 private val Context.exchangeRatesDataStore: DataStore<Preferences> by preferencesDataStore(

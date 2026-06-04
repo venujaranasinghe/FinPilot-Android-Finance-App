@@ -28,17 +28,30 @@ class TransactionRepository @Inject constructor(
                 amountInLKR = entry.amountLKR,
                 exchangeRate = entry.exchangeRate.takeIf { it != 1.0 },
                 note = entry.label,
+                subCategory = null,
+                description = entry.label?.trim().takeIf { !it.isNullOrBlank() },
                 paymentMethod = "bank",
                 isRecurring = entry.type.equals("RECURRING", ignoreCase = true),
                 timestampMillis = entry.date?.toDate()?.time ?: 0L,
             )
         }
         val expenseItems = expenses.map { entry ->
-            val originalAmountLKR = if (entry.originalCurrency != null && entry.originalCurrency != "LKR") {
-                entry.amount
+            val originalAmountLKR = entry.amount
+            val calculatedExchangeRate = if (entry.originalCurrency != null && entry.originalCurrency != "LKR") {
+                val origAmount = entry.originalAmount ?: 0.0
+                if (origAmount > 0.0) entry.amount / origAmount else null
             } else {
-                entry.amount
+                null
             }
+            val desc = buildString {
+                val sub = entry.subCategory?.trim().orEmpty()
+                val note = entry.note?.trim().orEmpty()
+                if (sub.isNotEmpty()) append(sub)
+                if (note.isNotEmpty()) {
+                    if (isNotEmpty()) append(" - ")
+                    append(note)
+                }
+            }.trim().takeIf { it.isNotEmpty() }
             TransactionItem(
                 id = entry.id,
                 type = TransactionType.EXPENSE,
@@ -47,8 +60,10 @@ class TransactionRepository @Inject constructor(
                 amount = entry.originalAmount ?: entry.amount,
                 currency = entry.originalCurrency ?: "LKR",
                 amountInLKR = originalAmountLKR,
-                exchangeRate = null,
+                exchangeRate = calculatedExchangeRate,
                 note = entry.note,
+                subCategory = entry.subCategory,
+                description = desc,
                 paymentMethod = entry.paymentMethod.lowercase(),
                 isRecurring = entry.isRecurring,
                 timestampMillis = entry.date?.toDate()?.time ?: 0L,

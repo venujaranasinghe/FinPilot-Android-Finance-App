@@ -505,8 +505,13 @@ class IncomeViewModel @Inject constructor(
 
     companion object {
         val SOURCES = listOf("Salary", "Freelance", "AdSense", "Crypto", "Other")
-        val CURRENCIES = listOf("LKR", "USD", "USDT", "ETH")
-        val CRYPTO_CURRENCIES = setOf("USDT", "ETH")
+        val CURRENCIES = listOf(
+            "LKR", "USD", "EUR", "GBP", "AUD", "SGD",
+            "USDT", "ETH", "BTC", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "LTC", "MATIC", "LINK", "SHIB", "TRX", "AVAX"
+        )
+        val CRYPTO_CURRENCIES = setOf(
+            "USDT", "ETH", "BTC", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "LTC", "MATIC", "LINK", "SHIB", "TRX", "AVAX"
+        )
         val INCOME_TYPES = listOf("Recurring", "One-off", "Variable")
         val INCOME_TYPE_KEYS = mapOf(
             "One-off" to "ONE_OFF",

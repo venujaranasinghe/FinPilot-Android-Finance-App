@@ -86,7 +86,8 @@ class TransactionViewModel @Inject constructor(
             .filter {
                 query.isBlank() ||
                     it.displayName.contains(query, ignoreCase = true) ||
-                    it.note?.contains(query, ignoreCase = true) == true
+                    it.note?.contains(query, ignoreCase = true) == true ||
+                    it.description?.contains(query, ignoreCase = true) == true
             }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 

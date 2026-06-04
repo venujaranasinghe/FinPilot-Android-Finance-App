@@ -116,10 +116,19 @@ class ExpenseViewModel @Inject constructor(
                     val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
                     val confirmed = if (current.currency == "LKR") true
                     else if (rateChanged) false else current.exchangeRateConfirmed
+                    
+                    val isCrypto = current.currency in CRYPTO_CURRENCIES
+                    val lastUpdated = when {
+                        current.currency == "LKR" -> null
+                        isCrypto -> snapshot.cryptoRatesLastUpdatedMillis
+                        else -> snapshot.lastUpdatedMillis.takeIf { it > 0 }
+                    }
+                    val isStale = if (isCrypto) snapshot.cryptoRatesIsStale else snapshot.isStale
+                    
                     val updated = current.copy(
                         exchangeRate = formatRate(resolvedRate),
-                        exchangeRateLastUpdatedMillis = snapshot.lastUpdatedMillis.takeIf { it > 0 },
-                        exchangeRateIsStale = snapshot.isStale,
+                        exchangeRateLastUpdatedMillis = lastUpdated,
+                        exchangeRateIsStale = isStale,
                         exchangeRateAvailable = rateAvailable,
                         exchangeRateConfirmed = confirmed,
                     )
@@ -218,6 +227,7 @@ class ExpenseViewModel @Inject constructor(
     }
 
     fun onCurrencyChange(value: String) {
+        val isCrypto = value in CRYPTO_CURRENCIES
         _expenseState.update { current ->
             val rate = exchangeRatesRepository.rateToLkr(latestRatesSnapshot, value)
             val rateAvailable = value == "LKR" || rate != null
@@ -234,6 +244,11 @@ class ExpenseViewModel @Inject constructor(
                 errorMessage = null,
             )
             updated.copy(amountLkrPreview = if (rateAvailable) calculateAmountLkr(updated) else 0.0)
+        }
+        if (isCrypto) {
+            viewModelScope.launch {
+                exchangeRatesRepository.refreshCryptoPricesIfNeeded()
+            }
         }
     }
 
@@ -380,7 +395,13 @@ class ExpenseViewModel @Inject constructor(
     companion object {
         val CATEGORIES = listOf("Food", "Transport", "Housing", "Subscriptions", "Entertainment", "Health", "Other")
         val PAYMENT_METHODS = listOf("Card", "Cash", "Bank Transfer", "Auto-Debit")
-        val CURRENCIES = listOf("LKR", "USD", "EUR", "GBP", "AUD", "SGD")
+        val CURRENCIES = listOf(
+            "LKR", "USD", "EUR", "GBP", "AUD", "SGD",
+            "USDT", "ETH", "BTC", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "LTC", "MATIC", "LINK", "SHIB", "TRX", "AVAX"
+        )
+        val CRYPTO_CURRENCIES = setOf(
+            "USDT", "ETH", "BTC", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "LTC", "MATIC", "LINK", "SHIB", "TRX", "AVAX"
+        )
     }
 
     // ── Sheet visibility ──────────────────────────────────────────────────────

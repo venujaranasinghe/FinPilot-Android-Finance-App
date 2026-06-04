@@ -263,12 +263,19 @@ class DashboardViewModel @Inject constructor(
 
         val expenseTransactions = expenses.mapNotNull { entry ->
             val dateMillis = entry.date?.toDate()?.time ?: return@mapNotNull null
+            val subCat = entry.subCategory?.trim().orEmpty()
             val note = entry.note?.trim().orEmpty()
-            val paymentMethod = entry.paymentMethod.trim().ifBlank { "Unspecified" }
+            val desc = buildString {
+                if (subCat.isNotEmpty()) append(subCat)
+                if (note.isNotEmpty()) {
+                    if (isNotEmpty()) append(" - ")
+                    append(note)
+                }
+            }.ifBlank { entry.paymentMethod.trim() }.ifBlank { "Unspecified" }
             RecentTransaction(
                 id = entry.id,
                 title = entry.category.trim().ifBlank { "Expense" },
-                subtitle = note.ifBlank { paymentMethod },
+                subtitle = desc,
                 amount = entry.amount,
                 dateMillis = dateMillis,
                 isExpense = true,

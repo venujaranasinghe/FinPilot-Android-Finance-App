@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Flag
@@ -165,6 +166,8 @@ fun GoalTrackerScreen(
     val scope = rememberCoroutineScope()
     var showSheet by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var goalToDelete by remember { mutableStateOf<Goal?>(null) }
 
     fun openCreate() {
         viewModel.prepareCreateGoal()
@@ -213,11 +216,44 @@ fun GoalTrackerScreen(
                     viewModel.submitGoal()
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
                 },
+                onDelete = {
+                    goalToDelete = goalState.activeGoal
+                    showDeleteDialog = true
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
+                },
                 onDismiss = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
                 },
             )
         }
+    }
+
+    if (showDeleteDialog && goalToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Goal?") },
+            text = { Text("Are you sure you want to delete '${goalToDelete?.title}'? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteGoal(goalToDelete!!.id)
+                        showDeleteDialog = false
+                        goalToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = GoalStatusRed)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = glassBgColor(),
+            titleContentColor = textPrimaryColor(),
+            textContentColor = textSecondaryColor()
+        )
     }
 }
 
@@ -1260,6 +1296,7 @@ fun CreateEditGoalBottomSheet(
     onDeadlineChange: (Long) -> Unit,
     onSubmit: () -> Unit,
     onDismiss: () -> Unit,
+    onDelete: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
@@ -1298,12 +1335,28 @@ fun CreateEditGoalBottomSheet(
                 ),
         )
 
-        Text(
-            text = if (isEditing) "Edit Goal" else "Create New Goal",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = sheetTextPrimary,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isEditing) "Edit Goal" else "Create New Goal",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = sheetTextPrimary,
+            )
+            
+            if (isEditing) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Goal",
+                        tint = GoalStatusRed
+                    )
+                }
+            }
+        }
 
         if (goalState.errorMessage != null) {
             Text(

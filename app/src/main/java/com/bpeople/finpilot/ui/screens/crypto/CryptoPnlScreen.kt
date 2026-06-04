@@ -1,5 +1,6 @@
 package com.bpeople.finpilot.ui.screens.crypto
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -73,39 +74,37 @@ fun CryptoPnlScreen(
     }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = viewModel::openAddDialog,
-                containerColor = Purple,
+                containerColor = Orange,
                 contentColor = Color.White,
             ) { Icon(Icons.Default.Add, "Add Holding") }
         },
     ) { pv ->
-        Box(modifier = Modifier.fillMaxSize().background(bgGradient)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(pv),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                item { CryptoTopBar(onNavigateBack = onNavigateBack, isDark = isDark) }
-                item { CryptoSummaryCard(state = state, isDark = isDark) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(pv),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            item { CryptoTopBar(onNavigateBack = onNavigateBack, isDark = isDark) }
+            item { CryptoSummaryCard(state = state, isDark = isDark) }
 
-                if (state.isLoading) {
-                    item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Purple)
-                    }}
-                } else if (state.holdings.isEmpty()) {
-                    item { CryptoEmptyState() }
-                } else {
-                    items(state.holdings, key = { it.id }) { entry ->
-                        CryptoHoldingCard(
-                            entry = entry, isDark = isDark,
-                            onEdit = { viewModel.openEditDialog(entry) },
-                            onDelete = { viewModel.deleteHolding(entry.id) },
-                        )
-                    }
+            if (state.isLoading) {
+                item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Orange)
+                }}
+            } else if (state.holdings.isEmpty()) {
+                item { CryptoEmptyState() }
+            } else {
+                items(state.holdings, key = { it.id }) { entry ->
+                    CryptoHoldingCard(
+                        entry = entry, isDark = isDark,
+                        onEdit = { viewModel.openEditDialog(entry) },
+                        onDelete = { viewModel.deleteHolding(entry.id) },
+                    )
                 }
             }
         }
@@ -116,28 +115,28 @@ fun CryptoPnlScreen(
 
 @Composable
 private fun CryptoTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
-    val barBrush = if (isDark)
-        Brush.horizontalGradient(listOf(Color(0xFF050010).copy(0.95f), Color(0xFF0D0B1A).copy(0.90f)))
-    else
-        Brush.horizontalGradient(listOf(Color(0xFFFFFFFF).copy(0.95f), Color(0xFFF0EEFF).copy(0.90f)))
-
     Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth().background(barBrush)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
                     tint = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(Modifier.width(4.dp))
-            Icon(Icons.Default.ShowChart, null, tint = Purple, modifier = Modifier.size(22.dp))
+            Icon(Icons.Default.ShowChart, null, tint = Orange, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(8.dp))
             Text("Crypto P&L", fontSize = 20.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface)
         }
-        Box(modifier = Modifier.fillMaxWidth().height(1.5.dp).background(
-            Brush.horizontalGradient(listOf(Purple, Indigo, Teal, Color.Transparent))
-        ))
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = 1.dp
+        )
     }
 }
 
@@ -147,33 +146,35 @@ private fun CryptoTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
 private fun CryptoSummaryCard(state: CryptoPnlViewModel.UiState, isDark: Boolean) {
     val isProfit = state.netPnl >= 0
     val pnlColor = if (isProfit) Green else Red
-    val glassFill = Purple.copy(alpha = if (isDark) 0.09f else 0.06f)
-    val border    = Purple.copy(alpha = if (isDark) 0.20f else 0.15f)
 
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Text("Portfolio Summary", fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurface)
-            Icon(
-                if (isProfit) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
-                null, tint = pnlColor, modifier = Modifier.size(22.dp)
-            )
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            SummaryCol("Invested", "LKR ${fmtLKR(state.totalInvested)}", Orange)
-            SummaryCol("Current Value", "LKR ${fmtLKR(state.totalCurrentValue)}", Indigo)
-            SummaryCol("Net P&L", "${if (isProfit) "+" else ""}LKR ${fmtLKR(state.netPnl)}\n${
-                "%.1f".format(state.netPnlPercent)}%", pnlColor)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("Portfolio Summary", fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface)
+                Icon(
+                    if (isProfit) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    null, tint = pnlColor, modifier = Modifier.size(22.dp)
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                SummaryCol("Invested", "LKR ${fmtLKR(state.totalInvested)}", Orange)
+                SummaryCol("Current Value", "LKR ${fmtLKR(state.totalCurrentValue)}", Indigo)
+                SummaryCol("Net P&L", "${if (isProfit) "+" else ""}LKR ${fmtLKR(state.netPnl)}\n${
+                    "%.1f".format(state.netPnlPercent)}%", pnlColor)
+            }
         }
     }
 }
@@ -198,58 +199,60 @@ private fun CryptoHoldingCard(
 ) {
     val isProfit = entry.pnlLKR >= 0
     val accentColor = if (isProfit) Green else Red
-    val glassFill = accentColor.copy(alpha = if (isDark) 0.07f else 0.05f)
-    val border    = accentColor.copy(alpha = if (isDark) 0.20f else 0.14f)
 
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Purple.copy(alpha = 0.18f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) { Text(entry.symbol, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Purple) }
-                Column {
-                    Text(entry.name.ifBlank { entry.symbol }, fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${entry.quantity} units", fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Orange.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) { Text(entry.symbol, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Orange) }
+                    Column {
+                        Text(entry.name.ifBlank { entry.symbol }, fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${entry.quantity} units", fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isProfit) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                        null, tint = accentColor, modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("${"%.1f".format(entry.pnlPercent)}%", fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp, color = accentColor)
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    if (isProfit) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
-                    null, tint = accentColor, modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text("${"%.1f".format(entry.pnlPercent)}%", fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp, color = accentColor)
-            }
-        }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            MiniLabel("Buy Price", "LKR ${fmtLKR(entry.buyPriceLKR)}", Orange)
-            MiniLabel("Current", "LKR ${fmtLKR(entry.currentPriceLKR)}", Indigo)
-            MiniLabel("P&L", "${if (isProfit) "+" else ""}LKR ${fmtLKR(entry.pnlLKR)}", accentColor)
-        }
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                MiniLabel("Buy Price", "LKR ${fmtLKR(entry.buyPriceLKR)}", Orange)
+                MiniLabel("Current", "LKR ${fmtLKR(entry.currentPriceLKR)}", Indigo)
+                MiniLabel("P&L", "${if (isProfit) "+" else ""}LKR ${fmtLKR(entry.pnlLKR)}", accentColor)
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
@@ -324,7 +327,7 @@ private fun CryptoHoldingDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text("Save", color = Purple, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onSave) { Text("Save", color = Orange, fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

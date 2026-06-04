@@ -195,6 +195,7 @@ fun IncomeScreen(
     onNavigateToGoals: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
+    onIncomeAdded: () -> Unit = {},
 ) {
     @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val state by viewModel.incomeState.collectAsState()
@@ -207,7 +208,11 @@ fun IncomeScreen(
         if (!state.isSubmitted) return@LaunchedEffect
         viewModel.consumeSubmitted()
         snackbarHostState.showSnackbar("Income saved!")
-        scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false }
+        scope.launch { sheetState.hide() }
+            .invokeOnCompletion {
+                showAddSheet = false
+                onIncomeAdded()
+            }
     }
 
     LaunchedEffect(state.pendingDeleteEntry) {

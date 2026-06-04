@@ -1814,6 +1814,15 @@ private fun TransactionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (!transaction.description.isNullOrBlank()) {
+                Text(
+                    text = transaction.description,
+                    fontSize = 11.sp,
+                    color = textSecondaryColor(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2069,6 +2078,9 @@ private fun TransactionEditSheet(
             label = "Payment",
             value = item.paymentMethod.replaceFirstChar { it.titlecase() },
         )
+        if (!item.subCategory.isNullOrBlank()) {
+            EditDetailRow(label = "Merchant / Sub-category", value = item.subCategory)
+        }
         if (!item.note.isNullOrBlank()) {
             EditDetailRow(label = "Note", value = item.note)
         }

@@ -237,6 +237,11 @@ fun FinPilotNavGraph(
                 onNavigateToSettings = {
                     navController.navigate(NavRoutes.Settings.route)
                 },
+                onIncomeAdded = {
+                    navController.navigate(NavRoutes.Income.route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
@@ -266,7 +271,6 @@ fun FinPilotNavGraph(
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("expense_insight", insight)
-                    navController.popBackStack(NavRoutes.Dashboard.route, inclusive = false)
                 },
             )
         }

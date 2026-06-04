@@ -14,6 +14,8 @@ data class TransactionItem(
     val amountInLKR: Double = 0.0,
     val exchangeRate: Double? = null,
     val note: String? = null,
+    val subCategory: String? = null,
+    val description: String? = null,
     val paymentMethod: String = "cash",
     val isRecurring: Boolean = false,
     val timestampMillis: Long = 0L,

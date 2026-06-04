@@ -197,6 +197,17 @@ class GoalViewModel @Inject constructor(
         }
     }
 
+    fun deleteGoal(goalId: String) {
+        viewModelScope.launch {
+            goalRepository.deleteGoal(goalId)
+            _goalState.update {
+                it.copy(
+                    selectedGoalIndex = 0 // Reset index to first goal after deletion
+                )
+            }
+        }
+    }
+
     /**
      * Adds [amount] to the goal's currentAmount in Firestore AND writes an
      * individual entry to the goal's `savingsLogs` subcollection so the

@@ -48,6 +48,17 @@ class GoalRepository @Inject constructor(
         collection.document(id).set(payload).await()
     }
 
+    suspend fun deleteGoal(goalId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        firestore
+            .collection("users")
+            .document(uid)
+            .collection("goals")
+            .document(goalId)
+            .delete()
+            .await()
+    }
+
     /**
      * Atomically increments the goal's [currentAmount] field in Firestore using
      * [FieldValue.increment] — eliminates the read-then-write race condition that

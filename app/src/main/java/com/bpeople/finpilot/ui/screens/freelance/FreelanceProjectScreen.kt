@@ -3,6 +3,7 @@ package com.bpeople.finpilot.ui.screens.freelance
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,7 +77,7 @@ fun FreelanceProjectScreen(
     }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
@@ -87,41 +88,35 @@ fun FreelanceProjectScreen(
             ) { Icon(Icons.Default.Add, "Add Project") }
         },
     ) { pv ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(bgGradient),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(pv),
+            contentPadding = PaddingValues(bottom = 96.dp),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(pv),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                // Top bar
-                item {
-                    FreelanceTopBar(onNavigateBack = onNavigateBack, isDark = isDark)
-                }
+            // Top bar
+            item {
+                FreelanceTopBar(onNavigateBack = onNavigateBack, isDark = isDark)
+            }
 
-                // Summary card
-                item {
-                    FreelanceSummaryCard(state = state, isDark = isDark)
-                }
+            // Summary card
+            item {
+                FreelanceSummaryCard(state = state, isDark = isDark)
+            }
 
-                // Project list
-                if (state.isLoading) {
-                    item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Orange)
-                    }}
-                } else if (state.projects.isEmpty()) {
-                    item { FreelanceEmptyState(isDark = isDark) }
-                } else {
-                    items(state.projects, key = { it.id }) { project ->
-                        FreelanceProjectCard(
-                            project = project,
-                            isDark = isDark,
-                            onEdit = { viewModel.openEditDialog(project) },
-                            onDelete = { viewModel.deleteProject(project.id) },
-                        )
-                    }
+            // Project list
+            if (state.isLoading) {
+                item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Orange)
+                }}
+            } else if (state.projects.isEmpty()) {
+                item { FreelanceEmptyState(isDark = isDark) }
+            } else {
+                items(state.projects, key = { it.id }) { project ->
+                    FreelanceProjectCard(
+                        project = project,
+                        isDark = isDark,
+                        onEdit = { viewModel.openEditDialog(project) },
+                        onDelete = { viewModel.deleteProject(project.id) },
+                    )
                 }
             }
         }
@@ -132,14 +127,12 @@ fun FreelanceProjectScreen(
 
 @Composable
 private fun FreelanceTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
-    val barBrush = if (isDark)
-        Brush.horizontalGradient(listOf(Color(0xFF0A0500).copy(alpha = 0.95f), Color(0xFF1A0800).copy(alpha = 0.90f)))
-    else
-        Brush.horizontalGradient(listOf(Color(0xFFFFFFFF).copy(alpha = 0.95f), Color(0xFFFFF0E0).copy(alpha = 0.90f)))
-
     Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
         Row(
-            modifier = Modifier.fillMaxWidth().background(barBrush).padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onNavigateBack) {
@@ -152,9 +145,10 @@ private fun FreelanceTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
             Text("Freelance Projects", fontSize = 20.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface)
         }
-        Box(modifier = Modifier.fillMaxWidth().height(1.5.dp).background(
-            Brush.horizontalGradient(listOf(Orange, Color(0xFFFF8C42), Amber, Color.Transparent))
-        ))
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = 1.dp
+        )
     }
 }
 
@@ -162,30 +156,31 @@ private fun FreelanceTopBar(onNavigateBack: () -> Unit, isDark: Boolean) {
 
 @Composable
 private fun FreelanceSummaryCard(state: FreelanceProjectViewModel.UiState, isDark: Boolean) {
-    val glassFill = Orange.copy(alpha = if (isDark) 0.09f else 0.06f)
-    val border    = Orange.copy(alpha = if (isDark) 0.20f else 0.15f)
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Text("Portfolio Overview", fontWeight = FontWeight.Bold, fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            SummaryItem("Total Agreed", "LKR ${fmtLKR(state.totalAgreed)}", Orange)
-            SummaryItem("Total Paid", "LKR ${fmtLKR(state.totalPaid)}", Green)
-            SummaryItem("Outstanding", "LKR ${fmtLKR(state.totalOutstanding)}", Amber)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatChip("${state.projects.size} Total", Indigo)
-            StatChip("${state.activeCount} Active", Teal)
-            StatChip("${state.completedCount} Done", Green)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Portfolio Overview", fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                SummaryItem("Total Agreed", "LKR ${fmtLKR(state.totalAgreed)}", Orange)
+                SummaryItem("Total Paid", "LKR ${fmtLKR(state.totalPaid)}", Green)
+                SummaryItem("Outstanding", "LKR ${fmtLKR(state.totalOutstanding)}", Amber)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatChip("${state.projects.size} Total", Indigo)
+                StatChip("${state.activeCount} Active", Teal)
+                StatChip("${state.completedCount} Done", Green)
+            }
         }
     }
 }
@@ -224,49 +219,51 @@ private fun FreelanceProjectCard(
         "CANCELLED" -> Red
         else        -> Amber
     }
-    val glassFill = statusColor.copy(alpha = if (isDark) 0.07f else 0.05f)
-    val border    = statusColor.copy(alpha = if (isDark) 0.20f else 0.14f)
     val outstanding = project.agreedAmount - project.paidAmount
 
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(glassFill)
-            .border(0.8.dp, border, RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text(project.projectTitle, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(project.clientName, fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(project.projectTitle, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(project.clientName, fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box(modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(statusColor.copy(alpha = 0.15f))
+                    .border(0.6.dp, statusColor.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) { Text(project.status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor) }
             }
-            Box(modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(statusColor.copy(alpha = 0.15f))
-                .border(0.6.dp, statusColor.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-            ) { Text(project.status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = statusColor) }
-        }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            AmountLabel("Agreed", project.agreedAmount, Orange)
-            AmountLabel("Paid", project.paidAmount, Green)
-            AmountLabel("Due", outstanding, if (outstanding > 0) Amber else Green)
-        }
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                AmountLabel("Agreed", project.agreedAmount, Orange)
+                AmountLabel("Paid", project.paidAmount, Green)
+                AmountLabel("Due", outstanding, if (outstanding > 0) Amber else Green)
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Edit, "Edit", tint = Teal, modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, "Delete", tint = Red, modifier = Modifier.size(18.dp))
+                }
             }
         }
     }
