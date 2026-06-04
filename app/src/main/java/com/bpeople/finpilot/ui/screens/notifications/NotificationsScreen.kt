@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -29,19 +28,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,14 +54,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,9 +83,7 @@ import kotlinx.coroutines.launch
 private val ScreenOrange     = Color(0xFFF97316)
 private val ScreenOrangeGlow = Color(0xFFFF8C42)
 private val ScreenAmber      = Color(0xFFF59E0B)
-private val ScreenRed        = Color(0xFFEF4444)
 private val ScreenTeal       = Color(0xFF14B8A6)
-private val ScreenIndigo     = Color(0xFF6366F1)
 
 // ── Entry point — with ViewModel ─────────────────────────────────────────────
 
@@ -155,7 +146,6 @@ fun NotificationsScreen(
  *  - [NotificationFilterChips] — horizontal type-filter strip
  *  - Notification list — one [NotificationCard] per item
  *  - [NotificationEmptyState] — shown when no notifications match
- *  - Budget snapshot card and goal progress rows
  *  - Spacer for bottom-nav clearance
  */
 @Composable
@@ -356,37 +346,7 @@ fun NotificationsScreenContent(
                     }
                 }
 
-                // ─ 7. Budget stats summary ───────────────────────────────────
-                item(key = "budget_stats") {
-                    NotificationsBudgetStats(
-                        thisMonthExpenses = state.thisMonthExpenses,
-                        thisWeekExpenses  = state.thisWeekExpenses,
-                        thisWeekIncome    = state.thisWeekIncome,
-                        budgetThreshold   = state.prefs.budgetThreshold,
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                }
-
-                // ─ 8. Active goals milestone overview ─────────────────────────
-                if (state.activeGoals.isNotEmpty()) {
-                    item(key = "goals_header") {
-                        NotificationsSectionDivider(
-                            label    = "Goal Progress Overview",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
-                    }
-                    itemsIndexed(
-                        items = state.activeGoals,
-                        key   = { _, g -> "goal_${g.goal.id}" },
-                    ) { _, goalSummary ->
-                        NotificationsGoalProgressRow(
-                            summary  = goalSummary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-                        )
-                    }
-                }
-
-                // ─ 9. Bottom spacer ───────────────────────────────────────────
+                // ─ 7. Bottom spacer ───────────────────────────────────────────
                 item(key = "bottom_spacer") {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -592,341 +552,6 @@ private fun NotificationLoadingSkeleton(modifier: Modifier = Modifier) {
     )
 }
 
-// ── Section divider ───────────────────────────────────────────────────────────
-
-/**
- * Labelled horizontal divider separating major sections in the scroll list.
- *
- * Renders a left-aligned section label with a fading horizontal rule extending
- * to the right, styled to match the app's glass theme.
- *
- * @param label    Text displayed to the left of the rule.
- * @param modifier Optional layout modifier.
- */
-@Composable
-private fun NotificationsSectionDivider(label: String, modifier: Modifier = Modifier) {
-    val isDark = LocalAppDarkTheme.current
-    Row(
-        modifier          = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text       = label,
-            fontSize   = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
-            letterSpacing = 0.8.sp,
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            ScreenOrange.copy(alpha = if (isDark) 0.35f else 0.25f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-    }
-}
-
-// ── Budget stats card ─────────────────────────────────────────────────────────
-
-/**
- * Glassmorphism card displaying three key financial stats used by the
- * notifications engine: this month's spend, this week's spend, and this
- * week's income, alongside the configured budget threshold.
- *
- * A thin progress bar visualises how close the current month's spend is to
- * the threshold; it glows red when over budget.
- *
- * @param thisMonthExpenses Running LKR total of expenses in the current month.
- * @param thisWeekExpenses  Running LKR total of expenses in the last 7 days.
- * @param thisWeekIncome    Running LKR total of income in the last 7 days.
- * @param budgetThreshold   Configured monthly overspend threshold in LKR.
- * @param modifier          Optional layout modifier.
- */
-@Composable
-private fun NotificationsBudgetStats(
-    thisMonthExpenses: Double,
-    thisWeekExpenses: Double,
-    thisWeekIncome: Double,
-    budgetThreshold: Double,
-    modifier: Modifier = Modifier,
-) {
-    val isDark  = LocalAppDarkTheme.current
-    val isOver  = thisMonthExpenses > budgetThreshold
-    val progress = if (budgetThreshold > 0.0) {
-        (thisMonthExpenses / budgetThreshold).coerceIn(0.0, 1.5).toFloat()
-    } else 1f
-
-    val barColor = when {
-        progress >= 1.0f -> ScreenRed
-        progress >= 0.75f -> ScreenAmber
-        else              -> ScreenTeal
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue  = progress.coerceIn(0f, 1f),
-        animationSpec = tween(1000),
-        label        = "budget_progress",
-    )
-
-    // Glass card style
-    val glassFill   = ScreenOrange.copy(alpha = if (isDark) 0.09f else 0.06f)
-    val borderColor = ScreenOrange.copy(alpha = if (isDark) 0.18f else 0.14f)
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(glassFill)
-            .border(0.8.dp, borderColor, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        // Header
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically,
-        ) {
-            Text(
-                text       = "Budget Snapshot",
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.onSurface,
-            )
-            if (isOver) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(ScreenRed.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text       = "⚠️ Over budget",
-                        fontSize   = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = ScreenRed,
-                    )
-                }
-            }
-        }
-
-        // Three stat rows
-        NotificationStatRow(
-            label  = "This month's spend",
-            value  = formatLKR(thisMonthExpenses),
-            tint   = if (isOver) ScreenRed else MaterialTheme.colorScheme.onSurface,
-        )
-        NotificationStatRow(
-            label  = "This week's spend",
-            value  = formatLKR(thisWeekExpenses),
-            tint   = MaterialTheme.colorScheme.onSurface,
-        )
-        NotificationStatRow(
-            label  = "This week's income",
-            value  = formatLKR(thisWeekIncome),
-            tint   = Color(0xFF10B981),
-        )
-        NotificationStatRow(
-            label  = "Budget threshold",
-            value  = formatLKR(budgetThreshold),
-            tint   = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        // Progress bar
-        val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text     = "Monthly budget used",
-                    fontSize = 11.sp,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                )
-                Text(
-                    text     = "${(progress * 100).toInt().coerceAtMost(999)}%",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color    = barColor,
-                )
-            }
-            Canvas(modifier = Modifier.fillMaxWidth().height(8.dp)) {
-                val radius = size.height / 2f
-                // Track
-                drawRoundRect(
-                    color        = trackColor,
-                    cornerRadius = CornerRadius(radius),
-                )
-                // Fill
-                if (animatedProgress > 0f) {
-                    drawRoundRect(
-                        brush        = Brush.horizontalGradient(
-                            listOf(barColor.copy(alpha = 0.80f), barColor),
-                            endX = size.width * animatedProgress,
-                        ),
-                        size         = Size(size.width * animatedProgress, size.height),
-                        cornerRadius = CornerRadius(radius),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** Single key–value stat row used inside [NotificationsBudgetStats]. */
-@Composable
-private fun NotificationStatRow(label: String, value: String, tint: Color) {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        Text(
-            text     = label,
-            fontSize = 13.sp,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text       = value,
-            fontSize   = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color      = tint,
-        )
-    }
-}
-
-// ── Goal progress row ─────────────────────────────────────────────────────────
-
-/**
- * Compact goal progress row for the goal overview section at the bottom of the
- * notifications screen.
- *
- * Shows the goal title, an animated progress bar, the milestone chips that have
- * been reached, and the remaining amount.
- *
- * @param summary  [NotificationsViewModel.GoalProgressSummary] for one goal.
- * @param modifier Optional layout modifier.
- */
-@Composable
-private fun NotificationsGoalProgressRow(
-    summary: NotificationsViewModel.GoalProgressSummary,
-    modifier: Modifier = Modifier,
-) {
-    val isDark = LocalAppDarkTheme.current
-    val glassFill   = ScreenIndigo.copy(alpha = if (isDark) 0.08f else 0.05f)
-    val borderColor = ScreenIndigo.copy(alpha = if (isDark) 0.20f else 0.14f)
-
-    val animProgress by animateFloatAsState(
-        targetValue   = summary.progressPercent.coerceIn(0f, 1f),
-        animationSpec = tween(900),
-        label         = "goal_prog_${summary.goal.id}",
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(glassFill)
-            .border(0.8.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        // Goal title + percentage
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically,
-        ) {
-            Text(
-                text       = summary.goal.title,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onSurface,
-                modifier   = Modifier.weight(1f),
-                maxLines   = 1,
-                overflow   = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text       = "${(summary.progressPercent * 100).toInt()}%",
-                fontSize   = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color      = ScreenIndigo,
-            )
-        }
-
-        // Progress bar
-        Canvas(modifier = Modifier.fillMaxWidth().height(6.dp)) {
-            val radius = size.height / 2f
-            drawRoundRect(
-                color        = Color.White.copy(alpha = if (isDark) 0.06f else 0.40f),
-                cornerRadius = CornerRadius(radius),
-            )
-            if (animProgress > 0f) {
-                drawRoundRect(
-                    brush        = Brush.horizontalGradient(
-                        listOf(ScreenIndigo, ScreenTeal),
-                        endX = size.width * animProgress,
-                    ),
-                    size         = Size(size.width * animProgress, size.height),
-                    cornerRadius = CornerRadius(radius),
-                )
-            }
-        }
-
-        // Milestone chips
-        if (summary.milestonesReached.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                summary.milestonesReached.forEach { m ->
-                    val chipColor = when (m) {
-                        25   -> ScreenAmber
-                        50   -> ScreenIndigo
-                        75   -> Color(0xFF8B5CF6)
-                        else -> ScreenTeal
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(chipColor.copy(alpha = 0.18f))
-                            .border(0.6.dp, chipColor.copy(alpha = 0.50f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text       = "🎯 $m%",
-                            fontSize   = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = chipColor,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Remaining amount
-        Text(
-            text     = "Remaining: ${formatLKR(summary.remaining)}",
-            fontSize = 12.sp,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-        )
-    }
-}
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-
-private fun formatLKR(amount: Double): String = when {
-    amount >= 1_000_000 -> "LKR %.2fM".format(amount / 1_000_000)
-    amount >= 1_000     -> "LKR %.1fK".format(amount / 1_000)
-    else                -> "LKR %.0f".format(amount)
-}
 
 // ── Previews ──────────────────────────────────────────────────────────────────
 
