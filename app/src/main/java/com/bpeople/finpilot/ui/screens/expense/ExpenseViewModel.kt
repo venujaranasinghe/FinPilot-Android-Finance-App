@@ -71,6 +71,8 @@ class ExpenseViewModel @Inject constructor(
         val isSubmitted: Boolean = false,
         val isLoadingMore: Boolean = false,
         val hasMore: Boolean = true,
+        // ── Toggle: monthly vs all-time summary ──────────────────────────────
+        val showMonthlyView: Boolean = true,
     )
 
     private var latestRatesSnapshot = ExchangeRatesRepository.ExchangeRatesSnapshot()
@@ -116,7 +118,7 @@ class ExpenseViewModel @Inject constructor(
                     val rateChanged = current.exchangeRate.toDoubleOrNull() != resolvedRate
                     val confirmed = if (current.currency == "LKR") true
                     else if (rateChanged) false else current.exchangeRateConfirmed
-                    
+
                     val isCrypto = current.currency in CRYPTO_CURRENCIES
                     val lastUpdated = when {
                         current.currency == "LKR" -> null
@@ -124,7 +126,7 @@ class ExpenseViewModel @Inject constructor(
                         else -> snapshot.lastUpdatedMillis.takeIf { it > 0 }
                     }
                     val isStale = if (isCrypto) snapshot.cryptoRatesIsStale else snapshot.isStale
-                    
+
                     val updated = current.copy(
                         exchangeRate = formatRate(resolvedRate),
                         exchangeRateLastUpdatedMillis = lastUpdated,
@@ -382,9 +384,9 @@ class ExpenseViewModel @Inject constructor(
             val entryMillis = entry.date?.toDate()?.time ?: return@filter false
             val matchesDate = startMillis == null || entryMillis >= startMillis
             val matchesCategory = state.historyCategoryFilter.isNullOrBlank() ||
-                entry.category.equals(state.historyCategoryFilter, ignoreCase = true)
+                    entry.category.equals(state.historyCategoryFilter, ignoreCase = true)
             val matchesPaymentMethod = state.historyPaymentMethodFilter.isNullOrBlank() ||
-                entry.paymentMethod.equals(state.historyPaymentMethodFilter, ignoreCase = true)
+                    entry.paymentMethod.equals(state.historyPaymentMethodFilter, ignoreCase = true)
 
             matchesDate && matchesCategory && matchesPaymentMethod
         }
@@ -502,5 +504,10 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch {
             expenseRepository.loadNextPage()
         }
+    }
+
+    // ── Monthly / All-time toggle ─────────────────────────────────────────────
+    fun onToggleMonthlyView() {
+        _expenseState.update { it.copy(showMonthlyView = !it.showMonthlyView) }
     }
 }

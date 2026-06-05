@@ -142,7 +142,7 @@ private fun dateLabel(millis: Long): String {
 
 private fun isSameDay(a: Calendar, b: Calendar): Boolean =
     a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
-        a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
 private fun currentMonthStartMillis(): Long = Calendar.getInstance().apply {
     set(Calendar.DAY_OF_MONTH, 1)
@@ -232,11 +232,13 @@ fun IncomeScreen(
     val monthEntries = remember(state.entries) {
         state.entries.filter { (it.date?.toDate()?.time ?: 0L) >= monthStart }
     }
-    val monthTotal = monthEntries.sumOf { it.amountLKR }
-    val recurringTotal = monthEntries.filter { it.type == "RECURRING" }.sumOf { it.amountLKR }
-    val nonRecurringTotal = monthEntries.filter { it.type != "RECURRING" }.sumOf { it.amountLKR }
-    val sourceTotals = remember(monthEntries) {
-        monthEntries.groupBy { it.source }
+    // ── TOGGLE: use monthEntries or all entries based on showMonthlyView ──────
+    val activeEntries = if (state.showMonthlyView) monthEntries else state.entries
+    val monthTotal = activeEntries.sumOf { it.amountLKR }
+    val recurringTotal = activeEntries.filter { it.type == "RECURRING" }.sumOf { it.amountLKR }
+    val nonRecurringTotal = activeEntries.filter { it.type != "RECURRING" }.sumOf { it.amountLKR }
+    val sourceTotals = remember(activeEntries) {
+        activeEntries.groupBy { it.source }
             .mapValues { (_, list) -> list.sumOf { it.amountLKR } }
             .entries.sortedByDescending { it.value }
     }
@@ -312,7 +314,9 @@ fun IncomeScreen(
                         monthTotal = monthTotal,
                         recurringTotal = recurringTotal,
                         nonRecurringTotal = nonRecurringTotal,
-                        entryCount = monthEntries.size,
+                        entryCount = activeEntries.size,
+                        showMonthlyView = state.showMonthlyView,
+                        onToggleView = viewModel::onToggleMonthlyView,
                         onAddClick = { showAddSheet = true },
                     )
                 }
@@ -422,12 +426,64 @@ fun IncomeScreen(
     }
 }
 
+// ── Monthly / All-Time Toggle ─────────────────────────────────────────────────
+
+@Composable
+private fun MonthlyAllTimeToggle(
+    showMonthlyView: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(20.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        listOf(true to "This Month", false to "All Time").forEach { (isMonthly, label) ->
+            val active = showMonthlyView == isMonthly
+            val bg by animateColorAsState(
+                targetValue = if (active) GlassTheme.Orange else Color.Transparent,
+                animationSpec = tween(200),
+                label = "toggle_bg_$label",
+            )
+            val tc by animateColorAsState(
+                targetValue = if (active) Color.White else GlassTheme.TextSecondary,
+                animationSpec = tween(200),
+                label = "toggle_tc_$label",
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(bg)
+                    .clickable(enabled = !active) { onToggle() }
+                    .padding(horizontal = 16.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tc,
+                )
+            }
+        }
+    }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
 @Composable
 private fun GlassIncomeHeader(
     monthTotal: Double,
     recurringTotal: Double,
     nonRecurringTotal: Double,
     entryCount: Int,
+    showMonthlyView: Boolean,
+    onToggleView: () -> Unit,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -440,7 +496,7 @@ private fun GlassIncomeHeader(
             patternType = "income",
             modifier = Modifier.matchParentSize().clip(wavyBottomShape())
         )
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding(),
@@ -468,15 +524,16 @@ private fun GlassIncomeHeader(
                     )
                 }
             }
-            androidx.compose.foundation.layout.Column(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                // Dynamic label reacts to the toggle state
                 Text(
-                    "THIS MONTH'S INCOME",
+                    text = if (showMonthlyView) "THIS MONTH'S INCOME" else "ALL TIME INCOME",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 2.sp,
@@ -495,6 +552,14 @@ private fun GlassIncomeHeader(
                     GlassIncomeBadge("${formatLKRShort(nonRecurringTotal)} other")
                 }
                 GlassIncomeBadge("$entryCount entries")
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Toggle pill
+                MonthlyAllTimeToggle(
+                    showMonthlyView = showMonthlyView,
+                    onToggle = onToggleView,
+                )
             }
             Spacer(modifier = Modifier.height(36.dp))
         }
@@ -742,7 +807,7 @@ private fun GlassShimmerCard(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(brush))
-        androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(modifier = Modifier.height(13.dp).fillMaxWidth(0.5f).clip(RoundedCornerShape(4.dp)).background(brush))
             Box(modifier = Modifier.height(10.dp).fillMaxWidth(0.3f).clip(RoundedCornerShape(4.dp)).background(brush))
         }
@@ -753,7 +818,7 @@ private fun GlassShimmerCard(modifier: Modifier = Modifier) {
 @Composable
 private fun GlassEmptyIncomeState(onAddClick: () -> Unit, selectedSourceFilter: String) {
     @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = Modifier.fillMaxWidth().padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -790,7 +855,7 @@ private fun GlassIncomeSourceSummaryCard(
 ) {
     @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val max = sourceTotals.maxOfOrNull { it.value }?.takeIf { it > 0 } ?: 1.0
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -808,7 +873,7 @@ private fun GlassIncomeSourceSummaryCard(
         )
         sourceTotals.take(4).forEach { entry ->
             val ratio = (entry.value / max).toFloat().coerceIn(0f, 1f)
-            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(entry.key, color = GlassTheme.TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Text(formatLKRShort(entry.value), color = GlassTheme.TextSecondary, fontSize = 12.sp)
@@ -852,7 +917,7 @@ private fun GlassIncomeSourceFilterBar(
             .padding(bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val scroll = androidx.compose.foundation.rememberScrollState()
+        val scroll = rememberScrollState()
         Row(
             modifier = Modifier.horizontalScroll(scroll),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -890,7 +955,7 @@ private fun GlassIncomeMonthlyTrend(
 ) {
     @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
     val maxValue = trendData.maxOfOrNull { it.amount }?.takeIf { it > 0f } ?: 1f
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -915,7 +980,7 @@ private fun GlassIncomeMonthlyTrend(
         ) {
             trendData.forEach { point ->
                 val ratio = (point.amount / maxValue).coerceIn(0f, 1f)
-                androidx.compose.foundation.layout.Column(
+                Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -1135,8 +1200,8 @@ private fun AddIncomeFormSheet(
                 Text(
                     text = if (state.exchangeRateAvailable) {
                         "1 ${state.currencyOriginal} = LKR ${state.exchangeRate} · $updatedText" +
-                            (if (state.exchangeRateIsStale) " · stale" else "") +
-                            (state.exchangeRateSource?.let { " · $it" } ?: "")
+                                (if (state.exchangeRateIsStale) " · stale" else "") +
+                                (state.exchangeRateSource?.let { " · $it" } ?: "")
                     } else "Rate unavailable — enter manually",
                     fontSize = 11.sp,
                     color = GlassTheme.TextSecondary,

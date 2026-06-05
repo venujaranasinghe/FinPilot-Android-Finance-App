@@ -179,6 +179,7 @@ fun ExpenseScreen(
         onRequestSubmit = viewModel::requestSubmit,
         onRefreshRates = viewModel::refreshExchangeRates,
         onLoadNextPage = viewModel::loadNextPage,
+        onToggleMonthlyView = viewModel::onToggleMonthlyView,
     )
 }
 
@@ -214,8 +215,10 @@ fun ExpenseListContent(
     onRequestSubmit: () -> Unit,
     onRefreshRates: () -> Unit,
     onLoadNextPage: () -> Unit,
+    onToggleMonthlyView: () -> Unit,
 ) {
     @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
+
     // Add expense bottom sheet
     if (state.showAddSheet) {
         ModalBottomSheet(
@@ -240,21 +243,24 @@ fun ExpenseListContent(
         }
     }
 
-    // Monthly data
+    // ── Monthly data ──────────────────────────────────────────────────────────
     val monthStart = remember { currentMonthStartMillis() }
     val monthEntries = remember(state.entries) {
         state.entries.filter { (it.date?.toDate()?.time ?: 0L) >= monthStart }
     }
-    val monthTotal = monthEntries.sumOf { it.amount }
-    val committed = monthEntries.filter { it.isRecurring }.sumOf { it.amount }
-    val discretionary = monthEntries.filter { !it.isRecurring }.sumOf { it.amount }
+    // TOGGLE: use monthEntries or all entries based on showMonthlyView
+    val activeEntries = if (state.showMonthlyView) monthEntries else state.entries
+    val monthTotal = activeEntries.sumOf { it.amount }
+    val committed = activeEntries.filter { it.isRecurring }.sumOf { it.amount }
+    val discretionary = activeEntries.filter { !it.isRecurring }.sumOf { it.amount }
 
-    val categoryTotals = remember(monthEntries) {
-        monthEntries.groupBy { it.category }
+    val categoryTotals = remember(activeEntries) {
+        activeEntries.groupBy { it.category }
             .mapValues { (_, v) -> v.sumOf { it.amount } }
             .entries.sortedByDescending { it.value }
     }
 
+    // Zombie subscriptions always from monthEntries (current month makes more sense)
     val zombies = remember(monthEntries) {
         monthEntries
             .filter { it.isRecurring && it.paymentMethod.contains("Auto", ignoreCase = true) }
@@ -334,13 +340,15 @@ fun ExpenseListContent(
                         monthTotal = monthTotal,
                         committed = committed,
                         discretionary = discretionary,
-                        entryCount = monthEntries.size,
+                        entryCount = activeEntries.size,
+                        showMonthlyView = state.showMonthlyView,
+                        onToggleView = onToggleMonthlyView,
                         onAddClick = onShowAddSheet,
                     )
                 }
 
-                // ── Discretionary warning ─────────────────────────────────────
-                if (!state.warningBannerDismissed && monthTotal > 0) {
+                // ── Discretionary warning (only in monthly view) ──────────────
+                if (!state.warningBannerDismissed && state.showMonthlyView && monthTotal > 0) {
                     val ratio = discretionary / monthTotal
                     if (ratio > 0.40) {
                         item {
@@ -458,6 +466,54 @@ fun ExpenseListContent(
     }
 }
 
+// ── Monthly / All-Time Toggle ─────────────────────────────────────────────────
+
+@Composable
+private fun MonthlyAllTimeToggle(
+    showMonthlyView: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    @Suppress("LocalVariableName") val GlassTheme = LocalCurrentGlassTheme.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(GlassTheme.GlassSurface)
+            .border(1.dp, GlassTheme.GlassBorder, RoundedCornerShape(20.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        listOf(true to "This Month", false to "All Time").forEach { (isMonthly, label) ->
+            val active = showMonthlyView == isMonthly
+            val bg by animateColorAsState(
+                targetValue = if (active) GlassTheme.Orange else Color.Transparent,
+                animationSpec = tween(200),
+                label = "expense_toggle_bg_$label",
+            )
+            val tc by animateColorAsState(
+                targetValue = if (active) Color.White else GlassTheme.TextSecondary,
+                animationSpec = tween(200),
+                label = "expense_toggle_tc_$label",
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(bg)
+                    .clickable(enabled = !active) { onToggle() }
+                    .padding(horizontal = 16.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tc,
+                )
+            }
+        }
+    }
+}
+
 // ── Hero header ───────────────────────────────────────────────────────────────
 
 @Composable
@@ -466,6 +522,8 @@ private fun GlassExpenseHeader(
     committed: Double,
     discretionary: Double,
     entryCount: Int,
+    showMonthlyView: Boolean,
+    onToggleView: () -> Unit,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -513,8 +571,9 @@ private fun GlassExpenseHeader(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                // Dynamic label reacts to toggle state
                 Text(
-                    "THIS MONTH'S EXPENSES",
+                    text = if (showMonthlyView) "THIS MONTH'S EXPENSES" else "ALL TIME EXPENSES",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 2.sp,
@@ -534,6 +593,14 @@ private fun GlassExpenseHeader(
                     GlassHeroBadge("${formatLKRShort(discretionary)} discretionary")
                 }
                 GlassHeroBadge("$entryCount entries")
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Toggle pill
+                MonthlyAllTimeToggle(
+                    showMonthlyView = showMonthlyView,
+                    onToggle = onToggleView,
+                )
             }
             Spacer(modifier = Modifier.height(36.dp))
         }
@@ -866,7 +933,6 @@ private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier)
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Category icon with glow tint
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -878,7 +944,6 @@ private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier)
             Icon(categoryIcon(entry.category), null, tint = catColor, modifier = Modifier.size(20.dp))
         }
 
-        // Text
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -907,7 +972,6 @@ private fun GlassExpenseItem(entry: ExpenseEntry, modifier: Modifier = Modifier)
             }
         }
 
-        // Right side
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 formatLKRFull(entry.amount),
@@ -1117,7 +1181,6 @@ private fun GlassBarChart(trendData: List<MonthTrend>) {
                 val top = chartH - barH
                 val isHighest = i == highestIdx
 
-                // Bar glow background
                 if (isHighest) {
                     drawRoundRect(
                         color = Color(0x33FF6B00),
