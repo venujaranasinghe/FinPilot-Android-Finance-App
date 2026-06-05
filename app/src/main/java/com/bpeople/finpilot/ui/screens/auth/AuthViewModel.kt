@@ -202,7 +202,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun signOut() {
-        authRepository.signOut()
+        viewModelScope.launch { authRepository.signOut() }
         _authState.update { it.copy(authSuccess = false) }
     }
 

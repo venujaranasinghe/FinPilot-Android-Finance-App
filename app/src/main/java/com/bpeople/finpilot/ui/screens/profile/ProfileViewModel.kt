@@ -234,7 +234,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch { userRepository.updateDisplayName(newName) }
     }
 
-    fun signOut() { authRepository.signOut() }
+    fun signOut() { viewModelScope.launch { authRepository.signOut() } }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 

@@ -391,6 +391,18 @@ class IncomeViewModel @Inject constructor(
                         isSubmitted = true,
                     )
                 }
+
+                val projectId = entry.projectRef
+                if (!projectId.isNullOrBlank()) {
+                    val project = _incomeState.value.projects.firstOrNull { it.id == projectId }
+                    if (project != null) {
+                        val updated = project.copy(
+                            paidAmount = project.paidAmount + entry.amountLKR,
+                            entries = project.entries + entry.id,
+                        )
+                        freelanceProjectRepository.addOrUpdate(updated).collect { }
+                    }
+                }
             }.onFailure { throwable ->
                 _incomeState.update {
                     it.copy(
