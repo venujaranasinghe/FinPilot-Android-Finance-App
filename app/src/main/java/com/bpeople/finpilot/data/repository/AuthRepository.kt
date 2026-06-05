@@ -21,7 +21,8 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepository @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val pinRepository: PinRepository,
 ) {
 
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
@@ -139,7 +140,8 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    fun signOut() {
+    suspend fun signOut() {
+        pinRepository.clearPin()
         auth.signOut()
     }
 

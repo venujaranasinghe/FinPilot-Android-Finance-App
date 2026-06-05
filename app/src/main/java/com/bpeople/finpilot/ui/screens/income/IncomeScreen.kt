@@ -85,7 +85,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -202,17 +201,13 @@ fun IncomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
     LaunchedEffect(state.isSubmitted) {
         if (!state.isSubmitted) return@LaunchedEffect
         viewModel.consumeSubmitted()
+        sheetState.hide()
+        showAddSheet = false
+        onIncomeAdded()
         snackbarHostState.showSnackbar("Income saved!")
-        scope.launch { sheetState.hide() }
-            .invokeOnCompletion {
-                showAddSheet = false
-                onIncomeAdded()
-            }
     }
 
     LaunchedEffect(state.pendingDeleteEntry) {
